@@ -15,6 +15,7 @@ import {
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+
 const mockService = {
   // Users
   async getUsers() {
@@ -888,26 +889,6 @@ const mockService = {
       }
     };
   },
-
-  // Service availability
-  async checkServiceAvailability(serviceId: string, date: string, time: string) {
-    await delay(400);
-    
-    // Mock availability check
-    const isAvailable = Math.random() > 0.2; // 80% chance of being available
-    
-    return {
-      data: {
-        service_id: serviceId,
-        date,
-        time,
-        is_available: isAvailable,
-        alternative_times: isAvailable ? [] : ['10:00', '14:00', '16:00']
-      },
-      error: null,
-      meta: null
-    };
-  }
 };
 
 export default mockService;

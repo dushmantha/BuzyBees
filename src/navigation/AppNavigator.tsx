@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+// Updated AppNavigator.tsx - Fixed Navigation Import Error
+
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar } from 'react-native';
+import { StatusBar, ActivityIndicator, View, Text, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import SplashScreen from '../screens/SplashScreen';
 
-// Screens
+// Import Screens
 import HomeScreen from '../screens/HomeScreen';
 import ServiceListScreen from '../screens/ServiceListScreen';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen';
@@ -16,25 +20,222 @@ import BookingDateTimeScreen from '../screens/BookingDateTimeScreen';
 import BookingsScreen from '../screens/BookingsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import AuthNavigator from './AuthNavigator';
+
+// Import SearchScreen with fallback
+let SearchScreen;
+try {
+  SearchScreen = require('../screens/SearchScreen').default;
+} catch (error) {
+  // Fallback component if SearchScreen doesn't exist
+  SearchScreen = ({ navigation }: any) => {
+    React.useEffect(() => {
+      navigation.goBack();
+    }, []);
+    return null;
+  };
+}
+
+// Provider-specific screens
+import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
+import ServiceQueueScreen from '../screens/provider/ServiceQueueScreen';
+import ServiceManagementScreen from '../screens/provider/ServiceManagementScreen';
+import EarningsScreen from '../screens/provider/EarningsScreen';
+import ShopDetailsScreen from '../screens/provider/ShopDetailsScreen';
+import InvoiceGeneratorScreen from '../screens/provider/InvoiceGeneratorScreen';
+
+// Profile related screens
+import NotificationsScreen from '../screens/NotificationsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
+import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
+import HelpCenterScreen from '../screens/HelpCenterScreen';
+import TermsConditionsScreen from '../screens/TermsConditionsScreen';
+
+// Auth screens - Import directly instead of AuthNavigator to avoid circular dependency
+import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Import Service type
 import type { Service } from '../services/types/service';
 
-// Updated Types with proper ServiceDetail params
+// Notification Context
+interface NotificationContextType {
+  notificationCount: number;
+  setNotificationCount: (count: number) => void;
+  refreshNotifications: () => Promise<void>;
+}
+
+const NotificationContext = createContext<NotificationContextType>({
+  notificationCount: 0,
+  setNotificationCount: () => {},
+  refreshNotifications: async () => {},
+});
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within NotificationProvider');
+  }
+  return context;
+};
+
+// Account Type Context
+interface AccountContextType {
+  accountType: 'provider' | 'consumer';
+  setAccountType: (type: 'provider' | 'consumer') => void;
+  isLoading: boolean;
+  isPro: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  } | null;
+}
+
+const AccountContext = createContext<AccountContextType>({
+  accountType: 'consumer',
+  setAccountType: () => {},
+  isLoading: false,
+  isPro: false,
+  user: null,
+});
+
+export const useAccount = () => {
+  const context = useContext(AccountContext);
+  if (!context) {
+    throw new Error('useAccount must be used within AccountProvider');
+  }
+  return context;
+};
+
+// Notification Provider Component
+const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [notificationCount, setNotificationCount] = useState(0);
+  const { accountType } = useAccount();
+
+  const refreshNotifications = async () => {
+    try {
+      // Mock notification count based on account type
+      setNotificationCount(accountType === 'provider' ? 2 : 3);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [accountType]);
+
+  return (
+    <NotificationContext.Provider 
+      value={{ 
+        notificationCount, 
+        setNotificationCount, 
+        refreshNotifications 
+      }}
+    >
+      {children}
+    </NotificationContext.Provider>
+  );
+};
+
+// Account Provider Component
+const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPro] = useState(false); // Mock Pro status
+  const [user] = useState({
+    id: 'user-123',
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    avatar: undefined,
+  });
+
+  useEffect(() => {
+    loadAccountType();
+  }, []);
+
+  const loadAccountType = async () => {
+    try {
+      const savedAccountType = await AsyncStorage.getItem('accountType');
+      if (savedAccountType && (savedAccountType === 'provider' || savedAccountType === 'consumer')) {
+        setAccountTypeState(savedAccountType);
+      }
+    } catch (error) {
+      console.error('Error loading account type:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setAccountType = async (type: 'provider' | 'consumer') => {
+    try {
+      setIsLoading(true);
+      await AsyncStorage.setItem('accountType', type);
+      setAccountTypeState(type);
+      
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 800);
+    } catch (error) {
+      console.error('Error saving account type:', error);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AccountContext.Provider value={{ accountType, setAccountType, isLoading, isPro, user }}>
+      <NotificationProvider>
+        {children}
+      </NotificationProvider>
+    </AccountContext.Provider>
+  );
+};
+
+// Shop interface for ShopDetails
+export interface Shop {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  description: string;
+  isActive: boolean;
+  openingHours: string;
+  services: string[];
+  imageUrl?: string;
+  weeklyTemplate?: any;
+  dailySchedules?: any[];
+  advanceBookingDays?: number;
+  slotDuration?: number;
+  bufferTime?: number;
+  autoApproval?: boolean;
+  timeZone?: string;
+}
+
+// Updated Types with Popular Services Support
 export type RootStackParamList = {
   // Auth Screens
-  Auth: undefined;
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
   
   // Main App Screens
-  MainTabs: {
+  ConsumerTabs: {
     screen?: 'HomeTab' | 'BookingsTab' | 'FavoritesTab' | 'ProfileTab';
   } | undefined;
+  ProviderTabs: {
+    screen?: 'ProviderHomeTab' | 'QueueTab' | 'ServicesTab' | 'EarningsTab' | 'ProfileTab';
+  } | undefined;
+  
+  // Consumer Screens
   Home: undefined;
-  ServiceList: { category: string; categoryId: string };
+  ServiceList: { 
+    category: string; 
+    categoryId: string;
+    showPopular?: boolean; // Added support for popular services
+  };
   ServiceDetail: { 
     service: Service;
     serviceId?: string;
@@ -54,8 +255,32 @@ export type RootStackParamList = {
   BookingDateTime: { serviceId: string };
   Bookings: undefined;
   Favorites: undefined;
-  FavoritesTab: undefined;
   Profile: undefined;
+  
+  // Provider Screens
+  ProviderHome: undefined;
+  ServiceQueue: undefined;
+  ServiceManagement: undefined;
+  Earnings: undefined;
+  ShopDetails: {
+    shop?: Shop;
+    onSave?: (shop: Shop) => void;
+  } | undefined;
+  InvoiceGenerator: undefined;
+  
+  // Profile Related Screens
+  Notifications: undefined;
+  Privacy: undefined;
+  PaymentMethods: undefined;
+  HelpCenter: undefined;
+  TermsConditions: undefined;
+  
+  // Search Screen
+  Search: { 
+    query?: string;
+    initialResults?: any;
+    filter?: string;
+  };
   
   // Payment related
   Payment: {
@@ -71,34 +296,67 @@ export type RootStackParamList = {
   };
 };
 
-type TabParamList = {
+type ConsumerTabParamList = {
   HomeTab: undefined;
   BookingsTab: undefined;
   FavoritesTab: undefined;
   ProfileTab: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<TabParamList>();
+type ProviderTabParamList = {
+  ProviderHomeTab: undefined;
+  QueueTab: undefined;
+  ServicesTab: undefined;
+  EarningsTab: undefined;
+  ProfileTab: undefined;
+};
 
-// Extend the RootStackParamList to include the auth screens
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const ConsumerTab = createBottomTabNavigator<ConsumerTabParamList>();
+const ProviderTab = createBottomTabNavigator<ProviderTabParamList>();
+
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}
   }
 }
 
-const MyTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: '#ffffff',
-  },
+// Notification Badge Component
+const NotificationBadge: React.FC<{ count: number }> = ({ count }) => {
+  if (count === 0) return null;
+  
+  return (
+    <View style={{
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      backgroundColor: '#EF4444',
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+    }}>
+      <Text style={{
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '600',
+      }}>
+        {count > 99 ? '99+' : count.toString()}
+      </Text>
+    </View>
+  );
 };
 
-const MainTabs = () => {
+// Consumer Tab Navigator
+const ConsumerTabs = () => {
+  const { notificationCount } = useNotifications();
+  const insets = useSafeAreaInsets();
+  
   return (
-    <Tab.Navigator
+    <ConsumerTab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string;
@@ -113,148 +371,468 @@ const MainTabs = () => {
             iconName = focused ? 'person' : 'person-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <View style={{ position: 'relative' }}>
+              <Ionicons name={iconName} size={size} color={color} />
+              {route.name === 'ProfileTab' && notificationCount > 0 && (
+                <NotificationBadge count={notificationCount} />
+              )}
+            </View>
+          );
         },
-        tabBarActiveTintColor: '#1A2533',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#F59E0B', // Orange for consumer theme
+        tabBarInactiveTintColor: '#6B7280', // Consistent gray for inactive
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E5E7EB',
+          borderTopWidth: 1,
+          paddingBottom: Math.max(insets.bottom, 16),
+          paddingTop: 12,
+          height: Math.max(insets.bottom + 65, 85),
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
       })}
     >
-      <Tab.Screen 
+      <ConsumerTab.Screen 
         name="HomeTab" 
-        component={HomeScreen} 
+        component={HomeScreen}
         options={{ title: 'Home' }}
       />
-      <Tab.Screen 
+      <ConsumerTab.Screen 
         name="BookingsTab" 
-        component={BookingsScreen} 
+        component={BookingsScreen}
         options={{ title: 'Bookings' }}
       />
-      <Tab.Screen 
+      <ConsumerTab.Screen 
         name="FavoritesTab" 
-        component={FavoritesScreen} 
+        component={FavoritesScreen}
         options={{ title: 'Favorites' }}
       />
-      <Tab.Screen 
+      <ConsumerTab.Screen 
         name="ProfileTab" 
-        component={ProfileScreen} 
+        component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
-    </Tab.Navigator>
+    </ConsumerTab.Navigator>
   );
 };
 
-// Main app navigator (protected routes)
-const AppNavigator = () => {
+// Provider Tab Navigator with Fixed Styling
+const ProviderTabs = () => {
+  const { notificationCount } = useNotifications();
+  const insets = useSafeAreaInsets();
+  
   return (
-    <Stack.Navigator
+    <ProviderTab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: string;
+
+          if (route.name === 'ProviderHomeTab') {
+            iconName = focused ? 'storefront' : 'storefront-outline';
+          } else if (route.name === 'QueueTab') {
+            iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'ServicesTab') {
+            iconName = focused ? 'construct' : 'construct-outline';
+          } else if (route.name === 'EarningsTab') {
+            iconName = focused ? 'wallet' : 'wallet-outline';
+          } else {
+            iconName = focused ? 'person' : 'person-outline';
+          }
+
+          return (
+            <View style={{ position: 'relative' }}>
+              <Ionicons name={iconName} size={size} color={color} />
+              {route.name === 'ProfileTab' && notificationCount > 0 && (
+                <NotificationBadge count={notificationCount} />
+              )}
+            </View>
+          );
+        },
+        tabBarActiveTintColor: '#10B981', // Green for provider theme
+        tabBarInactiveTintColor: '#6B7280', // Consistent gray for inactive
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E5E7EB',
+          borderTopWidth: 1,
+          paddingBottom: Math.max(insets.bottom, 16), // Ensure minimum padding
+          paddingTop: 12,
+          height: Math.max(insets.bottom + 65, 85), // Proper height calculation
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
+      })}
+    >
+      <ProviderTab.Screen 
+        name="ProviderHomeTab" 
+        component={ProviderHomeScreen}
+        options={{ title: 'Dashboard' }}
+      />
+      <ProviderTab.Screen 
+        name="QueueTab" 
+        component={ServiceQueueScreen}
+        options={{ title: 'Queue' }}
+      />
+      <ProviderTab.Screen 
+        name="ServicesTab" 
+        component={ServiceManagementScreen}
+        options={{ title: 'Services' }}
+      />
+      <ProviderTab.Screen 
+        name="EarningsTab" 
+        component={EarningsScreen}
+        options={{ title: 'Earnings' }}
+      />
+      <ProviderTab.Screen 
+        name="ProfileTab" 
+        component={ProfileScreen}
+        options={{ title: 'Profile' }}
+      />
+    </ProviderTab.Navigator>
+  );
+};
+
+// Auth Navigator - Inline to avoid circular dependency
+const AuthNavigator = () => {
+  return (
+    <RootStack.Navigator
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#ffffff' },
+        contentStyle: { backgroundColor: '#FEFCE8' },
       }}
     >
-      <Stack.Screen 
-        name="MainTabs" 
-        component={MainTabs} 
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="ServiceList" 
-        component={ServiceListScreen} 
-        options={({ route }) => ({
-          title: route.params?.category || 'Services',
-          headerShown: true,
-          headerBackTitle: 'Back',
-          headerTintColor: '#000000',
-          headerStyle: {
-            backgroundColor: '#ffffff',
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-          },
-          headerTitleStyle: {
-            fontWeight: '600',
-            fontSize: 18,
-          },
-        })}
-      />
-      <Stack.Screen 
-        name="ServiceDetail" 
-        component={ServiceDetailScreen} 
-        options={{
-          title: 'Service',
-          headerShown: false,
-          presentation: 'card',
-        }}
-      />
-      <Stack.Screen 
-        name="BookingSummary" 
-        component={BookingSummaryScreen} 
-        options={{ 
-          title: 'Booking Summary',
-          headerShown: true,
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen 
-        name="BookingDateTime" 
-        component={BookingDateTimeScreen}
-        options={{ 
-          title: 'Select Date & Time',
-          headerShown: true,
-          headerBackTitle: 'Back',
-        }}
-      />
-    </Stack.Navigator>
+      <RootStack.Screen name="Login" component={LoginScreen} />
+      <RootStack.Screen name="Register" component={RegisterScreen} />
+      <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </RootStack.Navigator>
   );
 };
 
-// Root navigator that handles authentication state
+// Loading Component for Account Switch
+const AccountSwitchLoader = () => {
+  return (
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#FEFCE8',
+    }}>
+      <ActivityIndicator size="large" color="#F59E0B" />
+      <Text style={{
+        marginTop: 16,
+        fontSize: 16,
+        color: '#6B7280',
+        textAlign: 'center',
+      }}>
+        Switching account mode...
+      </Text>
+    </View>
+  );
+};
+
+// Common header style configuration
+const getHeaderStyle = () => ({
+  headerStyle: {
+    backgroundColor: '#FFFFFF',
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 0, // Remove border
+  },
+  headerTitleStyle: {
+    fontWeight: '600' as const,
+    fontSize: 18,
+    color: '#1F2937',
+  },
+  headerTintColor: '#1F2937',
+  headerBackTitle: 'Back',
+  headerShadowVisible: false, // Remove shadow line
+});
+
+// Main App Navigator
+const AppNavigator = () => {
+  const { accountType, isLoading } = useAccount();
+
+  if (isLoading) {
+    return <AccountSwitchLoader />;
+  }
+
+  return (
+    <RootStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#FEFCE8' },
+        ...getHeaderStyle(),
+      }}
+    >
+      {accountType === 'consumer' ? (
+        <>
+          {/* Consumer Navigation Stack */}
+          <RootStack.Screen 
+            name="ConsumerTabs" 
+            component={ConsumerTabs}
+            options={{ headerShown: false }}
+          />
+          <RootStack.Screen 
+            name="ServiceList" 
+            component={ServiceListScreen} 
+            options={({ route }) => ({
+              title: route.params?.category || 'Services',
+              headerShown: false,
+              ...getHeaderStyle(),
+            })}
+          />
+          <RootStack.Screen 
+            name="ServiceDetail" 
+            component={ServiceDetailScreen} 
+            options={{
+              title: 'Service',
+              headerShown: false,
+              presentation: 'card',
+            }}
+          />
+          <RootStack.Screen 
+            name="BookingSummary" 
+            component={BookingSummaryScreen} 
+            options={{ 
+              title: 'Booking Summary',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="BookingDateTime" 
+            component={BookingDateTimeScreen}
+            options={{ 
+              title: 'Select Date & Time',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          {/* Search Screen for Consumer */}
+          <RootStack.Screen 
+            name="Search" 
+            component={SearchScreen}
+            options={{
+              title: 'Search Results',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          {/* Profile Related Screens */}
+          <RootStack.Screen 
+            name="Notifications" 
+            component={NotificationsScreen}
+            options={{
+              title: 'Notifications',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Privacy" 
+            component={PrivacyScreen}
+            options={{
+              title: 'Privacy Settings',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="PaymentMethods" 
+            component={PaymentMethodsScreen}
+            options={{
+              title: 'Payment Methods',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="HelpCenter" 
+            component={HelpCenterScreen}
+            options={{
+              title: 'Help Center',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="TermsConditions" 
+            component={TermsConditionsScreen}
+            options={{
+              title: 'Terms & Conditions',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+        </>
+      ) : (
+        <>
+          {/* Provider Navigation Stack */}
+          <RootStack.Screen 
+            name="ProviderTabs" 
+            component={ProviderTabs}
+            options={{ headerShown: false }}
+          />
+          {/* ServiceList and ServiceDetail for Provider */}
+          <RootStack.Screen 
+            name="ServiceList" 
+            component={ServiceListScreen} 
+            options={({ route }) => ({
+              title: route.params?.category || 'Services',
+              headerShown: false,
+              ...getHeaderStyle(),
+            })}
+          />
+          <RootStack.Screen 
+            name="ServiceDetail" 
+            component={ServiceDetailScreen} 
+            options={{
+              title: 'Service',
+              headerShown: false,
+              presentation: 'card',
+            }}
+          />
+          <RootStack.Screen 
+            name="ServiceManagement" 
+            component={ServiceManagementScreen} 
+            options={{
+              title: 'Manage Services',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Earnings" 
+            component={EarningsScreen} 
+            options={{
+              title: 'Earnings Report',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="ShopDetails" 
+            component={ShopDetailsScreen}
+            options={({ route }) => ({
+              title: route.params?.shop ? 'Edit Shop' : 'Add New Shop',
+              headerShown: true,
+              ...getHeaderStyle(),
+            })}
+          />
+          <RootStack.Screen 
+            name="InvoiceGenerator" 
+            component={InvoiceGeneratorScreen}
+            options={{
+              title: 'Generate Invoice',
+              headerShown: true,
+              presentation: 'modal',
+              ...getHeaderStyle(),
+            }}
+          />
+          {/* Search Screen for Provider */}
+          <RootStack.Screen 
+            name="Search" 
+            component={SearchScreen}
+            options={{
+              title: 'Search Results',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          {/* Profile Related Screens - Provider versions */}
+          <RootStack.Screen 
+            name="Notifications" 
+            component={NotificationsScreen}
+            options={{
+              title: 'Notifications',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Privacy" 
+            component={PrivacyScreen}
+            options={{
+              title: 'Privacy Settings',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="PaymentMethods" 
+            component={PaymentMethodsScreen}
+            options={{
+              title: 'Payment Methods',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="HelpCenter" 
+            component={HelpCenterScreen}
+            options={{
+              title: 'Help Center',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="TermsConditions" 
+            component={TermsConditionsScreen}
+            options={{
+              title: 'Terms & Conditions',
+              headerShown: true,
+              ...getHeaderStyle(),
+            }}
+          />
+        </>
+      )}
+    </RootStack.Navigator>
+  );
+};
+
+// Root Navigator - FIXED VERSION with proper status bar
 const RootNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [isReady, setIsReady] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (isLoading || !isReady) {
+  if (authLoading) {
     return <SplashScreen />;
   }
 
   return (
-    <NavigationContainer theme={MyTheme}>
-      <StatusBar barStyle="dark-content" />
-      {isAuthenticated ? (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen 
-            name="ServiceList" 
-            component={ServiceListScreen} 
-            options={({ route }) => ({
-              headerShown: true,
-              title: route.params?.category || 'Services',
-              headerBackTitle: 'Back',
-            })}
-          />
-          <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
-          <Stack.Screen name="BookingDateTime" component={BookingDateTimeScreen} />
-          <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
-        </Stack.Navigator>
-      ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        </Stack.Navigator>
-      )}
-    </NavigationContainer>
+    <AccountProvider>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+    </AccountProvider>
   );
 };
 
 export default RootNavigator;
+export { useAccount, useNotifications };

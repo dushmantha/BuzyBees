@@ -1,204 +1,126 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  Alert,
+  ActivityIndicator
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { mockService } from '../../services/api/mock';
 import { RootStackParamList } from '../../navigation/AppNavigator';
+import { useAuth } from '../../context/AuthContext';
 
 type ForgotPasswordScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ForgotPassword'>;
+
+// Theme colors
+const colors = {
+  primary: '#F59E0B',
+  secondary: '#FCD34D',
+  darkAccent: '#1F2937',
+  lightAccent: '#FEF3C7',
+  success: '#10B981',
+  warning: '#F97316',
+  error: '#EF4444',
+  info: '#3B82F6',
+  white: '#FFFFFF',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray400: '#9CA3AF',
+  gray500: '#6B7280',
+  gray600: '#4B5563',
+  gray700: '#374151',
+  gray800: '#1F2937',
+  gray900: '#111827',
+};
 
 const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Email input, 2: Code verification, 3: New password
-  const [verificationCode, setVerificationCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
   const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
+  const { sendPasswordResetEmail } = useAuth();
 
-  const handleSendCode = async () => {
-    if (!email) {
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSendResetEmail = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (!trimmedEmail) {
       Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
-    setLoading(true);
-    
-    try {
-      // In a real app, this would send a password reset email
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setStep(2);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send verification code. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!verificationCode) {
-      Alert.alert('Error', 'Please enter the verification code');
-      return;
-    }
-    
-    // In a real app, you would verify the code here
-    setStep(3);
-  };
-
-  const handleResetPassword = async () => {
-    if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     setLoading(true);
-
+    
     try {
-      // In a real app, this would reset the password
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sendPasswordResetEmail(trimmedEmail);
+      
+      // Set email sent state
+      setEmailSent(true);
       
       Alert.alert(
-        'Success', 
-        'Your password has been reset successfully. You can now log in with your new password.',
+        'Reset Email Sent',
+        `We've sent a password reset link to ${trimmedEmail}. Please check your email (including spam folder) and follow the instructions to reset your password.`,
         [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.navigate('Login') 
+          {
+            text: 'OK',
+            onPress: () => {
+              // Optional: Navigate back to login after a delay
+              setTimeout(() => {
+                navigation.navigate('Login');
+              }, 1000);
+            }
           }
         ]
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to reset password. Please try again.');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to send password reset email. Please check your internet connection and try again.';
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderStepOne = () => (
-    <>
-      <Text style={styles.stepText}>Step 1 of 3</Text>
-      <Text style={styles.title}>Forgot Password</Text>
-      <Text style={styles.subtitle}>
-        Enter your email address and we'll send you a verification code to reset your password.
-      </Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
+  const handleResendEmail = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (!trimmedEmail || !isValidEmail(trimmedEmail)) {
+      Alert.alert('Error', 'Please enter a valid email address first');
+      return;
+    }
+    
+    await handleSendResetEmail();
+  };
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSendCode}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Sending...' : 'Send Verification Code'}
-        </Text>
-      </TouchableOpacity>
-    </>
-  );
+  const resetForm = () => {
+    setEmail('');
+    setEmailSent(false);
+  };
 
-  const renderStepTwo = () => (
-    <>
-      <Text style={styles.stepText}>Step 2 of 3</Text>
-      <Text style={styles.title}>Verify Your Email</Text>
-      <Text style={styles.subtitle}>
-        We've sent a 6-digit verification code to {email}. Please enter it below.
-      </Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Verification Code</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter 6-digit code"
-          value={verificationCode}
-          onChangeText={setVerificationCode}
-          keyboardType="number-pad"
-          maxLength={6}
-        />
-      </View>
-
-      <View style={styles.resendContainer}>
-        <Text style={styles.resendText}>Didn't receive a code? </Text>
-        <TouchableOpacity onPress={handleSendCode}>
-          <Text style={styles.resendLink}>Resend Code</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleVerifyCode}
-        disabled={loading || !verificationCode}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Verifying...' : 'Verify Code'}
-        </Text>
-      </TouchableOpacity>
-    </>
-  );
-
-  const renderStepThree = () => (
-    <>
-      <Text style={styles.stepText}>Step 3 of 3</Text>
-      <Text style={styles.title}>Create New Password</Text>
-      <Text style={styles.subtitle}>
-        Please create a new password for your account.
-      </Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>New Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter new password"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-        />
-        <Text style={styles.hintText}>
-          Must be at least 6 characters
-        </Text>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Confirm New Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm new password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, (loading || !newPassword || !confirmPassword) && styles.buttonDisabled]}
-        onPress={handleResetPassword}
-        disabled={loading || !newPassword || !confirmPassword}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Resetting Password...' : 'Reset Password'}
-        </Text>
-      </TouchableOpacity>
-    </>
-  );
+  const handleBackToLogin = () => {
+    if (emailSent) {
+      resetForm();
+    }
+    navigation.navigate('Login');
+  };
 
   return (
     <KeyboardAvoidingView
@@ -208,15 +130,106 @@ const ForgotPasswordScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          {step === 1 && renderStepOne()}
-          {step === 2 && renderStepTwo()}
-          {step === 3 && renderStepThree()}
+          <Text style={styles.title}>Forgot Password</Text>
+          
+          {!emailSent ? (
+            <>
+              <Text style={styles.subtitle}>
+                Enter your email address and we'll send you a link to reset your password.
+              </Text>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email Address</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    loading && styles.inputDisabled
+                  ]}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSendResetEmail}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.button, 
+                  (loading || !email.trim() || !isValidEmail(email.trim())) && styles.buttonDisabled
+                ]}
+                onPress={handleSendResetEmail}
+                disabled={loading || !email.trim() || !isValidEmail(email.trim())}
+              >
+                {loading ? (
+                  <View style={styles.buttonContent}>
+                    <ActivityIndicator color={colors.white} size="small" />
+                    <Text style={[styles.buttonText, { marginLeft: 8 }]}>
+                      Sending...
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.buttonText}>
+                    Send Reset Link
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.helpContainer}>
+                <Text style={styles.helpText}>
+                  Having trouble? Check your spam folder or{' '}
+                </Text>
+                <TouchableOpacity onPress={handleResendEmail} disabled={loading}>
+                  <Text style={[styles.resendLink, loading && styles.linkDisabled]}>
+                    resend the email
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <View style={styles.successContainer}>
+              <View style={styles.successIcon}>
+                <Text style={styles.successCheckmark}>✓</Text>
+              </View>
+              <Text style={styles.successTitle}>Email Sent!</Text>
+              <Text style={styles.successMessage}>
+                We've sent a password reset link to {email}. Please check your email and follow the instructions.
+              </Text>
+              <Text style={styles.helpText}>
+                Didn't receive the email? Check your spam folder.
+              </Text>
+              
+              <TouchableOpacity
+                style={[styles.button, styles.secondaryButton]}
+                onPress={handleResendEmail}
+                disabled={loading}
+              >
+                {loading ? (
+                  <View style={styles.buttonContent}>
+                    <ActivityIndicator color={colors.primary} size="small" />
+                    <Text style={[styles.secondaryButtonText, { marginLeft: 8 }]}>
+                      Resending...
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.secondaryButtonText}>
+                    Resend Email
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={handleBackToLogin}>
             <Text style={styles.backButton}>
               ← Back to Login
             </Text>
@@ -230,7 +243,7 @@ const ForgotPasswordScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -239,87 +252,144 @@ const styles = StyleSheet.create({
   },
   header: {
     flex: 1,
-  },
-  stepText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-    fontWeight: '500',
+    paddingTop: 60,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1A2533',
+    color: colors.darkAccent,
     marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 32,
+    color: colors.gray500,
+    marginBottom: 40,
     lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.gray700,
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.gray50,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.gray200,
     borderRadius: 8,
-    padding: 12,
+    padding: 16,
     fontSize: 16,
-    color: '#111827',
+    color: colors.gray900,
   },
-  hintText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  resendText: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  resendLink: {
-    color: '#3B82F6',
-    fontSize: 14,
-    fontWeight: '600',
+  inputDisabled: {
+    opacity: 0.6,
+    backgroundColor: colors.gray100,
   },
   button: {
-    backgroundColor: '#1A2533',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginTop: 8,
     marginBottom: 24,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: colors.white,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  secondaryButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  helpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+  },
+  helpText: {
+    color: colors.gray500,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  resendLink: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  linkDisabled: {
+    opacity: 0.5,
+  },
+  successContainer: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  successIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  successCheckmark: {
+    fontSize: 36,
+    color: colors.white,
+    fontWeight: 'bold',
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.darkAccent,
+    marginBottom: 16,
+  },
+  successMessage: {
+    fontSize: 16,
+    color: colors.gray600,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+    paddingHorizontal: 8,
   },
   footer: {
     marginTop: 24,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.gray200,
     alignItems: 'center',
   },
   backButton: {
-    color: '#3B82F6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },

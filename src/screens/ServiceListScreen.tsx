@@ -9,12 +9,15 @@ import {
   Image, 
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import mockService from '../services/api/mock';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type ServiceListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceList'>;
 type ServiceListScreenRouteProp = RouteProp<RootStackParamList, 'ServiceList'>;
@@ -53,11 +56,25 @@ interface FilterOptions {
   sortOptions: { value: string; label: string }[];
 }
 
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  total_count?: number;
+  has_more?: boolean;
+  error?: string;
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
 const ServiceListScreen = () => {
   const navigation = useNavigation<ServiceListScreenNavigationProp>();
   const route = useRoute<ServiceListScreenRouteProp>();
   const category = route.params?.category || 'All Services';
   const categoryId = route.params?.categoryId;
+  const showPopular = route.params?.showPopular || false;
 
   // State management
   const [services, setServices] = useState<Service[]>([]);
@@ -77,30 +94,116 @@ const ServiceListScreen = () => {
     sort_order: 'desc' as 'asc' | 'desc'
   });
 
-  // Load services
+  // Single API service function for comprehensive data fetching
+  const apiService = {
+    async getServiceListData(params?: {
+      searchQuery?: string;
+      categoryId?: string;
+      showPopular?: boolean;
+      filters?: any;
+    }): Promise<ApiResponse<{
+      services: Service[];
+      totalResults: number;
+      filterOptions: FilterOptions;
+    }>> {
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        let serviceResponse;
+        
+        // Handle popular services specifically
+        if (params?.showPopular) {
+          serviceResponse = await mockService.getPopularServices(params.filters);
+        } else if (params?.searchQuery?.trim()) {
+          serviceResponse = await mockService.searchServices(params.searchQuery, {
+            category_id: params.categoryId,
+            ...params.filters
+          });
+        } else if (params?.categoryId && params.categoryId !== 'popular') {
+          serviceResponse = await mockService.getServicesByCategory(params.categoryId, params.filters);
+        } else {
+          serviceResponse = await mockService.getServices(params?.filters);
+        }
+
+        const filterResponse = await mockService.getFilterOptions();
+
+        if (serviceResponse.error) {
+          throw new Error(serviceResponse.error);
+        }
+
+        return {
+          data: {
+            services: serviceResponse.data || [],
+            totalResults: serviceResponse.meta?.total || 0,
+            filterOptions: filterResponse.data || {
+              priceRange: { min: 0, max: 1000 },
+              locations: [],
+              durations: [],
+              categories: [],
+              paymentMethods: [],
+              sortOptions: []
+            }
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('API Error:', error);
+        return {
+          data: {
+            services: [],
+            totalResults: 0,
+            filterOptions: {
+              priceRange: { min: 0, max: 1000 },
+              locations: [],
+              durations: [],
+              categories: [],
+              paymentMethods: [],
+              sortOptions: []
+            }
+          },
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch service data'
+        };
+      }
+    },
+
+    async toggleFavorite(userId: string, serviceId: string): Promise<ApiResponse<{ isFavorite: boolean }>> {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const response = await mockService.toggleFavorite(userId, serviceId);
+        return response;
+      } catch (error) {
+        console.error('Toggle favorite error:', error);
+        return {
+          data: { isFavorite: false },
+          success: false,
+          error: 'Failed to update favorite'
+        };
+      }
+    }
+  };
+
+  // Load services with comprehensive data
   const loadServices = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
       
-      let response;
-      if (searchQuery.trim()) {
-        response = await mockService.searchServices(searchQuery, {
-          category_id: categoryId,
-          ...filters
-        });
-      } else if (categoryId) {
-        response = await mockService.getServicesByCategory(categoryId, filters);
-      } else {
-        response = await mockService.getServices(filters);
-      }
+      const response = await apiService.getServiceListData({
+        searchQuery,
+        categoryId,
+        showPopular,
+        filters
+      });
 
-      if (response.error) {
-        Alert.alert('Error', response.error);
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to load services');
         return;
       }
 
-      setServices(response.data || []);
-      setTotalResults(response.meta?.total || 0);
+      setServices(response.data.services);
+      setTotalResults(response.data.totalResults);
+      setFilterOptions(response.data.filterOptions);
     } catch (error) {
       console.error('Error loading services:', error);
       Alert.alert('Error', 'Failed to load services');
@@ -108,27 +211,15 @@ const ServiceListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, categoryId, filters]);
-
-  // Load filter options
-  const loadFilterOptions = useCallback(async () => {
-    try {
-      const response = await mockService.getFilterOptions();
-      if (response.data) {
-        setFilterOptions(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading filter options:', error);
-    }
-  }, []);
+  }, [searchQuery, categoryId, showPopular, filters]);
 
   // Toggle favorite
   const toggleFavorite = async (serviceId: string) => {
     try {
-      const response = await mockService.toggleFavorite('1', serviceId); // Mock user ID
+      const response = await apiService.toggleFavorite('1', serviceId); // Mock user ID
       
-      if (response.error) {
-        Alert.alert('Error', response.error);
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to update favorite');
         return;
       }
 
@@ -173,6 +264,15 @@ const ServiceListScreen = () => {
     }));
   };
 
+  // Handle navigation back
+  const handleBack = () => {
+    if (navigation?.goBack) {
+      navigation.goBack();
+    } else {
+      Alert.alert('Navigation', 'Go back to previous screen');
+    }
+  };
+
   // Render star rating
   const renderStars = (rating: number) => {
     const stars = [];
@@ -193,10 +293,6 @@ const ServiceListScreen = () => {
   };
 
   // Effects
-  useEffect(() => {
-    loadFilterOptions();
-  }, [loadFilterOptions]);
-
   useFocusEffect(
     useCallback(() => {
       loadServices();
@@ -213,26 +309,61 @@ const ServiceListScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Loading services...</Text>
+      <View style={styles.container}>
+        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        {/* Main Header - Only one navigation bar */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{category}</Text>
+          <View style={styles.headerRight}>
+            <Text style={styles.resultsCount}>Loading...</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Loading services...</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      
+      {/* Main Header - Only one navigation bar */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{category}</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.resultsCount}>{totalResults} services</Text>
+        </View>
+      </View>
+
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search treatment, clinic, location..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={handleSearch}
             returnKeyType="search"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={() => setSearchQuery('')}
+            >
+              <Ionicons name="close-circle" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -241,22 +372,42 @@ const ServiceListScreen = () => {
         style={styles.serviceList} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor="#F59E0B"
+            colors={['#F59E0B']}
+          />
         }
       >
         {services.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={64} color="#D1D5DB" />
             <Text style={styles.emptyText}>No services found</Text>
             <Text style={styles.emptySubtext}>
               Try adjusting your search or filters
             </Text>
+            {searchQuery.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearSearchButton}
+                onPress={() => setSearchQuery('')}
+              >
+                <Text style={styles.clearSearchText}>Clear search</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           services.map((service) => (
             <TouchableOpacity 
               key={service.id} 
               style={styles.serviceCard}
-              onPress={() => navigation.navigate('ServiceDetail', { service })}
+              onPress={() => {
+                if (navigation?.navigate) {
+                  navigation.navigate('ServiceDetail', { service });
+                } else {
+                  Alert.alert('Navigation', 'Navigate to service detail');
+                }
+              }}
               activeOpacity={0.8}
             >
               {/* Certificate Images */}
@@ -267,22 +418,32 @@ const ServiceListScreen = () => {
                     style={styles.certificateImage}
                     resizeMode="cover"
                   />
+                  <View style={styles.certificateBadge}>
+                    <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+                    <Text style={styles.certificateText}>Certified</Text>
+                  </View>
                 </View>
               )}
 
               {/* Before/After Images */}
               {service.before_after_images && service.before_after_images.length >= 2 && (
                 <View style={styles.beforeAfterSection}>
-                  <Image 
-                    source={{ uri: service.before_after_images[0] }} 
-                    style={styles.beforeAfterImage}
-                    resizeMode="cover"
-                  />
-                  <Image 
-                    source={{ uri: service.before_after_images[1] }} 
-                    style={styles.beforeAfterImage}
-                    resizeMode="cover"
-                  />
+                  <View style={styles.beforeAfterContainer}>
+                    <Image 
+                      source={{ uri: service.before_after_images[0] }} 
+                      style={styles.beforeAfterImage}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.beforeAfterLabel}>Before</Text>
+                  </View>
+                  <View style={styles.beforeAfterContainer}>
+                    <Image 
+                      source={{ uri: service.before_after_images[1] }} 
+                      style={styles.beforeAfterImage}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.beforeAfterLabel}>After</Text>
+                  </View>
                 </View>
               )}
               
@@ -295,7 +456,7 @@ const ServiceListScreen = () => {
                     resizeMode="cover"
                   />
                   <View style={styles.serviceDetails}>
-                    <View style={styles.nameAndArrow}>
+                    <View style={styles.nameAndFavorite}>
                       <Text style={styles.serviceName} numberOfLines={1}>
                         {service.salon_name}
                       </Text>
@@ -303,32 +464,37 @@ const ServiceListScreen = () => {
                         style={styles.favoriteButton}
                         onPress={() => toggleFavorite(service.id)}
                       >
-                        <Text style={[
-                          styles.favoriteIcon, 
-                          { color: service.is_favorite ? '#FF3B30' : '#ccc' }
-                        ]}>
-                          {service.is_favorite ? '♥' : '♡'}
-                        </Text>
+                        <Ionicons 
+                          name={service.is_favorite ? "heart" : "heart-outline"} 
+                          size={24} 
+                          color={service.is_favorite ? "#EF4444" : "#9CA3AF"} 
+                        />
                       </TouchableOpacity>
                     </View>
                     
                     <View style={styles.ratingContainer}>
-                      <Text style={styles.rating}>{service.rating}</Text>
+                      <Text style={styles.rating}>{service.rating.toFixed(1)}</Text>
                       <Text style={styles.stars}>{renderStars(service.rating)}</Text>
                       <Text style={styles.reviews}>({service.reviews_count})</Text>
                     </View>
                     
-                    <Text style={styles.location} numberOfLines={1}>
-                      {service.location}
-                    </Text>
+                    <View style={styles.locationContainer}>
+                      <Ionicons name="location-outline" size={14} color="#6B7280" />
+                      <Text style={styles.location} numberOfLines={1}>
+                        {service.location}
+                      </Text>
+                    </View>
                     
-                    <Text style={styles.availableTime}>
-                      {service.available_time_text}
-                    </Text>
+                    <View style={styles.availabilityContainer}>
+                      <Ionicons name="time-outline" size={14} color="#10B981" />
+                      <Text style={styles.availableTime}>
+                        {service.available_time_text}
+                      </Text>
+                    </View>
                   </View>
                 </View>
                 
-                <Text style={styles.welcomeMessage} numberOfLines={1}>
+                <Text style={styles.welcomeMessage} numberOfLines={2}>
                   {service.welcome_message}
                 </Text>
                 
@@ -337,25 +503,36 @@ const ServiceListScreen = () => {
                 </Text>
                 
                 {/* Payment Methods */}
-                <View style={styles.paymentMethods}>
-                  {service.payment_methods?.slice(0, 3).map((method, index) => (
-                    <View key={index} style={styles.paymentTag}>
-                      <Text style={styles.paymentText}>{method}</Text>
-                    </View>
-                  ))}
-                </View>
+                {service.payment_methods && service.payment_methods.length > 0 && (
+                  <View style={styles.paymentMethods}>
+                    <Ionicons name="card-outline" size={14} color="#6B7280" style={styles.paymentIcon} />
+                    {service.payment_methods.slice(0, 3).map((method, index) => (
+                      <View key={index} style={styles.paymentTag}>
+                        <Text style={styles.paymentText}>{method}</Text>
+                      </View>
+                    ))}
+                    {service.payment_methods.length > 3 && (
+                      <Text style={styles.morePayments}>
+                        +{service.payment_methods.length - 3} more
+                      </Text>
+                    )}
+                  </View>
+                )}
 
                 {/* Bottom Section */}
                 <View style={styles.bottomSection}>
                   <View style={styles.priceSection}>
                     <Text style={styles.priceLabel}>From</Text>
                     <Text style={styles.price}>{service.price} SEK</Text>
-                    <Text style={styles.duration}>{service.duration} min</Text>
+                    <View style={styles.durationContainer}>
+                      <Ionicons name="time" size={12} color="#6B7280" />
+                      <Text style={styles.duration}>{service.duration} min</Text>
+                    </View>
                   </View>
                   
-                  <TouchableOpacity style={styles.mapButton}>
-                    <Text style={styles.mapIcon}>🗺</Text>
-                    <Text style={styles.mapText}>Map</Text>
+                  <TouchableOpacity style={styles.viewButton}>
+                    <Text style={styles.viewButtonText}>View Details</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -370,6 +547,7 @@ const ServiceListScreen = () => {
             onPress={() => loadServices()}
           >
             <Text style={styles.loadMoreText}>Load More Services</Text>
+            <Ionicons name="chevron-down" size={20} color="#1F2937" />
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -380,18 +558,7 @@ const ServiceListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#6c757d',
+    backgroundColor: '#FEFCE8', // Consistent app background
   },
   header: {
     flexDirection: 'row',
@@ -399,306 +566,383 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-    paddingTop: 50,
+    paddingTop: 50, // Add top padding to account for status bar
+    backgroundColor: '#FEFCE8', // Consistent with app background
+    // Removed borderBottomWidth for seamless design
   },
   backButton: {
     padding: 8,
     minWidth: 40,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#000',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#1F2937',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 16,
   },
-  closeButton: {
-    padding: 8,
+  headerRight: {
     minWidth: 40,
     alignItems: 'flex-end',
   },
-  closeIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e9ecef',
+  resultsCount: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FEFCE8',
   },
-  closeIcon: {
-    fontSize: 18,
-    color: '#666',
-    fontWeight: 'bold',
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#4B5563',
+    fontWeight: '500',
   },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#FEFCE8', // Consistent background
   },
   searchBar: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     paddingHorizontal: 16,
     height: 48,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchIcon: {
+    marginRight: 12,
   },
   searchInput: {
+    flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: '#1F2937',
   },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  filterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  filterIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#495057',
-    fontWeight: '500',
-  },
-  resultsInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-  },
-  resultsCount: {
-    fontSize: 14,
-    color: '#6c757d',
-  },
-  sortLink: {
-    fontSize: 14,
-    color: '#007bff',
-    textDecorationLine: 'underline',
+  clearButton: {
+    padding: 4,
   },
   serviceList: {
     flex: 1,
-    paddingHorizontal: 16,
+    padding: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    padding: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    margin: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#6c757d',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 16,
     marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6c757d',
     textAlign: 'center',
   },
+  emptySubtext: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  clearSearchButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   serviceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginVertical: 8,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
   certificateSection: {
+    position: 'relative',
     marginBottom: 12,
   },
   certificateImage: {
     width: '100%',
     height: 120,
+  },
+  certificateBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  certificateText: {
+    fontSize: 10,
+    color: '#10B981',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   beforeAfterSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  beforeAfterContainer: {
+    width: '48%',
+    position: 'relative',
   },
   beforeAfterImage: {
-    width: '48%',
-    height: 80,
+    width: '100%',
+    height: 100,
     borderRadius: 8,
   },
+  beforeAfterLabel: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
   serviceInfo: {
-    // Service info styles
+    padding: 16,
   },
   serviceHeader: {
     flexDirection: 'row',
     marginBottom: 12,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
   },
   serviceDetails: {
     flex: 1,
+    marginLeft: 12,
   },
-  nameAndArrow: {
+  nameAndFavorite: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   serviceName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
     flex: 1,
+    marginRight: 8,
   },
   favoriteButton: {
     padding: 4,
-    marginLeft: 8,
-  },
-  favoriteIcon: {
-    fontSize: 20,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   rating: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '700',
+    color: '#1F2937',
     marginRight: 4,
   },
   stars: {
+    color: '#F59E0B',
     fontSize: 14,
-    color: '#ffc107',
-    marginRight: 6,
+    marginRight: 4,
   },
   reviews: {
-    fontSize: 14,
-    color: '#6c757d',
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-  location: {
-    fontSize: 14,
-    color: '#6c757d',
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  availableTime: {
-    fontSize: 14,
-    color: '#28a745',
+  location: {
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '500',
+    marginLeft: 4,
+    flex: 1,
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  availableTime: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   welcomeMessage: {
-    fontSize: 16,
-    color: '#000',
+    fontSize: 15,
+    color: '#1F2937',
+    fontWeight: '600',
     marginBottom: 8,
-    fontWeight: '500',
+    lineHeight: 20,
   },
   specialNote: {
-    fontSize: 14,
-    color: '#6c757d',
+    fontSize: 13,
+    color: '#6B7280',
     marginBottom: 12,
-    lineHeight: 20,
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
   paymentMethods: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: 12,
   },
-  paymentTag: {
-    backgroundColor: '#e7f3ff',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  paymentIcon: {
     marginRight: 8,
-    marginBottom: 6,
+  },
+  paymentTag: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
   },
   paymentText: {
-    fontSize: 12,
-    color: '#007bff',
+    fontSize: 11,
+    color: '#1F2937',
     fontWeight: '500',
+  },
+  morePayments: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginLeft: 4,
   },
   bottomSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#FEF3C7',
   },
   priceSection: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   priceLabel: {
     fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 2,
+    color: '#6B7280',
+    marginRight: 4,
+    fontWeight: '500',
   },
   price: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginRight: 8,
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   duration: {
     fontSize: 12,
-    color: '#6c757d',
+    color: '#6B7280',
+    fontWeight: '500',
+    marginLeft: 2,
   },
-  mapButton: {
+  viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#343a40',
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
     paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
   },
-  mapIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  mapText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+  viewButtonText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '600',
+    marginRight: 4,
   },
   loadMoreButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   loadMoreText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    color: '#1F2937',
     fontWeight: '600',
+    marginRight: 8,
   },
 });
 

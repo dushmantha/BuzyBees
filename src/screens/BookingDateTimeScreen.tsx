@@ -11,15 +11,16 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Calendar } from 'react-native-calendars';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
-
+import { useAccount } from '../navigation/AppNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Mock Service Options Data
 const mockServiceOptions = [
@@ -85,7 +86,7 @@ const mockServiceOptions = [
   }
 ];
 
-// JSON Service Availability Data - Only contains business rules, booked slots, and closures
+// JSON Service Availability Data
 const mockServiceAvailability = {
   "1": {
     "business_hours": { 
@@ -167,6 +168,12 @@ const mockServiceAvailability = {
     }
   }
 };
+
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  error?: string;
+}
 
 // Utility functions for availability calculations
 const parseTimeString = (timeString: string): number => {
@@ -318,6 +325,9 @@ const generateTimeSlotsForDate = (date: string, serviceId: string, serviceDurati
 const { width: windowWidth } = Dimensions.get('window');
 
 const BookingDateTimeScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { accountType } = useAccount();
+  
   // Initialize with a default service option
   const [selectedServiceOption, setSelectedServiceOption] = useState(mockServiceOptions[0]);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -327,124 +337,187 @@ const BookingDateTimeScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Single API service function for booking data
+  const apiService = {
+    async getBookingAvailability(params: {
+      serviceId: string;
+      date?: string;
+      duration: number;
+    }): Promise<ApiResponse<{
+      availableDates: string[];
+      markedDates: any;
+      timeSlots?: any[];
+    }>> {
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const { serviceId, date, duration } = params;
+        
+        // Generate marked dates for calendar
+        const marks: any = {};
+        const today = new Date();
+        
+        for (let i = 0; i < 60; i++) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() + i);
+          const dateStr = checkDate.toISOString().split('T')[0];
+          
+          const status = getDateStatus(dateStr, serviceId, duration);
+          
+          switch (status) {
+            case 'closed':
+              marks[dateStr] = {
+                disabled: true,
+                disableTouchEvent: true,
+                customStyles: {
+                  container: { backgroundColor: '#6B7280' },
+                  text: { color: 'white', fontWeight: 'bold' }
+                },
+                marked: true,
+                dotColor: '#6B7280'
+              };
+              break;
+              
+            case 'fully_booked':
+              marks[dateStr] = {
+                disabled: true,
+                disableTouchEvent: true,
+                customStyles: {
+                  container: { backgroundColor: '#FEE2E2' },
+                  text: { color: '#DC2626', fontWeight: 'bold' }
+                },
+                marked: true,
+                dotColor: '#EF4444'
+              };
+              break;
+              
+            case 'available':
+              marks[dateStr] = {
+                marked: true,
+                dotColor: '#10B981',
+                customStyles: {
+                  container: { backgroundColor: 'transparent' },
+                  text: { color: '#1F2937' }
+                }
+              };
+              break;
+          }
+        }
+
+        // Get time slots if date is provided
+        let timeSlots: any[] = [];
+        if (date) {
+          timeSlots = generateTimeSlotsForDate(date, serviceId, duration);
+        }
+
+        const availableDates = generateAvailableDates(serviceId, duration);
+
+        return {
+          data: {
+            availableDates,
+            markedDates: marks,
+            timeSlots
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Booking availability error:', error);
+        return {
+          data: {
+            availableDates: [],
+            markedDates: {},
+            timeSlots: []
+          },
+          success: false,
+          error: 'Failed to fetch booking availability'
+        };
+      }
+    },
+
+    async confirmBooking(bookingData: {
+      serviceId: string;
+      date: string;
+      time: string;
+      serviceOption: any;
+    }): Promise<ApiResponse<{ bookingId: string }>> {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return {
+          data: {
+            bookingId: `BK_${Date.now()}`
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Booking confirmation error:', error);
+        return {
+          data: { bookingId: '' },
+          success: false,
+          error: 'Failed to confirm booking'
+        };
+      }
+    }
+  };
+
   // Calculate calendar marked dates when service changes
   useEffect(() => {
     if (selectedServiceOption) {
-      console.log('Calculating calendar marks for service:', selectedServiceOption.name);
-      const marks: any = {};
-      
-      // Generate dates for next 60 days and mark them
-      const availableDates = generateAvailableDates(selectedServiceOption.service_id, selectedServiceOption.duration);
-      console.log('Generated available dates:', availableDates.length);
-      
-      // Check all dates in the next 60 days
-      const today = new Date();
-      for (let i = 0; i < 60; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const status = getDateStatus(dateStr, selectedServiceOption.service_id, selectedServiceOption.duration);
-        
-        switch (status) {
-          case 'closed':
-            marks[dateStr] = {
-              disabled: true,
-              disableTouchEvent: true,
+      const loadCalendarData = async () => {
+        const response = await apiService.getBookingAvailability({
+          serviceId: selectedServiceOption.service_id,
+          duration: selectedServiceOption.duration
+        });
+
+        if (response.success) {
+          let marks = response.data.markedDates;
+          
+          // Mark selected date
+          if (selectedDate && marks[selectedDate] && !marks[selectedDate].disabled) {
+            marks[selectedDate] = {
+              ...marks[selectedDate],
+              selected: true,
+              selectedColor: '#F59E0B',
               customStyles: {
-                container: { backgroundColor: '#6B7280' },
+                container: { backgroundColor: '#F59E0B' },
                 text: { color: 'white', fontWeight: 'bold' }
-              },
-              marked: true,
-              dotColor: '#6B7280'
-            };
-            break;
-            
-          case 'fully_booked':
-            marks[dateStr] = {
-              disabled: true,
-              disableTouchEvent: true,
-              customStyles: {
-                container: { backgroundColor: '#FCA5A5' },
-                text: { color: '#7F1D1D', fontWeight: 'bold' }
-              },
-              marked: true,
-              dotColor: '#EF4444'
-            };
-            break;
-            
-          case 'available':
-            marks[dateStr] = {
-              marked: true,
-              dotColor: '#10B981',
-              customStyles: {
-                container: { backgroundColor: 'transparent' },
-                text: { color: '#1A2533' }
               }
             };
-            break;
-        }
-      }
-      
-      // Mark selected date
-      if (selectedDate && marks[selectedDate] && !marks[selectedDate].disabled) {
-        marks[selectedDate] = {
-          ...marks[selectedDate],
-          selected: true,
-          selectedColor: '#1A2533',
-          customStyles: {
-            container: { backgroundColor: '#1A2533' },
-            text: { color: 'white', fontWeight: 'bold' }
           }
-        };
-      }
-      
-      setMarkedDates(marks);
-      console.log('Calendar marks calculated:', Object.keys(marks).length, 'dates marked');
+          
+          setMarkedDates(marks);
+        }
+      };
+
+      loadCalendarData();
     }
   }, [selectedServiceOption, selectedDate]);
 
-  // Check if a date is fully booked - using direct call to isDateFullyBooked
-
   // Generate time slots when date changes
   useEffect(() => {
-    const fetchTimeSlots = () => {
+    const fetchTimeSlots = async () => {
       if (!selectedDate || !selectedServiceOption) {
         return;
       }
       
       setLoading(true);
-      console.log('Generating time slots for:', selectedDate, selectedServiceOption.name);
       
-      // Simulate API call for time slots
-      setTimeout(() => {
-        const slots = generateTimeSlotsForDate(
-          selectedDate, 
-          selectedServiceOption.service_id, 
-          selectedServiceOption.duration
-        );
-        setAvailableSlots(slots);
-        setLoading(false);
-      }, 300);
+      const response = await apiService.getBookingAvailability({
+        serviceId: selectedServiceOption.service_id,
+        date: selectedDate,
+        duration: selectedServiceOption.duration
+      });
+
+      if (response.success) {
+        setAvailableSlots(response.data.timeSlots || []);
+      }
+      
+      setLoading(false);
     };
     
     fetchTimeSlots();
   }, [selectedDate, selectedServiceOption]);
-
-  const generateTimeSlots = () => {
-    setLoading(true);
-    
-    try {
-      const slots = generateTimeSlotsForDate(selectedDate, selectedServiceOption.service_id, selectedServiceOption.duration);
-      console.log('Generated slots:', slots.map(s => `${s.startTime} - ${s.endTime}`));
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error('Error generating time slots:', error);
-      setAvailableSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleServiceSelection = (serviceId: string) => {
     console.log('Service selected:', serviceId);
@@ -467,44 +540,76 @@ const BookingDateTimeScreen: React.FC = () => {
     setSelectedTime(time);
   };
 
-    const navigation = useNavigation<NavigationProp>();
+  const handleBackPress = () => {
+    if (navigation?.goBack) {
+      navigation.goBack();
+    } else {
+      Alert.alert('Navigation', 'Go back to previous screen');
+    }
+  };
 
-  const handleConfirm = (): void => {
+  const handleConfirm = async (): Promise<void> => {
     if (!selectedDate || !selectedTime) {
       return;
     }
     
-    setShowSuccessModal(true);
-    
-    // Close modal after showing success and navigate to Home
-    const timer = setTimeout(() => {
-      setShowSuccessModal(false);
-      // Reset form after successful booking
-      setSelectedDate('');
-      setSelectedTime('');
-      console.log('Booking completed successfully!');
+    try {
+      const response = await apiService.confirmBooking({
+        serviceId: selectedServiceOption.service_id,
+        date: selectedDate,
+        time: selectedTime,
+        serviceOption: selectedServiceOption
+      });
+
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to confirm booking');
+        return;
+      }
+
+      setShowSuccessModal(true);
       
-      // Navigate to MainTabs after successful booking
-      navigation.navigate('MainTabs');
-    }, 2500);
-    
-    // Cleanup function to clear timeout if component unmounts
-    return (): void => clearTimeout(timer);
+      // Close modal after showing success and navigate based on account type
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+        // Reset form after successful booking
+        setSelectedDate('');
+        setSelectedTime('');
+        console.log('Booking completed successfully!');
+        
+        // Navigate to correct tabs based on account type
+        if (navigation?.navigate) {
+          if (accountType === 'provider') {
+            navigation.navigate('ProviderTabs');
+          } else {
+            navigation.navigate('ConsumerTabs');
+          }
+        } else {
+          Alert.alert('Success', 'Booking confirmed successfully!');
+        }
+      }, 2500);
+    } catch (error) {
+      console.error('Booking error:', error);
+      Alert.alert('Error', 'Failed to confirm booking');
+    }
   };
 
   const formatDisplayDate = (dateStr: string): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    
+    // Get today and tomorrow for comparison
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
     if (dateStr === todayStr) return 'Today';
     if (dateStr === tomorrowStr) return 'Tomorrow';
     
     return new Intl.DateTimeFormat('en-US', {
-      weekday: 'short',
+      weekday: 'long',
       month: 'short',
       day: 'numeric',
     }).format(date);
@@ -527,15 +632,15 @@ const BookingDateTimeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => console.log('Back button pressed')}
+          onPress={handleBackPress}
         >
-          <Ionicons name="arrow-back" size={20} color="#1A2533" />
+          <Ionicons name="arrow-back" size={20} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Book Appointment</Text>
@@ -607,7 +712,7 @@ const BookingDateTimeScreen: React.FC = () => {
         {/* Calendar Section */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="calendar-outline" size={20} color="#1A2533" />
+            <Ionicons name="calendar-outline" size={20} color="#1F2937" />
             {' '}Choose Date
           </Text>
           
@@ -627,14 +732,6 @@ const BookingDateTimeScreen: React.FC = () => {
             </View>
           </View>
           
-          <View style={styles.debugInfo}>
-            <Text style={styles.debugText}>
-              Service: {selectedServiceOption?.name} | 
-              Selected: {selectedDate} | 
-              Marked Dates: {Object.keys(markedDates).length}
-            </Text>
-          </View>
-          
           <View style={styles.calendarContainer}>
             <Calendar
               onDayPress={handleDatePress}
@@ -646,16 +743,16 @@ const BookingDateTimeScreen: React.FC = () => {
               enableSwipeMonths={true}
               style={styles.calendar}
               theme={{
-                textSectionTitleColor: '#1A2533',
-                selectedDayBackgroundColor: '#1A2533',
+                textSectionTitleColor: '#1F2937',
+                selectedDayBackgroundColor: '#F59E0B',
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#1A2533',
+                todayTextColor: '#F59E0B',
                 dayTextColor: '#2D2D2D',
                 textDisabledColor: '#D1D5DB',
                 dotColor: '#10B981',
                 selectedDotColor: '#FFFFFF',
-                arrowColor: '#1A2533',
-                monthTextColor: '#1A2533',
+                arrowColor: '#F59E0B',
+                monthTextColor: '#1F2937',
                 textDayFontSize: 14,
                 textMonthFontSize: 16,
                 textDayHeaderFontSize: 12,
@@ -668,19 +765,13 @@ const BookingDateTimeScreen: React.FC = () => {
         {selectedDate && (
           <View style={styles.timeSlotsSection}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="time-outline" size={20} color="#1A2533" />
+              <Ionicons name="time-outline" size={20} color="#1F2937" />
               {' '}Available Times for {formatDisplayDate(selectedDate)}
             </Text>
             
-            <View style={styles.debugInfo}>
-              <Text style={styles.debugText}>
-                Available Slots: {availableSlots.length} | Duration: {selectedServiceOption?.duration}min | Loading: {loading ? 'Yes' : 'No'}
-              </Text>
-            </View>
-            
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1A2533" />
+                <ActivityIndicator size="large" color="#F59E0B" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
             ) : availableSlots.length > 0 ? (
@@ -770,7 +861,7 @@ const BookingDateTimeScreen: React.FC = () => {
             onPress={handleConfirm}
           >
             <Text style={styles.confirmButtonText}>Confirm Booking</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
@@ -801,22 +892,20 @@ const BookingDateTimeScreen: React.FC = () => {
   );
 };
 
-// Simplified Styles
+// Updated styles with consistent color palette
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FEFCE8', // Consistent app background
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 44,
+    paddingTop: 50, // Account for transparent status bar
     paddingBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent', // Transparent header
   },
   headerSpacer: {
     width: 40,
@@ -825,9 +914,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(254, 243, 199, 0.9)', // Semi-transparent background
+    borderWidth: 1,
+    borderColor: 'rgba(252, 211, 77, 0.5)', // Semi-transparent border
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitleContainer: {
     flex: 1,
@@ -836,13 +932,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 2,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
+    textShadowColor: 'rgba(255, 255, 255, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   content: {
     flex: 1,
@@ -851,36 +953,42 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   serviceSelector: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 12,
   },
   serviceOptionButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FEF3C7',
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
     minWidth: 140,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#FCD34D',
   },
   selectedServiceOption: {
-    backgroundColor: '#1A2533',
-    borderColor: '#1A2533',
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
   },
   serviceOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A2533',
+    color: '#1F2937',
     textAlign: 'center',
   },
   serviceOptionSubtext: {
@@ -890,22 +998,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   selectedServiceOptionText: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   servicesSummary: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   serviceCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FEF3C7',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#FCD34D',
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -916,7 +1030,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A2533',
+    color: '#1F2937',
     flex: 1,
   },
   servicePrice: {
@@ -942,16 +1056,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
   },
-  debugInfo: {
-    backgroundColor: '#FEF3C7',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  debugText: {
-    fontSize: 10,
-    color: '#92400E',
-  },
   calendarSection: {
     marginTop: 24,
     paddingHorizontal: 16,
@@ -960,9 +1064,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 16,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FEF3C7',
     padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
   },
   legendItem: {
     flexDirection: 'row',
@@ -983,11 +1089,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
+    elevation: 2,
   },
   calendar: {
     borderRadius: 12,
@@ -996,7 +1104,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1014,23 +1122,27 @@ const styles = StyleSheet.create({
     width: (windowWidth - 64) / 3,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 1,
   },
   selectedTimeSlot: {
-    backgroundColor: '#1A2533',
-    borderColor: '#1A2533',
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
   },
   timeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
   },
   selectedTimeText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
   durationText: {
     fontSize: 11,
@@ -1041,8 +1153,14 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   loadingText: {
@@ -1054,8 +1172,14 @@ const styles = StyleSheet.create({
   noSlotsContainer: {
     alignItems: 'center',
     paddingVertical: 48,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   noSlotsText: {
@@ -1074,9 +1198,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   summaryRow: {
@@ -1092,23 +1222,23 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1A2533',
+    color: '#1F2937',
     fontWeight: '600',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#FCD34D',
     marginVertical: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
   },
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A2533',
+    color: '#F59E0B',
   },
   bottomSpacing: {
     height: 24,
@@ -1118,15 +1248,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 8,
     padding: 16,
     paddingBottom: 34,
   },
   confirmButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1134,9 +1268,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   confirmButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1148,13 +1287,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     width: '100%',
     maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
     elevation: 10,
+    borderWidth: 2,
+    borderColor: '#FCD34D',
   },
   successIcon: {
     marginBottom: 20,
@@ -1162,7 +1307,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
   },

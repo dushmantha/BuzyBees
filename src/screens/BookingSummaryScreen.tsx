@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -32,16 +32,90 @@ type BookingSummaryScreenRouteProp = RouteProp<RootStackParamList, 'BookingSumma
 
 type BookingSummaryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingSummary'>;
 
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  error?: string;
+}
+
 const BookingSummaryScreen = () => {
   const navigation = useNavigation<BookingSummaryScreenNavigationProp>();
   const route = useRoute<BookingSummaryScreenRouteProp>();
   const { selectedServices, totalPrice } = route.params;
 
-  const handleContinue = () => {
-    navigation.navigate('BookingDateTime', {
-      selectedServices,
-      totalPrice
-    });
+  // Single API service function for booking data
+  const apiService = {
+    async validateBookingData(bookingData: {
+      selectedServices: any[];
+      totalPrice: number;
+    }): Promise<ApiResponse<{ isValid: boolean; fees?: any }>> {
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Mock validation logic
+        const isValid = bookingData.selectedServices.length > 0 && bookingData.totalPrice > 0;
+        
+        return {
+          data: {
+            isValid,
+            fees: {
+              serviceFee: 0,
+              tax: bookingData.totalPrice * 0.08, // 8% tax
+              discount: 0
+            }
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Validation error:', error);
+        return {
+          data: { isValid: false },
+          success: false,
+          error: 'Failed to validate booking data'
+        };
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (navigation?.goBack) {
+      navigation.goBack();
+    } else {
+      Alert.alert('Navigation', 'Go back to previous screen');
+    }
+  };
+
+  const handleContinue = async () => {
+    try {
+      // Validate booking data before proceeding
+      const response = await apiService.validateBookingData({
+        selectedServices,
+        totalPrice
+      });
+
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to validate booking');
+        return;
+      }
+
+      if (!response.data.isValid) {
+        Alert.alert('Invalid Booking', 'Please check your selected services');
+        return;
+      }
+
+      if (navigation?.navigate) {
+        navigation.navigate('BookingDateTime', {
+          selectedServices,
+          totalPrice
+        });
+      } else {
+        Alert.alert('Navigation', 'Continue to Date & Time selection');
+      }
+    } catch (error) {
+      console.error('Continue error:', error);
+      Alert.alert('Error', 'Failed to proceed with booking');
+    }
   };
 
   // Calculate total duration
@@ -50,7 +124,7 @@ const BookingSummaryScreen = () => {
     return total + duration;
   }, 0);
 
-  const formatDuration = (minutes) => {
+  const formatDuration = (minutes: number) => {
     if (minutes >= 60) {
       const hours = Math.floor(minutes / 60);
       const remainingMinutes = minutes % 60;
@@ -62,22 +136,29 @@ const BookingSummaryScreen = () => {
     return `${minutes}m`;
   };
 
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return numPrice.toFixed(2);
+  };
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#1A2533" />
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Booking Summary</Text>
-          <Text style={styles.headerSubtitle}>{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected</Text>
+          <Text style={styles.headerSubtitle}>
+            {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
+          </Text>
         </View>
         <View style={styles.headerSpacer} />
       </View>
@@ -107,7 +188,7 @@ const BookingSummaryScreen = () => {
                   </View>
                 </View>
                 <View style={styles.priceTag}>
-                  <Text style={styles.servicePrice}>${service.price}</Text>
+                  <Text style={styles.servicePrice}>${formatPrice(service.price)}</Text>
                 </View>
               </View>
             </View>
@@ -123,7 +204,7 @@ const BookingSummaryScreen = () => {
             {selectedServices.map((service, index) => (
               <View key={index} style={styles.pricingRow}>
                 <Text style={styles.pricingLabel}>{service.name}</Text>
-                <Text style={styles.pricingValue}>${service.price}</Text>
+                <Text style={styles.pricingValue}>${formatPrice(service.price)}</Text>
               </View>
             ))}
             
@@ -132,7 +213,10 @@ const BookingSummaryScreen = () => {
             
             {/* Duration Summary */}
             <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>Total Duration</Text>
+              <View style={styles.pricingLabelContainer}>
+                <Ionicons name="time-outline" size={16} color="#6B7280" />
+                <Text style={styles.pricingLabel}>Total Duration</Text>
+              </View>
               <Text style={styles.pricingValue}>{formatDuration(totalDuration)}</Text>
             </View>
             
@@ -142,10 +226,16 @@ const BookingSummaryScreen = () => {
               <Text style={styles.pricingValue}>${totalPrice.toFixed(2)}</Text>
             </View>
             
+            {/* Tax (8%) */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Tax (8%)</Text>
+              <Text style={styles.pricingValue}>${(totalPrice * 0.08).toFixed(2)}</Text>
+            </View>
+            
             {/* Total */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalAmount}>${totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalAmount}>${(totalPrice * 1.08).toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -154,13 +244,43 @@ const BookingSummaryScreen = () => {
         <View style={styles.infoSection}>
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
+              <Ionicons name="information-circle" size={20} color="#F59E0B" />
               <Text style={styles.infoTitle}>What's Next?</Text>
             </View>
             <Text style={styles.infoText}>
               After confirming your booking, you'll be able to select your preferred date and time, 
               and receive a confirmation with all the details.
             </Text>
+            
+            <View style={styles.infoItems}>
+              <View style={styles.infoItem}>
+                <Ionicons name="calendar-outline" size={16} color="#F59E0B" />
+                <Text style={styles.infoItemText}>Choose date & time</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="card-outline" size={16} color="#F59E0B" />
+                <Text style={styles.infoItemText}>Secure payment</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#F59E0B" />
+                <Text style={styles.infoItemText}>Instant confirmation</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Policy Section */}
+        <View style={styles.policySection}>
+          <View style={styles.policyCard}>
+            <View style={styles.policyHeader}>
+              <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+              <Text style={styles.policyTitle}>Booking Policy</Text>
+            </View>
+            <View style={styles.policyItems}>
+              <Text style={styles.policyItem}>• Free cancellation up to 24 hours before appointment</Text>
+              <Text style={styles.policyItem}>• Reschedule up to 2 hours before your appointment</Text>
+              <Text style={styles.policyItem}>• Professional guarantee on all services</Text>
+            </View>
           </View>
         </View>
 
@@ -171,13 +291,17 @@ const BookingSummaryScreen = () => {
       {/* Fixed Footer */}
       <View style={styles.footer}>
         <View style={styles.footerContent}>
+          <View style={styles.footerSummary}>
+            <Text style={styles.footerTotalLabel}>Total: ${(totalPrice * 1.08).toFixed(2)}</Text>
+            <Text style={styles.footerDuration}>{formatDuration(totalDuration)}</Text>
+          </View>
           <TouchableOpacity 
             style={styles.continueButton}
             onPress={handleContinue}
             activeOpacity={0.8}
           >
             <Text style={styles.continueButtonText}>Continue to Date & Time</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" style={styles.buttonIcon} />
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={styles.buttonIcon} />
           </TouchableOpacity>
         </View>
       </View>
@@ -188,23 +312,17 @@ const BookingSummaryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FEFCE8', // Consistent app background
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 44, // Status bar height
+    paddingTop: 50, // Account for transparent status bar
     paddingBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: 'transparent', // Transparent header
+    // Removed all borders and shadows for transparent effect
   },
   headerSpacer: {
     width: 40,
@@ -213,9 +331,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(254, 243, 199, 0.9)', // Semi-transparent background
+    borderWidth: 1,
+    borderColor: 'rgba(252, 211, 77, 0.5)', // Semi-transparent border
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitleContainer: {
     flex: 1,
@@ -224,13 +349,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 2,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
+    textShadowColor: 'rgba(255, 255, 255, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   content: {
     flex: 1,
@@ -242,7 +373,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937',
     marginBottom: 16,
   },
   serviceCard: {
@@ -250,6 +381,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -264,13 +397,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   serviceNumberText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -280,7 +413,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1F2937',
     marginBottom: 6,
   },
   serviceMetaRow: {
@@ -298,17 +431,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   priceTag: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#FCD34D',
   },
   servicePrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#059669',
+    color: '#1F2937',
   },
   pricingSection: {
     paddingHorizontal: 16,
@@ -318,6 +451,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -330,6 +465,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
   },
+  pricingLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   pricingLabel: {
     fontSize: 14,
     color: '#6B7280',
@@ -337,12 +477,12 @@ const styles = StyleSheet.create({
   },
   pricingValue: {
     fontSize: 14,
-    color: '#1A2533',
+    color: '#1F2937',
     fontWeight: '600',
   },
   pricingDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#FEF3C7',
     marginVertical: 12,
   },
   totalRow: {
@@ -352,28 +492,33 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     marginTop: 8,
     borderTopWidth: 2,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#FCD34D',
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1F2937',
   },
   totalAmount: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1A2533',
+    color: '#F59E0B',
   },
   infoSection: {
     paddingHorizontal: 16,
     paddingTop: 24,
   },
   infoCard: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   infoHeader: {
     flexDirection: 'row',
@@ -381,18 +526,62 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1E40AF',
+    color: '#1F2937',
     marginLeft: 8,
   },
   infoText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  infoItems: {
+    gap: 10,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoItemText: {
     fontSize: 13,
-    color: '#1E40AF',
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  policySection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  policyCard: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  policyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  policyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  policyItems: {
+    gap: 6,
+  },
+  policyItem: {
+    fontSize: 13,
+    color: '#374151',
     lineHeight: 18,
   },
   bottomSpacing: {
-    height: 100, // Space for fixed footer
+    height: 120, // Space for fixed footer
   },
   footer: {
     position: 'absolute',
@@ -401,7 +590,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#FCD34D',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -411,8 +600,24 @@ const styles = StyleSheet.create({
   footerContent: {
     padding: 16,
   },
+  footerSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  footerTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  footerDuration: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   continueButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -420,14 +625,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    shadowColor: '#1A2533',
+    shadowColor: '#F59E0B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   continueButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },

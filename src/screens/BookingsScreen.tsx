@@ -13,7 +13,8 @@ import {
   Image,
   Dimensions,
   Animated,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -69,6 +70,12 @@ interface ReviewData {
   valueForMoney: number;
 }
 
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  error?: string;
+}
+
 // Star Rating Component
 const StarRating = ({ 
   rating, 
@@ -92,7 +99,7 @@ const StarRating = ({
           <Ionicons
             name={star <= rating ? "star" : "star-outline"}
             size={size}
-            color={star <= rating ? "#FFD700" : "#D1D5DB"}
+            color={star <= rating ? "#F59E0B" : "#D1D5DB"}
           />
         </TouchableOpacity>
       ))}
@@ -407,7 +414,7 @@ const BookingCard = ({
               style={styles.reviewButton}
               onPress={() => onReview(booking)}
             >
-              <Ionicons name="star" size={14} color="#FFD700" />
+              <Ionicons name="star" size={14} color="#F59E0B" />
               <Text style={styles.reviewButtonText}>Review</Text>
             </TouchableOpacity>
           )}
@@ -440,6 +447,101 @@ const BookingsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const userId = user?.id || '1';
+
+  // Single API service function for comprehensive booking data
+  const apiService = {
+    async getBookingsData(userId: string): Promise<ApiResponse<{
+      bookings: Booking[];
+      upcomingCount: number;
+      pastCount: number;
+    }>> {
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { data: bookings, error: bookingsError } = await mockService.getBookings(userId);
+        
+        if (bookingsError) {
+          throw new Error(bookingsError);
+        }
+        
+        const now = new Date();
+        const upcoming = bookings?.filter(b => new Date(b.date) >= now) || [];
+        const past = bookings?.filter(b => new Date(b.date) < now) || [];
+        
+        return {
+          data: {
+            bookings: bookings || [],
+            upcomingCount: upcoming.length,
+            pastCount: past.length
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Bookings API Error:', error);
+        return {
+          data: {
+            bookings: [],
+            upcomingCount: 0,
+            pastCount: 0
+          },
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch bookings'
+        };
+      }
+    },
+
+    async cancelBooking(bookingId: string): Promise<ApiResponse<null>> {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const { error: cancelError } = await mockService.cancelBooking(bookingId);
+        
+        if (cancelError) {
+          throw new Error(cancelError);
+        }
+        
+        return {
+          data: null,
+          success: true
+        };
+      } catch (error) {
+        console.error('Cancel booking error:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to cancel booking'
+        };
+      }
+    },
+
+    async submitReview(reviewData: {
+      bookingId: string;
+      rating: number;
+      comment: string;
+      serviceQuality: number;
+      punctuality: number;
+      cleanliness: number;
+      valueForMoney: number;
+    }): Promise<ApiResponse<{ reviewId: string }>> {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return {
+          data: {
+            reviewId: `REV_${Date.now()}`
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Submit review error:', error);
+        return {
+          data: { reviewId: '' },
+          success: false,
+          error: 'Failed to submit review'
+        };
+      }
+    }
+  };
 
   // Format date to a readable string
   const formatBookingDate = (dateString: string, timeString: string) => {
@@ -507,11 +609,15 @@ const BookingsScreen = () => {
     if (!selectedBookingForReview) return;
     
     try {
-      // Here you would submit to your API
-      console.log('Submitting review:', {
+      const response = await apiService.submitReview({
         bookingId: selectedBookingForReview.id,
         ...reviewData
       });
+
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to submit review');
+        return;
+      }
       
       // Update local state to show the review was submitted
       const updateBookings = (bookings: ProcessedBooking[]) =>
@@ -549,10 +655,11 @@ const BookingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error: cancelError } = await mockService.cancelBooking(bookingId);
+              const response = await apiService.cancelBooking(bookingId);
               
-              if (cancelError) {
-                throw new Error(cancelError);
+              if (!response.success) {
+                Alert.alert('Error', response.error || 'Failed to cancel booking');
+                return;
               }
               
               fetchBookings();
@@ -567,7 +674,16 @@ const BookingsScreen = () => {
     );
   };
 
-  // Fetch bookings
+  // Handle navigation
+  const handleNavigation = () => {
+    if (navigation?.navigate) {
+      navigation.navigate('MainTabs', { screen: 'HomeTab' });
+    } else {
+      Alert.alert('Navigation', 'Navigate to home to book services');
+    }
+  };
+
+  // Fetch bookings with comprehensive data
   const fetchBookings = useCallback(async () => {
     if (!userId) {
       setError('Please log in to view your bookings');
@@ -579,14 +695,14 @@ const BookingsScreen = () => {
       setIsLoading(true);
       setError(null);
       
-      const { data: bookings, error: bookingsError } = await mockService.getBookings(userId);
+      const response = await apiService.getBookingsData(userId);
       
-      if (bookingsError) {
-        throw new Error(bookingsError);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load bookings');
       }
       
-      if (bookings) {
-        const processedBookings = bookings.map(processBookingMemoized);
+      if (response.data.bookings) {
+        const processedBookings = response.data.bookings.map(processBookingMemoized);
         
         const now = new Date();
         const upcoming = processedBookings.filter(b => 
@@ -616,7 +732,8 @@ const BookingsScreen = () => {
 
   if (!userId && !user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
         <View style={styles.modernHeader}>
           <Text style={styles.headerTitle}>My Bookings</Text>
         </View>
@@ -629,12 +746,14 @@ const BookingsScreen = () => {
             Please log in to view your bookings
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+      
       {/* Modern Header */}
       <View style={styles.modernHeader}>
         <Text style={styles.headerTitle}>My Bookings</Text>
@@ -692,8 +811,8 @@ const BookingsScreen = () => {
           <RefreshControl 
             refreshing={isLoading && (upcomingBookings.length > 0 || pastBookings.length > 0)} 
             onRefresh={fetchBookings}
-            colors={['#1A2533']}
-            tintColor="#1A2533"
+            colors={['#F59E0B']}
+            tintColor="#F59E0B"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -714,7 +833,7 @@ const BookingsScreen = () => {
           </View>
         ) : isLoading && upcomingBookings.length === 0 && pastBookings.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1A2533" />
+            <ActivityIndicator size="large" color="#F59E0B" />
             <Text style={styles.loadingText}>Loading your bookings...</Text>
           </View>
         ) : activeTab === 'upcoming' ? (
@@ -741,9 +860,7 @@ const BookingsScreen = () => {
               </Text>
               <TouchableOpacity 
                 style={styles.exploreButton}
-                onPress={() => {
-                  navigation.navigate('MainTabs', { screen: 'HomeTab' });
-                }}
+                onPress={handleNavigation}
               >
                 <Ionicons name="add-circle" size={20} color="#FFFFFF" />
                 <Text style={styles.exploreButtonText}>Book a Service</Text>
@@ -785,40 +902,53 @@ const BookingsScreen = () => {
         }}
         onSubmit={handleReviewSubmit}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
+// Updated styles with consistent color palette
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FEFCE8', // Consistent app background
   },
   modernHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingTop: 50, // Account for transparent status bar
+    paddingBottom: 24,
+    backgroundColor: 'transparent', // Transparent header
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 4,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
+    textShadowColor: 'rgba(255, 255, 255, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   modernTabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FEF3C7',
     marginHorizontal: 20,
     marginVertical: 16,
     borderRadius: 12,
     padding: 4,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modernTab: {
     flex: 1,
@@ -827,10 +957,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   modernActiveTab: {
-    backgroundColor: '#1A2533',
-    shadowColor: '#1A2533',
+    backgroundColor: '#F59E0B',
+    shadowColor: '#F59E0B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -849,7 +979,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   tabBadge: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -857,7 +987,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBadgeText: {
-    color: '#FFFFFF',
+    color: '#F59E0B',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -875,6 +1005,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
   },
   pastBookingCard: {
     opacity: 0.9,
@@ -906,12 +1038,12 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 4,
   },
   salonName: {
     fontSize: 14,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -922,7 +1054,7 @@ const styles = StyleSheet.create({
   },
   existingRatingText: {
     fontSize: 12,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
   },
   priceContainer: {
@@ -931,11 +1063,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#F59E0B',
   },
   currency: {
     fontSize: 12,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
   },
   bookingDetails: {
@@ -950,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#4A5568',
+    color: '#4B5563',
     flex: 1,
   },
   cardFooter: {
@@ -959,7 +1091,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FEF3C7',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -982,9 +1114,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FED7D7',
+    backgroundColor: '#FEE2E2',
     borderRadius: 8,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   cancelButtonText: {
     color: '#EF4444',
@@ -996,9 +1130,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FCD34D',
     borderRadius: 8,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
   },
   reviewButtonText: {
     color: '#F59E0B',
@@ -1013,6 +1149,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
     borderRadius: 8,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
   reviewedButtonText: {
     color: '#10B981',
@@ -1034,6 +1172,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     maxHeight: '90%',
     paddingBottom: 34,
+    borderWidth: 2,
+    borderColor: '#FCD34D',
   },
   reviewModalHeader: {
     flexDirection: 'row',
@@ -1041,7 +1181,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#FCD34D',
   },
   closeButton: {
     padding: 8,
@@ -1050,7 +1190,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     textAlign: 'center',
   },
   headerSpacer: {
@@ -1061,7 +1201,7 @@ const styles = StyleSheet.create({
   },
   reviewServiceInfo: {
     padding: 20,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FEF3C7',
   },
   reviewServiceHeader: {
     alignItems: 'center',
@@ -1069,30 +1209,30 @@ const styles = StyleSheet.create({
   reviewServiceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 4,
     textAlign: 'center',
   },
   reviewServiceDetails: {
     fontSize: 14,
-    color: '#718096',
+    color: '#6B7280',
     marginBottom: 2,
     textAlign: 'center',
   },
   reviewServiceDate: {
     fontSize: 12,
-    color: '#A0AEC0',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   reviewSection: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#FEF3C7',
   },
   reviewSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 16,
   },
   overallRatingContainer: {
@@ -1102,7 +1242,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4A5568',
+    color: '#4B5563',
   },
   detailedRatingItem: {
     flexDirection: 'row',
@@ -1112,42 +1252,48 @@ const styles = StyleSheet.create({
   },
   detailedRatingLabel: {
     fontSize: 14,
-    color: '#4A5568',
+    color: '#4B5563',
     fontWeight: '500',
   },
   reviewTextInput: {
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FEF3C7',
     borderRadius: 12,
     padding: 16,
     fontSize: 14,
-    color: '#1A202C',
+    color: '#1F2937',
     minHeight: 100,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#FCD34D',
   },
   characterCount: {
     fontSize: 12,
-    color: '#A0AEC0',
+    color: '#9CA3AF',
     textAlign: 'right',
     marginTop: 8,
   },
   reviewModalFooter: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: '#FCD34D',
   },
   submitReviewButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitReviewButtonDisabled: {
-    backgroundColor: '#A0AEC0',
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0.1,
   },
   submitReviewButtonText: {
     color: '#FFFFFF',
@@ -1163,7 +1309,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
   },
   errorContainer: {
@@ -1183,13 +1329,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryButtonText: {
     color: '#FFFFFF',
@@ -1207,25 +1358,30 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1A202C',
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#718096',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 32,
   },
   exploreButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   exploreButtonText: {
     color: '#FFFFFF',
@@ -1244,12 +1400,12 @@ const styles = StyleSheet.create({
   loginPromptTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 8,
   },
   loginPromptText: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
   },

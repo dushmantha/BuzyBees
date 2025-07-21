@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StatusBar, LogBox, Text, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -8,6 +9,15 @@ import AppNavigator from './src/navigation/AppNavigator';
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);
+
+// Navigation theme
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#ffffff',
+  },
+};
 
 // Error boundary component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
@@ -51,12 +61,14 @@ function App(): React.JSX.Element {
             initialMetrics={initialWindowMetrics}
             style={styles.safeArea}
           >
-            <StatusBar 
-              barStyle="dark-content" 
-              backgroundColor="transparent" 
-              translucent
-            />
-            <AppNavigator />
+            <NavigationContainer theme={MyTheme}>
+              <StatusBar 
+                barStyle="dark-content" 
+                backgroundColor="transparent" 
+                translucent
+              />
+              <AppNavigator />
+            </NavigationContainer>
           </SafeAreaProvider>
         </AuthProvider>
       </ErrorBoundary>

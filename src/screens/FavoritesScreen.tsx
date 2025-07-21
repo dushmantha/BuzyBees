@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -31,6 +32,12 @@ interface FavoriteService {
   created_at: string;
   service: Service;
   [key: string]: any; // Allow additional properties
+}
+
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  error?: string;
 }
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<
@@ -89,9 +96,17 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
           style={styles.heartButton}
         >
           <View style={styles.heartButtonBackground}>
-            <Ionicons name="heart" size={20} color="#FF3B30" />
+            <Ionicons name="heart" size={20} color="#F59E0B" />
           </View>
         </TouchableOpacity>
+        
+        {/* Premium Badge */}
+        {service?.is_premium && (
+          <View style={styles.premiumBadge}>
+            <Ionicons name="star" size={12} color="#FFFFFF" />
+            <Text style={styles.premiumText}>Premium</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.cardContent}>
@@ -117,13 +132,19 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
 
         <View style={styles.ratingContainer}>
           <View style={styles.ratingInfo}>
-            <Ionicons name="star" size={16} color="#FFD700" />
+            <Ionicons name="star" size={16} color="#F59E0B" />
             <Text style={styles.ratingText}>
               {service?.rating ? service.rating.toFixed(1) : '4.5'}
             </Text>
             <Text style={styles.reviewsText}>
               ({service?.reviews_count || 0} reviews)
             </Text>
+          </View>
+          
+          {/* Availability indicator */}
+          <View style={styles.availabilityContainer}>
+            <View style={[styles.availabilityDot, { backgroundColor: '#10B981' }]} />
+            <Text style={styles.availabilityText}>Available</Text>
           </View>
         </View>
 
@@ -157,6 +178,109 @@ const FavoritesScreen: React.FC = () => {
   // Fallback for development
   const userId = user?.id || '1';
 
+  // Single API service function for comprehensive favorites data
+  const apiService = {
+    async getFavoritesData(userId: string): Promise<ApiResponse<{
+      favorites: FavoriteService[];
+      totalCount: number;
+      categories: string[];
+    }>> {
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const response = await mockService.getFavorites(userId);
+
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        if (!response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format');
+        }
+
+        // Process and validate favorites data
+        const validFavorites = response.data
+          .filter((favorite): favorite is FavoriteService => {
+            return Boolean(favorite?.service && favorite?.service_id);
+          })
+          .map(favorite => ({
+            id: favorite.id,
+            user_id: favorite.user_id,
+            service_id: favorite.service_id,
+            created_at: favorite.created_at,
+            service: {
+              ...favorite.service,
+              // Ensure all required Service fields have defaults
+              id: favorite.service.id || favorite.service_id,
+              available_times: favorite.service.available_times || [],
+              certificate_images: favorite.service.certificate_images || [],
+              before_after_images: favorite.service.before_after_images || [],
+              available_time_text: favorite.service.available_time_text || '',
+              welcome_message: favorite.service.welcome_message || '',
+              special_note: favorite.service.special_note || '',
+              payment_methods: favorite.service.payment_methods || [],
+              created_at: favorite.service.created_at || new Date().toISOString(),
+              is_favorite: true, // Mark as favorite since it's in favorites list
+              // Add missing required fields with defaults
+              category_id: favorite.service.category_id || '',
+              rating: favorite.service.rating || 4.5,
+              reviews: favorite.service.reviews || '0',
+              time: favorite.service.time || `${favorite.service.duration || 30} min`,
+              distance: favorite.service.distance || '',
+              price: favorite.service.price?.toString() || '0',
+            } as Service,
+          }));
+
+        // Extract unique categories
+        const categories = [...new Set(validFavorites.map(f => f.service.category_id).filter(Boolean))];
+
+        return {
+          data: {
+            favorites: validFavorites,
+            totalCount: validFavorites.length,
+            categories
+          },
+          success: true
+        };
+      } catch (error) {
+        console.error('Favorites API Error:', error);
+        return {
+          data: {
+            favorites: [],
+            totalCount: 0,
+            categories: []
+          },
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch favorites'
+        };
+      }
+    },
+
+    async removeFavorite(userId: string, serviceId: string): Promise<ApiResponse<null>> {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const {error: toggleError} = await mockService.toggleFavorite(userId, serviceId);
+
+        if (toggleError) {
+          throw new Error(toggleError);
+        }
+
+        return {
+          data: null,
+          success: true
+        };
+      } catch (error) {
+        console.error('Remove favorite error:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to remove from favorites'
+        };
+      }
+    }
+  };
+
   const loadFavorites = useCallback(async () => {
     if (!userId) {
       setError('Please log in to view your favorites');
@@ -168,50 +292,13 @@ const FavoritesScreen: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await mockService.getFavorites(userId);
+      const response = await apiService.getFavoritesData(userId);
 
-      if (response.error) {
-        throw new Error(response.error);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load favorites');
       }
 
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error('Invalid response format');
-      }
-
-      // Process and validate favorites data
-      const validFavorites = response.data
-        .filter((favorite): favorite is FavoriteService => {
-          return Boolean(favorite?.service && favorite?.service_id);
-        })
-        .map(favorite => ({
-          id: favorite.id,
-          user_id: favorite.user_id,
-          service_id: favorite.service_id,
-          created_at: favorite.created_at,
-          service: {
-            ...favorite.service,
-            // Ensure all required Service fields have defaults
-            id: favorite.service.id || favorite.service_id,
-            available_times: favorite.service.available_times || [],
-            certificate_images: favorite.service.certificate_images || [],
-            before_after_images: favorite.service.before_after_images || [],
-            available_time_text: favorite.service.available_time_text || '',
-            welcome_message: favorite.service.welcome_message || '',
-            special_note: favorite.service.special_note || '',
-            payment_methods: favorite.service.payment_methods || [],
-            created_at: favorite.service.created_at || new Date().toISOString(),
-            is_favorite: true, // Mark as favorite since it's in favorites list
-            // Add missing required fields with defaults
-            category_id: favorite.service.category_id || '',
-            rating: favorite.service.rating || 4.5,
-            reviews: favorite.service.reviews || '0',
-            time: favorite.service.time || `${favorite.service.duration || 30} min`,
-            distance: favorite.service.distance || '',
-            price: favorite.service.price?.toString() || '0',
-          } as Service,
-        }));
-
-      setFavorites(validFavorites);
+      setFavorites(response.data.favorites);
     } catch (err) {
       console.error('Error fetching favorites:', err);
       setError(
@@ -235,13 +322,17 @@ const FavoritesScreen: React.FC = () => {
       const previousFavorites = [...favorites];
       setFavorites(prev => prev.filter(item => item.service_id !== serviceId));
 
-      const {error: toggleError} = await mockService.toggleFavorite(userId, serviceId);
+      const response = await apiService.removeFavorite(userId, serviceId);
 
-      if (toggleError) {
+      if (!response.success) {
         // Revert optimistic update on error
         setFavorites(previousFavorites);
-        throw new Error(toggleError);
+        Alert.alert('Error', response.error || 'Failed to remove from favorites');
+        return;
       }
+
+      // Show success feedback
+      Alert.alert('Removed', 'Service removed from favorites');
     } catch (err) {
       console.error('Error removing favorite:', err);
       Alert.alert('Error', 'Failed to remove from favorites. Please try again.');
@@ -256,16 +347,28 @@ const FavoritesScreen: React.FC = () => {
     }
 
     try {
-      // Pass the full service object to match what ServiceDetailScreen expects
-      navigation.navigate('ServiceDetail', { 
-        service: service,
-        serviceId: serviceId || service.id
-      });
+      if (navigation?.navigate) {
+        // Pass the full service object to match what ServiceDetailScreen expects
+        navigation.navigate('ServiceDetail', { 
+          service: service,
+          serviceId: serviceId || service.id
+        });
+      } else {
+        Alert.alert('Navigation', 'Navigate to service details');
+      }
     } catch (err) {
       console.error('Navigation error:', err);
       Alert.alert('Error', 'Unable to navigate to service details.');
     }
   }, [navigation]);
+
+  const handleExploreServices = () => {
+    if (navigation?.navigate) {
+      navigation.navigate('MainTabs', { screen: 'HomeTab' });
+    } else {
+      Alert.alert('Navigation', 'Navigate to explore services');
+    }
+  };
 
   // Load favorites on component mount
   useEffect(() => {
@@ -281,7 +384,8 @@ const FavoritesScreen: React.FC = () => {
   // Show login prompt if no user
   if (!userId && !user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
         <View style={styles.modernHeader}>
           <Text style={styles.headerTitle}>My Favorites</Text>
         </View>
@@ -294,12 +398,14 @@ const FavoritesScreen: React.FC = () => {
             Please log in to view your favorite services
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+      
       {/* Modern Header */}
       <View style={styles.modernHeader}>
         <Text style={styles.headerTitle}>My Favorites</Text>
@@ -310,7 +416,7 @@ const FavoritesScreen: React.FC = () => {
 
       {isLoading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1A2533" />
+          <ActivityIndicator size="large" color="#F59E0B" />
           <Text style={styles.loadingText}>Loading your favorites...</Text>
         </View>
       ) : error ? (
@@ -332,8 +438,8 @@ const FavoritesScreen: React.FC = () => {
             <RefreshControl 
               refreshing={refreshing} 
               onRefresh={onRefresh}
-              colors={['#1A2533']}
-              tintColor="#1A2533"
+              colors={['#F59E0B']}
+              tintColor="#F59E0B"
             />
           }
           showsVerticalScrollIndicator={false}
@@ -350,7 +456,7 @@ const FavoritesScreen: React.FC = () => {
                 </Text>
                 <TouchableOpacity 
                   style={styles.exploreButton}
-                  onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
+                  onPress={handleExploreServices}
                 >
                   <Ionicons name="search" size={20} color="#FFFFFF" />
                   <Text style={styles.exploreButtonText}>Explore Services</Text>
@@ -384,32 +490,38 @@ const FavoritesScreen: React.FC = () => {
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
+// Updated styles with consistent color palette
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FEFCE8', // Consistent app background
   },
   modernHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingTop: 50, // Account for transparent status bar
+    paddingBottom: 24,
+    backgroundColor: 'transparent', // Transparent header
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 4,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
+    textShadowColor: 'rgba(255, 255, 255, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -420,7 +532,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
   },
   errorContainer: {
@@ -442,13 +554,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryButtonText: {
     color: '#FFFFFF',
@@ -477,25 +594,30 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
   },
   exploreButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   exploreButtonText: {
     color: '#FFFFFF',
@@ -512,6 +634,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
   },
   imageContainer: {
     position: 'relative',
@@ -519,7 +643,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: 180,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FEF3C7',
   },
   heartButton: {
     position: 'absolute',
@@ -527,14 +651,33 @@ const styles = StyleSheet.create({
     right: 12,
   },
   heartButtonBackground: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: 8,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  premiumBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: '#F59E0B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  premiumText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   cardContent: {
     padding: 16,
@@ -545,7 +688,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     lineHeight: 24,
   },
   providerInfo: {
@@ -556,7 +699,7 @@ const styles = StyleSheet.create({
   },
   professional: {
     fontSize: 14,
-    color: '#4A5568',
+    color: '#4B5563',
     fontWeight: '500',
     flex: 1,
   },
@@ -568,10 +711,13 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 13,
-    color: '#718096',
+    color: '#6B7280',
     flex: 1,
   },
   ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   ratingInfo: {
@@ -581,13 +727,28 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: '#1A202C',
+    color: '#1F2937',
     fontWeight: '600',
   },
   reviewsText: {
     fontSize: 13,
-    color: '#718096',
+    color: '#6B7280',
     marginLeft: 2,
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  availabilityText: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
@@ -602,11 +763,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#F59E0B',
   },
   currency: {
     fontSize: 14,
-    color: '#718096',
+    color: '#6B7280',
     fontWeight: '500',
   },
   durationContainer: {
@@ -616,7 +777,7 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 14,
-    color: '#4A5568',
+    color: '#4B5563',
     fontWeight: '500',
   },
   loginPrompt: {
@@ -631,12 +792,12 @@ const styles = StyleSheet.create({
   loginPromptTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#1F2937',
     marginBottom: 8,
   },
   loginPromptText: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
   },

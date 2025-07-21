@@ -14,6 +14,34 @@ interface ValidationErrors {
   general?: string;
 }
 
+// Brand Theme Colors
+const colors = {
+  primary: '#F59E0B',
+  secondary: '#FCD34D', 
+  darkAccent: '#1F2937',
+  lightAccent: '#FEF3C7',
+  success: '#10B981',
+  warning: '#F97316',
+  error: '#EF4444',
+  info: '#3B82F6',
+  white: '#FFFFFF',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#D1D5DB',
+  gray400: '#9CA3AF',
+  gray500: '#6B7280',
+  gray600: '#4B5563',
+  gray700: '#374151',
+  gray800: '#1F2937',
+  gray900: '#111827',
+};
+
+// Configuration for testing
+const TESTING_CONFIG = {
+  SHOW_DEMO_SECTION: true, // Show demo login section
+};
+
 const LoginScreen = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -21,23 +49,16 @@ const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [loginAttempts, setLoginAttempts] = useState(0);
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const { signIn, isLoading: authLoading } = useAuth();
 
   // Demo credentials for testing
   const demoCredentials = [
-    { email: 'user@example.com', password: 'password123' },
-    { email: 'test@example.com', password: 'test123' }
+    { email: 'admin@example.com', password: 'admin123', role: 'Admin' },
+    { email: 'consumer@example.com', password: 'consumer123', role: 'Consumer' },
+    { email: 'provider@example.com', password: 'provider123', role: 'Provider' },
+    { email: 'test@example.com', password: 'test123', role: 'Tester' }
   ];
-
-  // Clear errors when component unmounts
-  useEffect(() => {
-    return () => {
-      setErrors({});
-      setTouched({});
-    };
-  }, []);
 
   // Validation functions
   const validateIdentifier = (value: string): string | null => {
@@ -120,14 +141,21 @@ const LoginScreen = () => {
     return !Object.values(newErrors).some(error => error !== null);
   };
 
-  const handleDemoLogin = async (email: string, password: string) => {
+  const handleDemoLogin = async (email: string, password: string, role: string) => {
+    setLoading(true);
+    
     try {
       await signIn({ email, password });
-      navigation.replace('MainTabs');
+      
+      console.log(`✅ Demo login successful for ${role}: ${email}`);
+      
     } catch (error) {
+      console.error('❌ Demo login failed:', error);
       setErrors({
         general: 'Failed to sign in with demo account. Please try again.'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,58 +169,47 @@ const LoginScreen = () => {
     setLoading(true);
 
     try {
-      const { user } = await signIn({ 
+      await signIn({ 
         email: identifier, 
         password 
       });
-      
-      // Show success message with user details
-      Alert.alert(
-        'Login Successful',
-        `Welcome ${user.full_name || 'User'}\nEmail: ${user.email}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigation is handled by the auth state change in RootNavigator
-            },
-          },
-        ]
-      );
 
-      // The auth state will be updated and the user will be redirected
-      // by the RootNavigator based on the isAuthenticated state
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to sign in. Please try again.';
-      setLoginAttempts(prev => prev + 1);
+      console.log('✅ Manual login successful');
+      // Navigation is handled by AuthContext state change
       
-      if (loginAttempts >= 2) {
-        setErrors({ 
-          general: 'Multiple failed attempts. Please check your credentials or reset your password.' 
-        });
-      } else {
-        setErrors({ 
-          general: errorMessage
-        });
-      }
+    } catch (error: any) {
+      console.error('❌ Manual login failed:', error);
+      const errorMessage = error.message || 'Invalid credentials. Please try again.';
+      setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSocialLogin = () => {
-    Alert.alert(
-      'Social Login',
-      'Google sign-in will be available in the next update!',
-      [{ text: 'OK' }]
-    );
+  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+    try {
+      setLoading(true);
+      
+      Alert.alert(
+        'Coming Soon',
+        `${provider === 'google' ? 'Google' : 'Apple'} sign-in will be available in the next update!`,
+        [{ text: 'OK' }]
+      );
+      
+    } catch (error: any) {
+      setErrors({
+        general: `${provider} sign-in failed. Please try again.`
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const showDemoCredentials = () => {
     const buttons = [
       ...demoCredentials.map(cred => ({
-        text: `${cred.email} (${cred.password})`,
-        onPress: () => handleDemoLogin(cred.email, cred.password),
+        text: `${cred.role}: ${cred.email}`,
+        onPress: () => handleDemoLogin(cred.email, cred.password, cred.role),
         style: 'default' as const
       })),
       {
@@ -211,7 +228,7 @@ const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -222,34 +239,47 @@ const LoginScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1A2533" />
-            </TouchableOpacity>
-            
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
-                <Ionicons name="calendar" size={32} color="#1A2533" />
+                <Ionicons name="calendar" size={32} color={colors.primary} />
               </View>
               <Text style={styles.title}>Welcome Back</Text>
               <Text style={styles.subtitle}>Sign in to continue booking services</Text>
             </View>
-
-            {/* Demo credentials button */}
-            <TouchableOpacity 
-              style={styles.demoButton}
-              onPress={showDemoCredentials}
-            >
-              <Ionicons name="information-circle-outline" size={16} color="#3B82F6" />
-              <Text style={styles.demoButtonText}>View Demo Accounts</Text>
-            </TouchableOpacity>
           </View>
+
+          {/* Demo Login Section */}
+          {TESTING_CONFIG.SHOW_DEMO_SECTION && (
+            <View style={styles.demoContainer}>
+              <View style={styles.demoBadge}>
+                <Ionicons name="flask-outline" size={16} color={colors.info} />
+                <Text style={styles.demoText}>Demo Mode</Text>
+              </View>
+              
+              <Text style={styles.demoDescription}>
+                Quick access to demo accounts for testing
+              </Text>
+              
+              <TouchableOpacity 
+                style={styles.demoButton}
+                onPress={showDemoCredentials}
+                disabled={loading}
+              >
+                <Ionicons name="people-outline" size={16} color={colors.white} />
+                <Text style={styles.demoButtonText}>Try Demo Accounts</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>OR LOGIN MANUALLY</Text>
+                <View style={styles.divider} />
+              </View>
+            </View>
+          )}
 
           {errors.general && (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Ionicons name="alert-circle" size={20} color={colors.error} />
               <Text style={styles.errorText}>{errors.general}</Text>
             </View>
           )}
@@ -272,12 +302,13 @@ const LoginScreen = () => {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
+                  editable={!loading}
                 />
                 <View style={styles.inputIcon}>
                   <Ionicons 
                     name={identifier.includes('@') ? 'mail-outline' : 'call-outline'} 
                     size={20} 
-                    color="#6B7280" 
+                    color={colors.gray500} 
                   />
                 </View>
               </View>
@@ -304,15 +335,17 @@ const LoginScreen = () => {
                   onChangeText={(text) => handleInputChange('password', text)}
                   onBlur={() => handleBlur('password')}
                   secureTextEntry={!showPassword}
+                  editable={!loading}
                 />
                 <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   <Ionicons 
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
                     size={24} 
-                    color="#6B7280" 
+                    color={colors.gray500} 
                   />
                 </TouchableOpacity>
               </View>
@@ -331,7 +364,7 @@ const LoginScreen = () => {
               ) : (
                 <View style={styles.buttonContent}>
                   <Text style={styles.buttonText}>Sign In</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  <Ionicons name="arrow-forward" size={20} color={colors.white} />
                 </View>
               )}
             </TouchableOpacity>
@@ -343,18 +376,20 @@ const LoginScreen = () => {
             </View>
 
             <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleSocialLogin}
+              style={[styles.socialButton, loading && styles.socialButtonDisabled]}
+              onPress={() => handleSocialLogin('google')}
+              disabled={loading}
             >
               <Ionicons name="logo-google" size={20} color="#DB4437" />
               <Text style={styles.socialButtonText}>Continue with Google</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.socialButtonSecondary}
-              onPress={handleSocialLogin}
+              style={[styles.socialButtonSecondary, loading && styles.socialButtonDisabled]}
+              onPress={() => handleSocialLogin('apple')}
+              disabled={loading}
             >
-              <Ionicons name="logo-apple" size={20} color="#000000" />
+              <Ionicons name="logo-apple" size={20} color={colors.gray900} />
               <Text style={styles.socialButtonText}>Continue with Apple</Text>
             </TouchableOpacity>
 
@@ -367,7 +402,7 @@ const LoginScreen = () => {
 
             <View style={styles.helpContainer}>
               <TouchableOpacity style={styles.helpButton}>
-                <Ionicons name="help-circle-outline" size={16} color="#6B7280" />
+                <Ionicons name="help-circle-outline" size={16} color={colors.gray500} />
                 <Text style={styles.helpText}>Need Help?</Text>
               </TouchableOpacity>
             </View>
@@ -381,7 +416,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white,
   },
   keyboardView: {
     flex: 1,
@@ -395,16 +430,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     alignItems: 'center',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 20,
-  },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 20,
@@ -413,40 +438,75 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: colors.lightAccent,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#BAE6FD',
+    borderColor: colors.secondary,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1A2533',
+    color: colors.darkAccent,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.gray500,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  demoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: colors.gray50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  demoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+    marginBottom: 12,
+  },
+  demoText: {
+    color: colors.info,
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  demoDescription: {
+    color: colors.gray600,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   demoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
+    backgroundColor: colors.info,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: colors.info,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   demoButtonText: {
-    color: '#3B82F6',
-    fontSize: 12,
+    color: colors.white,
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: 6,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -459,7 +519,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    color: '#EF4444',
+    color: colors.error,
     fontSize: 14,
     marginLeft: 8,
     flex: 1,
@@ -472,7 +532,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.gray700,
     marginBottom: 8,
     fontWeight: '600',
   },
@@ -480,13 +540,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.gray50,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.gray200,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#111827',
+    color: colors.gray900,
   },
   inputWithIcon: {
     paddingRight: 50,
@@ -497,15 +557,15 @@ const styles = StyleSheet.create({
     top: 16,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: colors.error,
     backgroundColor: '#FEF2F2',
   },
   inputSuccess: {
-    borderColor: '#10B981',
+    borderColor: colors.success,
     backgroundColor: '#F0FDF4',
   },
   fieldError: {
-    color: '#EF4444',
+    color: colors.error,
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
@@ -517,7 +577,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   forgotPassword: {
-    color: '#3B82F6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -533,19 +593,19 @@ const styles = StyleSheet.create({
     top: 16,
   },
   button: {
-    backgroundColor: '#1A2533',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#1A2533',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -555,7 +615,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     marginRight: 8,
@@ -568,12 +628,12 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.gray200,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#9CA3AF',
-    fontSize: 14,
+    color: colors.gray400,
+    fontSize: 12,
     fontWeight: '500',
   },
   socialButton: {
@@ -581,11 +641,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.gray200,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -597,21 +657,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.gray200,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
+  socialButtonDisabled: {
+    opacity: 0.6,
+  },
   socialButtonText: {
     marginLeft: 12,
     fontSize: 16,
-    color: '#374151',
+    color: colors.gray700,
     fontWeight: '600',
   },
   footer: {
@@ -620,11 +683,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   footerText: {
-    color: '#6B7280',
+    color: colors.gray500,
     fontSize: 14,
   },
   footerLink: {
-    color: '#3B82F6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -637,7 +700,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   helpText: {
-    color: '#6B7280',
+    color: colors.gray500,
     fontSize: 14,
     marginLeft: 4,
   },

@@ -475,35 +475,48 @@ const ServiceDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FEF3C7', // Light accent cream honey
   },
   tabContent: {
     paddingTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tabsContainer: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 4,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tab: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginRight: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
   },
   activeTab: {
-    borderBottomColor: '#1A2533',
-    marginBottom: -1,
+    backgroundColor: '#F59E0B', // Primary amber/honey
   },
   tabText: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280', // Dark gray for inactive tabs
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
     fontWeight: '600',
   },
   tabContentContainer: {
@@ -555,16 +568,16 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#F59E0B', // Primary amber/honey
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: '#F59E0B', // Primary amber/honey
+    borderColor: '#F59E0B',
   },
   optionsList: {
     paddingBottom: 16,
@@ -574,38 +587,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#FCD34D', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 2,
   },
   selectedOption: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#F8F9F8',
+    borderColor: '#F59E0B', // Primary amber/honey
+    backgroundColor: '#FEF3C7', // Light accent cream honey
   },
   optionInfo: {
     flex: 1,
   },
   optionName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#1A2533',
+    fontWeight: '600',
+    color: '#1F2937', // Dark accent charcoal black
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 13,
-    color: '#666',
+    color: '#6B7280', // Darker gray for better readability
     marginBottom: 4,
+    lineHeight: 18,
   },
   optionDuration: {
     fontSize: 12,
-    color: '#999',
+    color: '#9CA3AF', // Lighter gray for less important info
+    fontWeight: '500',
   },
   optionPriceContainer: {
     flexDirection: 'row',
@@ -613,8 +628,8 @@ const styles = StyleSheet.create({
   },
   optionPrice: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1A2533',
+    fontWeight: '700',
+    color: '#1F2937', // Dark accent charcoal black
     marginRight: 12,
   },
   // Loading states
@@ -645,15 +660,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#1A2533',
+    backgroundColor: '#F59E0B', // Primary amber/honey
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   retryButtonText: {
-    color: '#fff',
+    color: '#1F2937', // Dark accent charcoal black
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   // Empty states
   emptyContainer: {
@@ -693,9 +713,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   favoriteButton: {
     position: 'absolute',
@@ -707,6 +729,8 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   imageCounter: {
     position: 'absolute',
@@ -760,7 +784,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
     marginBottom: 8,
   },
   ratingContainer: {
@@ -770,25 +794,25 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
     marginLeft: 4,
     marginRight: 8,
   },
   reviewsText: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280', // Darker gray for better readability
   },
   priceContainer: {
     alignItems: 'flex-end',
   },
   priceText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
   },
   timeText: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280', // Darker gray for better readability
     marginTop: 4,
   },
   section: {
@@ -825,25 +849,30 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
   },
   bookButton: {
-    backgroundColor: '#1A2533',
-    borderRadius: 8,
+    backgroundColor: '#F59E0B', // Primary amber/honey
+    borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
     marginTop: 16,
-    marginBottom: 32,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bookButtonDisabled: {
-    opacity: 0.6,
+    backgroundColor: '#FCD34D', // Lighter honey
+    opacity: 0.7,
   },
   bookButtonContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   bookButtonText: {
-    color: '#fff',
+    color: '#1F2937', // Dark accent charcoal black
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginRight: 8,
   },
 });

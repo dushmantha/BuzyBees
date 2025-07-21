@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
@@ -19,7 +18,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import api from '../services/api';
+import api from '../services/api/home/providerHomeAPI';
 // import { useAuth } from '../context/AuthContext'; // Uncomment when auth is ready
 
 const { width } = Dimensions.get('window');
@@ -85,7 +84,11 @@ interface HomeData {
 }
 
 type RootStackParamList = {
-  ServiceList: { category: string; categoryId: string };
+  ServiceList: { 
+    category: string; 
+    categoryId: string;
+    showPopular?: boolean;
+  };
   ServiceDetail: { serviceId: string };
   Bookings: undefined;
   Search: { query?: string };
@@ -108,7 +111,15 @@ const HomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({
+    categories: [],
+    services: [],
+    professionals: []
+  });
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
+  // Fetch home data
   const fetchHomeData = useCallback(async () => {
     try {
       setError(null);
@@ -141,6 +152,216 @@ const HomeScreen = () => {
     fetchHomeData();
   }, [fetchHomeData]);
 
+  // Search through loaded data locally
+  const searchLoadedData = useCallback((query) => {
+    console.log('🔍 Searching for:', query);
+    console.log('📊 Available data:', {
+      categories: homeData.categories.length,
+      services: homeData.popularServices.length
+    });
+
+    if (!query.trim()) {
+      return {
+        categories: [],
+        services: [],
+        professionals: []
+      };
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    console.log('🔍 Search term:', searchTerm);
+
+    // Search categories
+    const matchedCategories = homeData.categories.filter(category => {
+      const nameMatch = category.name.toLowerCase().includes(searchTerm);
+      const descMatch = category.description ? category.description.toLowerCase().includes(searchTerm) : false;
+      console.log(`Category ${category.name}: nameMatch=${nameMatch}, descMatch=${descMatch}`);
+      return nameMatch || descMatch;
+    });
+
+    // Search services
+    const matchedServices = homeData.popularServices.filter(service => {
+      const nameMatch = service.name.toLowerCase().includes(searchTerm);
+      const descMatch = service.description.toLowerCase().includes(searchTerm);
+      const profMatch = service.professional_name.toLowerCase().includes(searchTerm);
+      const salonMatch = service.salon_name.toLowerCase().includes(searchTerm);
+      console.log(`Service ${service.name}: nameMatch=${nameMatch}, descMatch=${descMatch}, profMatch=${profMatch}, salonMatch=${salonMatch}`);
+      return nameMatch || descMatch || profMatch || salonMatch;
+    });
+
+    // Extract professionals from services
+    const professionals = homeData.popularServices.map(service => ({
+      id: `${service.professional_name}-${service.salon_name}`,
+      name: service.professional_name,
+      salon: service.salon_name,
+      rating: service.rating,
+      location: service.location,
+      image: service.image
+    }));
+
+    const matchedProfessionals = professionals.filter(professional => {
+      const nameMatch = professional.name.toLowerCase().includes(searchTerm);
+      const salonMatch = professional.salon.toLowerCase().includes(searchTerm);
+      console.log(`Professional ${professional.name}: nameMatch=${nameMatch}, salonMatch=${salonMatch}`);
+      return nameMatch || salonMatch;
+    });
+
+    const results = {
+      categories: matchedCategories,
+      services: matchedServices,
+      professionals: matchedProfessionals
+    };
+
+    console.log('🎯 Search results:', {
+      categories: results.categories.length,
+      services: results.services.length,
+      professionals: results.professionals.length
+    });
+
+    return results;
+  }, [homeData]);
+
+  // Handle search query changes - SINGLE VERSION ONLY
+  const handleSearchQueryChange = useCallback(async (query) => {
+    console.log('🔄 Search query changed:', query);
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      console.log('❌ Empty query, hiding results');
+      setShowSearchResults(false);
+      setSearchResults({
+        categories: [],
+        services: [],
+        professionals: []
+      });
+      return;
+    }
+
+    console.log('🔍 Performing local search...');
+    // First: Search through loaded data for instant results
+    const localResults = searchLoadedData(query);
+    console.log('📋 Local results:', localResults);
+    
+    setSearchResults(localResults);
+    
+    // Show results if we have any matches OR if query is long enough for API call
+    const hasLocalResults = localResults.categories.length > 0 || 
+                           localResults.services.length > 0 || 
+                           localResults.professionals.length > 0;
+    
+    if (hasLocalResults || query.trim().length >= 2) {
+      console.log('✅ Showing search results');
+      setShowSearchResults(true);
+    }
+
+    // Second: Fetch additional data from API if query is substantial
+    if (query.trim().length >= 2) {
+      console.log('🌐 Calling API for additional results...');
+      setIsSearching(true);
+      
+      try {
+        // Call API for more comprehensive search results
+        const [servicesResponse, categoriesResponse] = await Promise.all([
+          api.searchServices(query.trim(), {
+            limit: 10,
+            sortBy: 'relevance'
+          }),
+          api.searchCategories(query.trim())
+        ]);
+
+        console.log('🎯 API responses:', {
+          services: servicesResponse.data?.services?.length || 0,
+          categories: categoriesResponse.data?.categories?.length || 0
+        });
+
+        // Merge API results with local results
+        const apiServices = servicesResponse.data?.services || [];
+        const apiCategories = categoriesResponse.data?.categories || [];
+
+        // Filter out duplicates and merge
+        const mergedServices = [
+          ...localResults.services,
+          ...apiServices.filter(apiService => 
+            !localResults.services.some(localService => localService.id === apiService.id)
+          )
+        ];
+
+        const mergedCategories = [
+          ...localResults.categories,
+          ...apiCategories.filter(apiCategory => 
+            !localResults.categories.some(localCategory => localCategory.id === apiCategory.id)
+          )
+        ];
+
+        const finalResults = {
+          categories: mergedCategories,
+          services: mergedServices,
+          professionals: localResults.professionals
+        };
+
+        console.log('🎯 Final merged results:', {
+          categories: finalResults.categories.length,
+          services: finalResults.services.length,
+          professionals: finalResults.professionals.length
+        });
+
+        setSearchResults(finalResults);
+
+      } catch (error) {
+        console.error('❌ Error fetching search results:', error);
+        // Keep local results if API fails
+      } finally {
+        setIsSearching(false);
+      }
+    }
+  }, [searchLoadedData]);
+
+  // Handle search submission
+  const handleSearch = useCallback(() => {
+    if (searchQuery.trim()) {
+      navigation.navigate('Search', { 
+        query: searchQuery.trim(),
+        initialResults: searchResults
+      });
+      setShowSearchResults(false);
+    }
+  }, [searchQuery, searchResults, navigation]);
+
+  // Handle search result item press
+  const handleSearchResultPress = useCallback((type, item) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    
+    switch (type) {
+      case 'service':
+        handleServicePress(item);
+        break;
+      case 'category':
+        handleCategoryPress(item);
+        break;
+      case 'professional':
+        navigation.navigate('Search', {
+          query: item.name,
+          filter: 'professional'
+        });
+        break;
+      default:
+        break;
+    }
+  }, [navigation]);
+
+  // Clear search
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setShowSearchResults(false);
+    setSearchResults({
+      categories: [],
+      services: [],
+      professionals: []
+    });
+  }, []);
+
+  // Handle category press
   const handleCategoryPress = (category: Category) => {
     console.log('Category pressed:', category.name);
     navigation.navigate('ServiceList', {
@@ -149,6 +370,7 @@ const HomeScreen = () => {
     });
   };
 
+  // Handle service press
   const handleServicePress = (service: Service) => {
     console.log('Service pressed:', service.name);
     navigation.navigate('ServiceDetail', {
@@ -156,13 +378,16 @@ const HomeScreen = () => {
     });
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      console.log('Search:', searchQuery.trim());
-      navigation.navigate('Search', { query: searchQuery.trim() });
-    }
+  // Handle view all popular services
+  const handleViewAllPopularServices = () => {
+    navigation.navigate('ServiceList', {
+      category: 'Populära tjänster',
+      categoryId: 'popular',
+      showPopular: true
+    });
   };
 
+  // Handle promotion press
   const handlePromotionPress = (promotion: Promotion) => {
     Alert.alert(
       promotion.title,
@@ -176,16 +401,22 @@ const HomeScreen = () => {
 
   const renderCategoryCard = ({ item: category }: { item: Category }) => (
     <TouchableOpacity
-      style={[styles.categoryCard, { backgroundColor: category.color }]}
+      style={[styles.categoryCard, { backgroundColor: category.color || '#FFFFFF' }]}
       onPress={() => handleCategoryPress(category)}
       activeOpacity={0.8}
     >
-      <Image
-        source={{ uri: category.image }}
-        style={styles.categoryImage}
-        resizeMode="cover"
-        onError={() => console.log('Image error for:', category.name)}
-      />
+      {category.image ? (
+        <Image
+          source={{ uri: category.image }}
+          style={styles.categoryImage}
+          resizeMode="cover"
+          onError={() => console.log('Image error for:', category.name)}
+        />
+      ) : (
+        <View style={styles.categoryImagePlaceholder}>
+          <Ionicons name="image-outline" size={32} color="#8E8E93" />
+        </View>
+      )}
       <Text style={styles.categoryName}>{category.name}</Text>
       <Text style={styles.categoryCount}>{category.service_count}</Text>
     </TouchableOpacity>
@@ -218,11 +449,17 @@ const HomeScreen = () => {
       onPress={() => handleServicePress(service)}
       activeOpacity={0.8}
     >
-      <Image
-        source={{ uri: service.image }}
-        style={styles.serviceImage}
-        resizeMode="cover"
-      />
+      {service.image ? (
+        <Image
+          source={{ uri: service.image }}
+          style={styles.serviceImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.serviceImagePlaceholder}>
+          <Ionicons name="cut-outline" size={32} color="#8E8E93" />
+        </View>
+      )}
       <View style={styles.serviceContent}>
         <Text style={styles.serviceName} numberOfLines={1}>{service.name}</Text>
         <Text style={styles.serviceProfessional} numberOfLines={1}>
@@ -294,7 +531,7 @@ const HomeScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerContent}>
           <Text style={styles.headerGreeting}>Hej{user ? ` ${user.full_name}` : ''}! 👋</Text>
           <Text style={styles.headerTitle}>Vad vill du boka?</Text>
         </View>
@@ -308,26 +545,154 @@ const HomeScreen = () => {
         )}
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Sök tjänst eller kategori"
-            placeholderTextColor="#8E8E93"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#8E8E93" />
-            </TouchableOpacity>
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Sök tjänst eller kategori"
+              placeholderTextColor="#8E8E93"
+              value={searchQuery}
+              onChangeText={handleSearchQueryChange}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                <Ionicons name="close-circle" size={20} color="#8E8E93" />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Search Results Dropdown */}
+          {showSearchResults && (
+            <View style={styles.searchResultsContainer}>
+              <ScrollView style={styles.searchResultsScroll} keyboardShouldPersistTaps="handled">
+                
+                {/* Debug info - remove in production */}
+                {__DEV__ && (
+                  <View style={styles.debugInfo}>
+                    <Text style={styles.debugText}>
+                      Debug: Categories({searchResults.categories.length}) 
+                      Services({searchResults.services.length}) 
+                      Professionals({searchResults.professionals.length})
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Categories Results */}
+                {searchResults.categories.length > 0 && (
+                  <View style={styles.searchResultSection}>
+                    <Text style={styles.searchResultSectionTitle}>Kategorier</Text>
+                    {searchResults.categories.slice(0, 3).map((category) => (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={styles.searchResultItem}
+                        onPress={() => handleSearchResultPress('category', category)}
+                      >
+                        <View style={styles.searchResultIcon}>
+                          <Ionicons name="grid-outline" size={16} color="#F59E0B" />
+                        </View>
+                        <View style={styles.searchResultContent}>
+                          <Text style={styles.searchResultTitle}>{category.name}</Text>
+                          <Text style={styles.searchResultSubtitle}>{category.service_count} tjänster</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Services Results */}
+                {searchResults.services.length > 0 && (
+                  <View style={styles.searchResultSection}>
+                    <Text style={styles.searchResultSectionTitle}>Tjänster</Text>
+                    {searchResults.services.slice(0, 4).map((service) => (
+                      <TouchableOpacity
+                        key={service.id}
+                        style={styles.searchResultItem}
+                        onPress={() => handleSearchResultPress('service', service)}
+                      >
+                        <View style={styles.searchResultIcon}>
+                          <Ionicons name="cut-outline" size={16} color="#F59E0B" />
+                        </View>
+                        <View style={styles.searchResultContent}>
+                          <Text style={styles.searchResultTitle}>{service.name}</Text>
+                          <Text style={styles.searchResultSubtitle}>
+                            {service.professional_name} • {service.price} kr
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Professionals Results */}
+                {searchResults.professionals.length > 0 && (
+                  <View style={styles.searchResultSection}>
+                    <Text style={styles.searchResultSectionTitle}>Leverantörer</Text>
+                    {searchResults.professionals.slice(0, 3).map((professional) => (
+                      <TouchableOpacity
+                        key={professional.id}
+                        style={styles.searchResultItem}
+                        onPress={() => handleSearchResultPress('professional', professional)}
+                      >
+                        <View style={styles.searchResultIcon}>
+                          <Ionicons name="person-outline" size={16} color="#F59E0B" />
+                        </View>
+                        <View style={styles.searchResultContent}>
+                          <Text style={styles.searchResultTitle}>{professional.name}</Text>
+                          <Text style={styles.searchResultSubtitle}>{professional.salon}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* No results message */}
+                {searchResults.categories.length === 0 && 
+                 searchResults.services.length === 0 && 
+                 searchResults.professionals.length === 0 && 
+                 searchQuery.length >= 2 && !isSearching && (
+                  <View style={styles.noResultsContainer}>
+                    <Ionicons name="search-outline" size={32} color="#8E8E93" />
+                    <Text style={styles.noResultsTitle}>Inga resultat</Text>
+                    <Text style={styles.noResultsText}>
+                      Försök med andra sökord eller bläddra bland kategorier
+                    </Text>
+                  </View>
+                )}
+
+                {/* Show More Results Button */}
+                {(searchResults.categories.length > 0 || searchResults.services.length > 0 || searchResults.professionals.length > 0) && (
+                  <TouchableOpacity
+                    style={styles.showMoreButton}
+                    onPress={handleSearch}
+                  >
+                    <Text style={styles.showMoreButtonText}>
+                      Se alla resultat för "{searchQuery}"
+                    </Text>
+                    <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+                  </TouchableOpacity>
+                )}
+
+                {/* Loading indicator */}
+                {isSearching && (
+                  <View style={styles.searchLoadingContainer}>
+                    <ActivityIndicator size="small" color="#F59E0B" />
+                    <Text style={styles.searchLoadingText}>Söker...</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
           )}
+          
+          <View style={styles.locationContainer}>
+            <Ionicons name="location-outline" size={14} color="#6B7280" style={styles.locationIcon} />
+            <Text style={styles.locationText}>Hela Sverige</Text>
+          </View>
         </View>
-        <Text style={styles.searchSubtext}>Hela Sverige</Text>
       </View>
 
       <ScrollView
@@ -400,7 +765,7 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Populära tjänster</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={handleViewAllPopularServices}>
                 <Text style={styles.seeAllText}>Se alla</Text>
               </TouchableOpacity>
             </View>
@@ -446,7 +811,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FEF3C7', // Light accent cream honey
   },
   centerContent: {
     justifyContent: 'center',
@@ -458,18 +823,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#FEF3C7', // Light accent cream honey
+  },
+  headerContent: {
+    flex: 1,
   },
   headerGreeting: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: '#1F2937', // Dark accent charcoal black
     marginBottom: 4,
+    opacity: 0.8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
     letterSpacing: -0.5,
   },
   profileButton: {
@@ -482,38 +852,198 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // Search Section Styles
+  searchSection: {
+    backgroundColor: '#FEF3C7',
+    paddingBottom: 16,
+    zIndex: 1000, // Ensure search section is above other content
+    elevation: 10, // For Android
+  },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 12,
+    position: 'relative', // Important for absolute positioning of dropdown
+    zIndex: 1000,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 4,
+    paddingVertical: 14,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: '#F59E0B', // Primary amber/honey
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 12,
+    color: '#F59E0B', // Primary amber/honey
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#1A2533',
     padding: 0,
+    fontWeight: '500',
   },
-  searchSubtext: {
+  clearButton: {
+    padding: 4,
+  },
+  // Search Results Styles
+  searchResultsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginTop: 8,
+    maxHeight: 400,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 999, // Very high elevation for Android
+    zIndex: 9999, // Very high z-index for iOS
+  },
+  searchResultsScroll: {
+    maxHeight: 400,
+  },
+  searchResultSection: {
+    paddingVertical: 8,
+  },
+  searchResultSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FEF3C7',
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  searchResultIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  searchResultContent: {
+    flex: 1,
+  },
+  searchResultTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  searchResultSubtitle: {
     fontSize: 12,
-    color: '#8E8E93',
-    marginLeft: 16,
-    marginTop: 4,
+    color: '#6B7280',
+  },
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginTop: 8,
+    backgroundColor: '#FEF3C7',
+  },
+  showMoreButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+    marginRight: 8,
+  },
+  searchLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  searchLoadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  // Debug styles - remove in production
+  debugInfo: {
+    backgroundColor: '#F3F4F6',
+    padding: 8,
+    margin: 8,
+    borderRadius: 4,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  // No results styles
+  noResultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  noResultsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#FCD34D', // Lighter honey border
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  locationIcon: {
+    marginRight: 6,
+  },
+  locationText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FEF3C7', // Light accent cream honey
+    zIndex: 1, // Lower z-index than search
   },
   section: {
     marginBottom: 24,
@@ -528,12 +1058,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1A2533',
+    color: '#1F2937', // Dark accent charcoal black
   },
   seeAllText: {
     fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
+    color: '#F59E0B', // Primary amber/honey
+    fontWeight: '600',
   },
   categoriesGrid: {
     paddingHorizontal: 20,
@@ -548,6 +1078,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FCD34D', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -563,28 +1096,39 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
+  categoryImagePlaceholder: {
+    width: '70%',
+    height: '50%',
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   categoryName: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#1A2533',
+    fontWeight: '600',
+    color: '#1F2937', // Dark accent charcoal black
     textAlign: 'center',
     paddingHorizontal: 4,
     marginBottom: 2,
   },
   categoryCount: {
     fontSize: 11,
-    color: '#8E8E93',
-    fontWeight: '400',
+    color: '#6B7280', // Darker gray for better readability
+    fontWeight: '500',
   },
   promotionsList: {
     paddingHorizontal: 20,
   },
   promotionCard: {
     width: promotionWidth,
-    height: 120,
+    height: 140,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -649,6 +1193,13 @@ const styles = StyleSheet.create({
   serviceImage: {
     width: '100%',
     height: 120,
+  },
+  serviceImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   serviceContent: {
     padding: 12,
@@ -770,66 +1321,44 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: '#F8F9FA',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statItem: {
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7', // Light accent cream honey
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    flex: 1,
+    marginHorizontal: 4,
+    minHeight: 80,
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1A2533',
-    marginBottom: 4,
+    color: '#F59E0B', // Primary amber/honey
+    marginBottom: 6,
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 12,
-    color: '#8E8E93',
-  },
-  bottomTabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingBottom: 20,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 50,
-  },
-  tabIconContainer: {
-    position: 'relative',
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  badge: {
-    position: 'absolute',
-    top: -6,
-    right: -8,
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+    color: '#1F2937', // Dark accent charcoal black
+    textAlign: 'center',
     fontWeight: '600',
+    lineHeight: 16,
   },
   loadingText: {
     marginTop: 16,
