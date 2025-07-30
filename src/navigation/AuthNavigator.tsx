@@ -1,4 +1,4 @@
-// Updated AppNavigator.tsx - Fixed circular import issue
+// navigation/AppNavigator.tsx - Cleaned version with Supabase integration
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,7 +6,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, ActivityIndicator, View, Text } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../context/AuthContext';
+import { supabase, AuthService } from '../lib/supabase';
+import type { User, Session } from '@supabase/supabase-js';
 import SplashScreen from '../screens/SplashScreen';
 
 // Import Screens
@@ -34,13 +35,207 @@ import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import HelpCenterScreen from '../screens/HelpCenterScreen';
 import TermsConditionsScreen from '../screens/TermsConditionsScreen';
 
-// Auth screens - Import directly instead of AuthNavigator to avoid circular dependency
+// Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Import Service type
 import type { Service } from '../services/types/service';
+
+// Auth Context
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  isAuthenticated: false,
+  isLoading: true,
+  signOut: async () => {},
+  refreshUser: async () => {},
+});
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
+// Auth Provider Component
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signOut = async () => {
+    try {
+      setIsLoading(true);
+      await AuthService.signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isAuthenticated: !!session,
+        isLoading,
+        signOut,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Account Type Context
+interface AccountContextType {
+  accountType: 'provider' | 'consumer';
+  setAccountType: (type: 'provider' | 'consumer') => void;
+  isLoading: boolean;
+  userProfile: any;
+  refreshProfile: () => Promise<void>;
+}
+
+const AccountContext = createContext<AccountContextType>({
+  accountType: 'consumer',
+  setAccountType: () => {},
+  isLoading: false,
+  userProfile: null,
+  refreshProfile: async () => {},
+});
+
+export const useAccount = () => {
+  const context = useContext(AccountContext);
+  if (!context) {
+    throw new Error('useAccount must be used within AccountProvider');
+  }
+  return context;
+};
+
+// Account Provider Component
+const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
+  const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadUserProfile();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await AuthService.getUserProfile(user.id);
+      if (response.success) {
+        setUserProfile(response.data);
+        setAccountTypeState(response.data.account_type || 'consumer');
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setAccountType = async (type: 'provider' | 'consumer') => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // Update in database
+      const response = await AuthService.updateProfile(user.id, { account_type: type });
+      if (response.success) {
+        setAccountTypeState(type);
+        await AsyncStorage.setItem('accountType', type);
+        await loadUserProfile(); // Refresh profile
+      }
+    } catch (error) {
+      console.error('Error updating account type:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    await loadUserProfile();
+  };
+
+  return (
+    <AccountContext.Provider 
+      value={{ 
+        accountType, 
+        setAccountType, 
+        isLoading, 
+        userProfile, 
+        refreshProfile 
+      }}
+    >
+      {children}
+    </AccountContext.Provider>
+  );
+};
 
 // Notification Context
 interface NotificationContextType {
@@ -63,35 +258,18 @@ export const useNotifications = () => {
   return context;
 };
 
-// Account Type Context
-interface AccountContextType {
-  accountType: 'provider' | 'consumer';
-  setAccountType: (type: 'provider' | 'consumer') => void;
-  isLoading: boolean;
-}
-
-const AccountContext = createContext<AccountContextType>({
-  accountType: 'consumer',
-  setAccountType: () => {},
-  isLoading: false,
-});
-
-export const useAccount = () => {
-  const context = useContext(AccountContext);
-  if (!context) {
-    throw new Error('useAccount must be used within AccountProvider');
-  }
-  return context;
-};
-
 // Notification Provider Component
 const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const { accountType } = useAccount();
+  const { user } = useAuth();
 
   const refreshNotifications = async () => {
+    if (!user) return;
+    
     try {
-      // Mock notification count based on account type
+      // In a real app, this would fetch from Supabase
+      // For now, using mock data
       setNotificationCount(accountType === 'provider' ? 2 : 3);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -99,8 +277,10 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
-    refreshNotifications();
-  }, [accountType]);
+    if (user) {
+      refreshNotifications();
+    }
+  }, [accountType, user]);
 
   return (
     <NotificationContext.Provider 
@@ -112,52 +292,6 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     >
       {children}
     </NotificationContext.Provider>
-  );
-};
-
-// Account Provider Component
-const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadAccountType();
-  }, []);
-
-  const loadAccountType = async () => {
-    try {
-      const savedAccountType = await AsyncStorage.getItem('accountType');
-      if (savedAccountType && (savedAccountType === 'provider' || savedAccountType === 'consumer')) {
-        setAccountTypeState(savedAccountType);
-      }
-    } catch (error) {
-      console.error('Error loading account type:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const setAccountType = async (type: 'provider' | 'consumer') => {
-    try {
-      setIsLoading(true);
-      await AsyncStorage.setItem('accountType', type);
-      setAccountTypeState(type);
-      
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 800);
-    } catch (error) {
-      console.error('Error saving account type:', error);
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <AccountContext.Provider value={{ accountType, setAccountType, isLoading }}>
-      <NotificationProvider>
-        {children}
-      </NotificationProvider>
-    </AccountContext.Provider>
   );
 };
 
@@ -238,19 +372,6 @@ export type RootStackParamList = {
   PaymentMethods: undefined;
   HelpCenter: undefined;
   TermsConditions: undefined;
-  
-  // Payment related
-  Payment: {
-    selectedServices: Array<{
-      id: string;
-      name: string;
-      price: string;
-      duration: string;
-    }>;
-    totalPrice: number;
-    selectedDate: string;
-    selectedTime: string;
-  };
 };
 
 type ConsumerTabParamList = {
@@ -454,7 +575,7 @@ const ProviderTabs = () => {
   );
 };
 
-// Auth Navigator - Inline to avoid circular dependency
+// Auth Navigator
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
@@ -487,7 +608,7 @@ const AccountSwitchLoader = () => {
         color: '#6B7280',
         textAlign: 'center',
       }}>
-        Switching account mode...
+        Loading your profile...
       </Text>
     </View>
   );
@@ -527,9 +648,6 @@ const AppNavigator = () => {
               headerTintColor: '#000000',
               headerStyle: {
                 backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
               },
               headerTitleStyle: {
                 fontWeight: '600',
@@ -556,9 +674,6 @@ const AppNavigator = () => {
               headerTintColor: '#000000',
               headerStyle: {
                 backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
               },
               headerTitleStyle: {
                 fontWeight: '600',
@@ -576,110 +691,6 @@ const AppNavigator = () => {
               headerTintColor: '#000000',
               headerStyle: {
                 backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          {/* Profile Related Screens */}
-          <Stack.Screen 
-            name="Notifications" 
-            component={NotificationsScreen}
-            options={{
-              title: 'Notifications',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="Privacy" 
-            component={PrivacyScreen}
-            options={{
-              title: 'Privacy Settings',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="PaymentMethods" 
-            component={PaymentMethodsScreen}
-            options={{
-              title: 'Payment Methods',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="HelpCenter" 
-            component={HelpCenterScreen}
-            options={{
-              title: 'Help Center',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="TermsConditions" 
-            component={TermsConditionsScreen}
-            options={{
-              title: 'Terms & Conditions',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
               },
               headerTitleStyle: {
                 fontWeight: '600',
@@ -697,46 +708,6 @@ const AppNavigator = () => {
             options={{ headerShown: false }}
           />
           <Stack.Screen 
-            name="ServiceManagement" 
-            component={ServiceManagementScreen} 
-            options={{
-              title: 'Manage Services',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="Earnings" 
-            component={EarningsScreen} 
-            options={{
-              title: 'Earnings Report',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
             name="ShopDetails" 
             component={ShopDetailsScreen}
             options={({ route }) => ({
@@ -746,9 +717,6 @@ const AppNavigator = () => {
               headerTintColor: '#000000',
               headerStyle: {
                 backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
               },
               headerTitleStyle: {
                 fontWeight: '600',
@@ -766,9 +734,6 @@ const AppNavigator = () => {
               headerTintColor: '#000000',
               headerStyle: {
                 backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
               },
               headerTitleStyle: {
                 fontWeight: '600',
@@ -777,114 +742,100 @@ const AppNavigator = () => {
               presentation: 'modal',
             }}
           />
-          {/* Profile Related Screens - Provider versions */}
-          <Stack.Screen 
-            name="Notifications" 
-            component={NotificationsScreen}
-            options={{
-              title: 'Notifications',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="Privacy" 
-            component={PrivacyScreen}
-            options={{
-              title: 'Privacy Settings',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="PaymentMethods" 
-            component={PaymentMethodsScreen}
-            options={{
-              title: 'Payment Methods',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="HelpCenter" 
-            component={HelpCenterScreen}
-            options={{
-              title: 'Help Center',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
-          <Stack.Screen 
-            name="TermsConditions" 
-            component={TermsConditionsScreen}
-            options={{
-              title: 'Terms & Conditions',
-              headerShown: true,
-              headerBackTitle: 'Back',
-              headerTintColor: '#000000',
-              headerStyle: {
-                backgroundColor: '#ffffff',
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 0,
-              },
-              headerTitleStyle: {
-                fontWeight: '600',
-                fontSize: 18,
-              },
-            }}
-          />
         </>
       )}
+      
+      {/* Shared Profile Screens */}
+      <Stack.Screen 
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{
+          title: 'Notifications',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: '#000000',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 18,
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="Privacy" 
+        component={PrivacyScreen}
+        options={{
+          title: 'Privacy Settings',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: '#000000',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 18,
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="PaymentMethods" 
+        component={PaymentMethodsScreen}
+        options={{
+          title: 'Payment Methods',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: '#000000',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 18,
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="HelpCenter" 
+        component={HelpCenterScreen}
+        options={{
+          title: 'Help Center',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: '#000000',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 18,
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="TermsConditions" 
+        component={TermsConditionsScreen}
+        options={{
+          title: 'Terms & Conditions',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: '#000000',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 18,
+          },
+        }}
+      />
     </Stack.Navigator>
   );
 };
 
-// Root Navigator - FIXED VERSION (removed circular dependency)
+// Root Navigator
 const RootNavigator = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -894,11 +845,22 @@ const RootNavigator = () => {
 
   return (
     <AccountProvider>
-      <StatusBar barStyle="dark-content" />
-      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      <NotificationProvider>
+        <StatusBar barStyle="dark-content" />
+        {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      </NotificationProvider>
     </AccountProvider>
   );
 };
 
-export default RootNavigator;
-export { useAccount, useNotifications };
+// Main App Component with Auth Provider
+const App = () => {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  );
+};
+
+export default App;
+export { useAccount, useNotifications, useAuth };

@@ -1,257 +1,207 @@
-// services/api.js
+// Real API service using Supabase data
+import { shopAPI, Shop } from '../shops/shopAPI';
 
-const BASE_URL = 'https://your-api-base-url.com/api'; // Replace with your actual API URL
-const USE_MOCK_DATA = true; // Set to false when you have real API
-
-// Mock data for development with proper placeholder images
-const MOCK_DATA = {
-  categories: [
-    { 
-      id: '1', 
-      name: 'Hårklippning', 
-      service_count: 45,
-      color: '#FFE4E1',
-      image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
-      description: 'Professionell hårklippning och styling'
-    },
-    { 
-      id: '2', 
-      name: 'Massage', 
-      service_count: 32,
-      color: '#E6F3FF',
-      image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=300&h=200&fit=crop',
-      description: 'Avslappnande massage och terapi'
-    },
-    { 
-      id: '3', 
-      name: 'Naglar', 
-      service_count: 28,
-      color: '#F0E6FF',
-      image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300&h=200&fit=crop',
-      description: 'Manikyr, pedikyr och nagelkonst'
-    },
-    { 
-      id: '4', 
-      name: 'Hudvård', 
-      service_count: 38,
-      color: '#E6FFE6',
-      image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=300&h=200&fit=crop',
-      description: 'Ansiktsbehandlingar och hudvård'
-    },
-  ],
-  services: [
-    {
-      id: '1',
-      name: 'Klassisk Massage',
-      description: 'Avslappnande hel-kropps massage',
-      professional_name: 'Anna Svensson',
-      salon_name: 'Wellness Spa Center',
-      price: 850,
-      duration: 60,
-      rating: 4.8,
-      reviews_count: 124,
-      location: 'Stockholm',
-      distance: '2.1 km',
-      image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop'
-    },
-    {
-      id: '2',
-      name: 'Herrklippning',
-      description: 'Modern herrklippning med styling',
-      professional_name: 'Erik Johansson',
-      salon_name: 'Elite Hair Studio',
-      price: 650,
-      duration: 45,
-      rating: 4.9,
-      reviews_count: 89,
-      location: 'Göteborg',
-      distance: '1.5 km',
-      image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=300&fit=crop'
-    },
-    {
-      id: '3',
-      name: 'Ansiktsbehandling',
-      description: 'Djuprengöring med mask',
-      professional_name: 'Maria Larsson',
-      salon_name: 'Beauty Center',
-      price: 750,
-      duration: 75,
-      rating: 4.7,
-      reviews_count: 156,
-      location: 'Malmö',
-      distance: '3.2 km',
-      image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400&h=300&fit=crop'
-    },
-    {
-      id: '4',
-      name: 'Gel Naglar',
-      description: 'Professionell gel-manikyr',
-      professional_name: 'Sophie Andersson',
-      salon_name: 'Nail Art Studio',
-      price: 450,
-      duration: 90,
-      rating: 4.6,
-      reviews_count: 78,
-      location: 'Stockholm',
-      distance: '1.8 km',
-      image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&h=300&fit=crop'
-    }
-  ],
-  promotions: [
-    {
-      id: '1',
-      title: 'Första besök',
-      description: 'Rabatt på din första behandling',
-      discount_percentage: 25,
-      code: 'FIRST25',
-      expires_at: '2024-12-31',
-      image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=200&fit=crop'
-    }
-  ]
-};
-
-// Helper function to simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper function to simulate API delay for consistency
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper function to handle API requests
-const apiRequest = async (endpoint, options = {}) => {
+const apiRequest = async (endpoint: string, options = {}) => {
   try {
-    // If using mock data, return mock responses
-    if (USE_MOCK_DATA) {
-      await delay(300); // Simulate network delay
-      
-      console.log('Mock API Request:', endpoint);
-      
-      // Parse endpoint to return appropriate mock data
-      if (endpoint.includes('/search/categories') || endpoint.includes('/categories/search')) {
-        const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
-        const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
+    console.log('API Request:', endpoint);
+    
+    // Add realistic delay
+    await delay(300);
+    
+    if (endpoint.includes('/home')) {
+      // Fetch real shop data from Supabase
+      try {
+        const homeShopData = await shopAPI.getHomeShopData();
         
-        const filteredCategories = MOCK_DATA.categories.filter(cat => 
-          cat.name.toLowerCase().includes(query) ||
-          (cat.description && cat.description.toLowerCase().includes(query))
-        );
+        if (!homeShopData.data) {
+          throw new Error(homeShopData.error || 'Failed to fetch shops');
+        }
+
+        const shops = homeShopData.data.shops;
         
-        return {
-          data: { categories: filteredCategories },
-          error: null,
-          status: 200
-        };
-      }
-      
-      if (endpoint.includes('/services/search')) {
-        const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
-        const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
-        
-        const filteredServices = MOCK_DATA.services.filter(service => 
-          service.name.toLowerCase().includes(query) ||
-          service.professional_name.toLowerCase().includes(query) ||
-          service.salon_name.toLowerCase().includes(query) ||
-          service.description.toLowerCase().includes(query)
-        );
-        
-        return {
-          data: { services: filteredServices },
-          error: null,
-          status: 200
-        };
-      }
-      
-      if (endpoint.includes('/search/suggestions')) {
-        const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
-        const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
-        
-        const suggestions = [
-          `${query} massage`,
-          `${query} hårklippning`,
-          `${query} naglar`,
-          `${query} ansiktsbehandling`
-        ].filter(suggestion => suggestion !== `${query} `);
-        
-        return {
-          data: suggestions.slice(0, 5),
-          error: null,
-          status: 200
-        };
-      }
-      
-      if (endpoint.includes('/home')) {
+        // Transform shops to services format for backward compatibility
+        const services = shops.map(shop => ({
+          id: shop.id,
+          name: shop.name,
+          description: shop.description,
+          professional_name: 'Shop Owner', // Default since we don't have individual staff yet
+          salon_name: shop.name,
+          price: 500, // Default price
+          duration: 60, // Default duration
+          rating: shop.rating || 4.5,
+          reviews_count: shop.reviews_count || 0,
+          location: `${shop.city}, ${shop.country}`,
+          distance: shop.distance || '1.5 km',
+          // Use first image from shop images array, or fallback to logo_url, or placeholder
+          image: shop.images && shop.images.length > 0 
+            ? shop.images[0] 
+            : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'
+        }));
+
+        // Generate categories from shop data
+        const categoryMap = new Map();
+        shops.forEach(shop => {
+          if (!categoryMap.has(shop.category)) {
+            categoryMap.set(shop.category, {
+              id: shop.category.toLowerCase().replace(/\s+/g, '-'),
+              name: shop.category,
+              service_count: 0,
+              color: '#FFE4E1', // Default color
+              image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
+              description: `${shop.category} services`
+            });
+          }
+          categoryMap.get(shop.category).service_count++;
+        });
+
+        const categories = Array.from(categoryMap.values());
+
         return {
           data: {
-            categories: MOCK_DATA.categories,
-            promotions: MOCK_DATA.promotions,
-            popularServices: MOCK_DATA.services,
+            categories: categories,
+            promotions: [], // No promotions for now
+            popularServices: services,
             upcomingBookings: [],
             stats: {
-              totalServices: 150,
-              totalCategories: 12,
-              totalProviders: 85,
-              avgRating: 4.8
+              totalServices: services.length,
+              totalCategories: categories.length,
+              totalProviders: shops.length,
+              avgRating: homeShopData.data.stats.avgRating
+            }
+          },
+          error: null,
+          status: 200
+        };
+      } catch (error) {
+        console.error('❌ Error fetching real shop data:', error);
+        // Return empty data instead of mock data
+        return {
+          data: {
+            categories: [],
+            promotions: [],
+            popularServices: [],
+            upcomingBookings: [],
+            stats: {
+              totalServices: 0,
+              totalCategories: 0,
+              totalProviders: 0,
+              avgRating: 0
             }
           },
           error: null,
           status: 200
         };
       }
+    }
+
+    if (endpoint.includes('/search/categories') || endpoint.includes('/categories/search')) {
+      const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
+      const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
       
-      // Default mock response
+      try {
+        const homeShopData = await shopAPI.getHomeShopData();
+        const categories = homeShopData.data?.categories || [];
+        
+        const filteredCategories = categories.filter(category => 
+          category.toLowerCase().includes(query)
+        ).map(category => ({
+          id: category.toLowerCase().replace(/\s+/g, '-'),
+          name: category,
+          service_count: 1,
+          color: '#FFE4E1',
+          image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
+          description: `${category} services`
+        }));
+        
+        return {
+          data: { categories: filteredCategories },
+          error: null,
+          status: 200
+        };
+      } catch (error) {
+        console.error('❌ Error searching categories:', error);
+        return {
+          data: { categories: [] },
+          error: null,
+          status: 200
+        };
+      }
+    }
+    
+    if (endpoint.includes('/services/search')) {
+      const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
+      const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
+      
+      try {
+        const searchResults = await shopAPI.searchShops(query);
+        
+        if (!searchResults.data) {
+          throw new Error(searchResults.error || 'Search failed');
+        }
+        
+        const services = searchResults.data.map(shop => ({
+          id: shop.id,
+          name: shop.name,
+          description: shop.description,
+          professional_name: 'Shop Owner',
+          salon_name: shop.name,
+          price: 500,
+          duration: 60,
+          rating: shop.rating || 4.5,
+          reviews_count: shop.reviews_count || 0,
+          location: `${shop.city}, ${shop.country}`,
+          distance: shop.distance || '1.5 km',
+          image: shop.images && shop.images.length > 0 
+            ? shop.images[0] 
+            : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'
+        }));
+        
+        return {
+          data: { services: services },
+          error: null,
+          status: 200
+        };
+      } catch (error) {
+        console.error('❌ Error searching services:', error);
+        return {
+          data: { services: [] },
+          error: null,
+          status: 200
+        };
+      }
+    }
+    
+    if (endpoint.includes('/search/suggestions')) {
+      const urlParams = endpoint.includes('?') ? endpoint.split('?')[1] : '';
+      const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
+      
+      const suggestions = [
+        `${query} massage`,
+        `${query} hårklippning`,
+        `${query} naglar`,
+        `${query} ansiktsbehandling`
+      ].filter(suggestion => suggestion !== `${query} `);
+      
       return {
-        data: [],
+        data: suggestions.slice(0, 5),
         error: null,
         status: 200
       };
     }
-
-    // Real API implementation
-    const url = `${BASE_URL}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      timeout: 10000,
-      ...options,
-    };
-
-    console.log(`API Request: ${config.method || 'GET'} ${url}`);
     
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
+    // Default response for unhandled endpoints
     return {
-      data,
+      data: [],
       error: null,
-      status: response.status,
+      status: 200
     };
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Request Error:', error);
-    
-    // Return mock data as fallback even when not in mock mode
-    if (endpoint.includes('/home')) {
-      console.log('Falling back to mock home data');
-      return {
-        data: {
-          categories: MOCK_DATA.categories,
-          promotions: MOCK_DATA.promotions,
-          popularServices: MOCK_DATA.services,
-          upcomingBookings: [],
-          stats: {
-            totalServices: 150,
-            totalCategories: 12,
-            totalProviders: 85,
-            avgRating: 4.8
-          }
-        },
-        error: null,
-        status: 200
-      };
-    }
     
     return {
       data: null,
@@ -264,7 +214,7 @@ const apiRequest = async (endpoint, options = {}) => {
 // Search API Functions
 export const searchAPI = {
   // General search across all content
-  searchAll: async (query, filters = {}) => {
+  searchAll: async (query: string, filters = {}) => {
     const params = new URLSearchParams({
       q: query,
       ...filters,
@@ -274,7 +224,7 @@ export const searchAPI = {
   },
 
   // Search services specifically
-  searchServices: async (query, options = {}) => {
+  searchServices: async (query: string, options = {}) => {
     const {
       category = '',
       location = '',
@@ -302,13 +252,13 @@ export const searchAPI = {
   },
 
   // Search categories
-  searchCategories: async (query) => {
+  searchCategories: async (query: string) => {
     const params = new URLSearchParams({ q: query });
     return apiRequest(`/categories/search?${params}`);
   },
 
   // Search professionals/providers
-  searchProfessionals: async (query, options = {}) => {
+  searchProfessionals: async (query: string, options = {}) => {
     const {
       location = '',
       rating = '',
@@ -328,7 +278,7 @@ export const searchAPI = {
   },
 
   // Get search suggestions/autocomplete
-  getSearchSuggestions: async (query) => {
+  getSearchSuggestions: async (query: string) => {
     if (query.length < 2) {
       return { data: [], error: null };
     }
@@ -343,12 +293,12 @@ export const searchAPI = {
   },
 
   // Get recent search history (when user auth is ready)
-  getSearchHistory: async (userId) => {
+  getSearchHistory: async (userId: string) => {
     return apiRequest(`/users/${userId}/search-history`);
   },
 
   // Save search query to history
-  saveSearchHistory: async (userId, query) => {
+  saveSearchHistory: async (userId: string, query: string) => {
     return apiRequest(`/users/${userId}/search-history`, {
       method: 'POST',
       body: JSON.stringify({ query }),
@@ -380,7 +330,7 @@ export const homeAPI = {
   },
 
   // Get user's upcoming bookings
-  getUpcomingBookings: async (userId) => {
+  getUpcomingBookings: async (userId: string) => {
     return apiRequest(`/users/${userId}/bookings/upcoming`);
   },
 
@@ -393,12 +343,12 @@ export const homeAPI = {
 // Service API Functions
 export const serviceAPI = {
   // Get service details
-  getServiceDetails: async (serviceId) => {
+  getServiceDetails: async (serviceId: string) => {
     return apiRequest(`/services/${serviceId}`);
   },
 
   // Get services by category
-  getServicesByCategory: async (categoryId, options = {}) => {
+  getServicesByCategory: async (categoryId: string, options = {}) => {
     const {
       location = '',
       sortBy = 'popular',
@@ -418,7 +368,7 @@ export const serviceAPI = {
   },
 
   // Get nearby services
-  getNearbyServices: async (latitude, longitude, radius = 10) => {
+  getNearbyServices: async (latitude: number, longitude: number, radius = 10) => {
     const params = new URLSearchParams({
       lat: latitude.toString(),
       lng: longitude.toString(),
@@ -432,7 +382,7 @@ export const serviceAPI = {
 // Booking API Functions
 export const bookingAPI = {
   // Create a new booking
-  createBooking: async (bookingData) => {
+  createBooking: async (bookingData: any) => {
     return apiRequest('/bookings', {
       method: 'POST',
       body: JSON.stringify(bookingData),
@@ -440,13 +390,13 @@ export const bookingAPI = {
   },
 
   // Get user's bookings
-  getUserBookings: async (userId, status = 'all') => {
+  getUserBookings: async (userId: string, status = 'all') => {
     const params = status !== 'all' ? `?status=${status}` : '';
     return apiRequest(`/users/${userId}/bookings${params}`);
   },
 
   // Cancel booking
-  cancelBooking: async (bookingId) => {
+  cancelBooking: async (bookingId: string) => {
     return apiRequest(`/bookings/${bookingId}/cancel`, {
       method: 'PUT',
     });
@@ -461,7 +411,7 @@ export const locationAPI = {
   },
 
   // Search locations
-  searchLocations: async (query) => {
+  searchLocations: async (query: string) => {
     const params = new URLSearchParams({ q: query });
     return apiRequest(`/locations/search?${params}`);
   },

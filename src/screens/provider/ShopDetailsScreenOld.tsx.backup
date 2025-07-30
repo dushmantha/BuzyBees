@@ -1,0 +1,1905 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Image,
+  Switch,
+  Platform,
+  Modal,
+  FlatList,
+  Dimensions,
+  SafeAreaView,
+  StatusBar,
+  KeyboardAvoidingView,
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { 
+  launchImageLibrary, 
+  launchCamera, 
+  MediaType,
+  ImagePickerOptions,
+  ImagePickerResponse
+} from 'react-native-image-picker';
+
+// Import our Supabase service and auth context
+import { authService } from '../../lib/supabase/index';
+import { useAuth } from '../../navigation/AppNavigator';
+
+const { width } = Dimensions.get('window');
+
+// Type definitions
+type ProviderStackParamList = {
+  ShopDetails: {
+    shop?: Shop;
+    onSave?: (shop: Shop) => void;
+  };
+  ProviderTabs: {
+    screen?: 'ProviderHomeTab' | 'QueueTab' | 'ServicesTab' | 'EarningsTab' | 'ProfileTab';
+  };
+};
+
+type ShopDetailsRouteProp = RouteProp<ProviderStackParamList, 'ShopDetails'>;
+type ShopDetailsNavigationProp = StackNavigationProp<ProviderStackParamList, 'ShopDetails'>;
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration: number;
+  category: string;
+  image?: string;
+  discount?: Discount;
+  is_active: boolean;
+}
+
+export interface Discount {
+  id: string;
+  type: 'percentage' | 'fixed' | 'bogo' | 'package';
+  value: number;
+  description: string;
+  min_amount?: number;
+  max_discount?: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  usage_limit?: number;
+  used_count: number;
+  applicable_services?: string[]; // Service IDs
+  conditions?: string;
+}
+
+export interface Shop {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  phone: string;
+  email: string;
+  description: string;
+  category: string;
+  website_url?: string;
+  image_url?: string;
+  business_hours_start: string;
+  business_hours_end: string;
+  is_active: boolean;
+  services?: Service[];
+  discounts?: Discount[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Service categories
+const SERVICE_CATEGORIES = [
+  'Beauty & Wellness',
+  'Hair Salon',
+  'Spa & Wellness',
+  'Nail Care',
+  'Massage Therapy',
+  'Skincare',
+  'Fitness & Health',
+  'Home Services',
+  'Auto Services',
+  'Pet Care',
+  'Other'
+];
+
+// Discount types
+const DISCOUNT_TYPES = [
+  { id: 'percentage', name: 'Percentage Off', icon: 'percent-outline', description: 'e.g., 20% off' },
+  { id: 'fixed', name: 'Fixed Amount', icon: 'cash-outline', description: 'e.g., $10 off' },
+  { id: 'bogo', name: 'Buy One Get One', icon: 'gift-outline', description: 'Special offers' },
+  { id: 'package', name: 'Package Deal', icon: 'bag-outline', description: 'Bundle discounts' }
+];
+
+const ShopDetailsScreen: React.FC = () => {
+  const navigation = useNavigation<ShopDetailsNavigationProp>();
+  const route = useRoute<ShopDetailsRouteProp>();
+  const { user } = useAuth();
+  
+  const existingShop = route.params?.shop;
+  const onSave = route.params?.onSave;
+  const isEditing = !!existingShop;
+
+  // Main shop state
+  const [shop, setShop] = useState<Shop>(() => ({
+    id: existingShop?.id || '',
+    name: existingShop?.name || '',
+    address: existingShop?.address || '',
+    city: existingShop?.city || '',
+    state: existingShop?.state || '',
+    country: existingShop?.country || 'Sweden',
+    phone: existingShop?.phone || '',
+    email: existingShop?.email || '',
+    description: existingShop?.description || '',
+    category: existingShop?.category || SERVICE_CATEGORIES[0],
+    website_url: existingShop?.website_url || '',
+    image_url: existingShop?.image_url || '',
+    business_hours_start: existingShop?.business_hours_start || '09:00',
+    business_hours_end: existingShop?.business_hours_end || '17:00',
+    is_active: existingShop?.is_active ?? true,
+    services: existingShop?.services || [],
+    discounts: existingShop?.discounts || []
+  }));
+
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'basic' | 'services' | 'discounts' | 'hours'>('basic');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null);
+
+  // Service form state
+  const [serviceForm, setServiceForm] = useState<Partial<Service>>({
+    name: '',
+    description: '',
+    price: 0,
+    duration: 60,
+    category: '',
+    is_active: true
+  });
+
+  // Discount form state
+  const [discountForm, setDiscountForm] = useState<Partial<Discount>>({
+    type: 'percentage',
+    value: 0,
+    description: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    is_active: true,
+    used_count: 0
+  });
+
+  useEffect(() => {
+    if (isEditing && existingShop) {
+      setShop(existingShop);
+    }
+  }, [isEditing, existingShop]);
+
+  // Validation
+  const validateBasicInfo = (): boolean => {
+    if (!shop.name.trim()) {
+      Alert.alert('Validation Error', 'Shop name is required');
+      return false;
+    }
+    if (!shop.address.trim()) {
+      Alert.alert('Validation Error', 'Address is required');
+      return false;
+    }
+    if (!shop.phone.trim()) {
+      Alert.alert('Validation Error', 'Phone number is required');
+      return false;
+    }
+    if (!shop.email.trim() || !shop.email.includes('@')) {
+      Alert.alert('Validation Error', 'Valid email is required');
+      return false;
+    }
+    return true;
+  };
+
+  // Save shop
+  const handleSave = async () => {
+    if (!validateBasicInfo()) return;
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to save a shop');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const shopData = {
+        name: shop.name.trim(),
+        description: shop.description.trim(),
+        category: shop.category,
+        address: shop.address.trim(),
+        city: shop.city.trim(),
+        state: shop.state.trim(),
+        country: shop.country.trim(),
+        phone: shop.phone.trim(),
+        email: shop.email.trim(),
+        website_url: shop.website_url?.trim() || null,
+        image_url: shop.image_url || null,
+        business_hours_start: shop.business_hours_start,
+        business_hours_end: shop.business_hours_end,
+        is_active: shop.is_active
+      };
+
+      let result;
+      if (isEditing && shop.id) {
+        // Update existing shop
+        result = await authService.updateProviderBusiness(shop.id, shopData);
+      } else {
+        // Create new shop
+        result = await authService.createProviderBusiness(shopData);
+      }
+
+      if (result.success) {
+        Alert.alert(
+          'Success',
+          isEditing ? 'Shop updated successfully!' : 'Shop created successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (onSave && result.data) {
+                  onSave(result.data);
+                }
+                // Navigate back to provider home to refresh the shops list
+                navigation.navigate('ProviderTabs', { screen: 'ProviderHomeTab' });
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to save shop');
+      }
+    } catch (error) {
+      console.error('❌ Error saving shop:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Service management
+  const openServiceModal = (service?: Service) => {
+    if (service) {
+      setEditingService(service);
+      setServiceForm(service);
+    } else {
+      setEditingService(null);
+      setServiceForm({
+        name: '',
+        description: '',
+        price: 0,
+        duration: 60,
+        category: shop.category,
+        is_active: true
+      });
+    }
+    setShowServiceModal(true);
+  };
+
+  const saveService = () => {
+    if (!serviceForm.name?.trim()) {
+      Alert.alert('Error', 'Service name is required');
+      return;
+    }
+    if (!serviceForm.price || serviceForm.price <= 0) {
+      Alert.alert('Error', 'Service price must be greater than 0');
+      return;
+    }
+
+    const newService: Service = {
+      id: editingService?.id || Date.now().toString(),
+      name: serviceForm.name!.trim(),
+      description: serviceForm.description || '',
+      price: serviceForm.price!,
+      duration: serviceForm.duration || 60,
+      category: serviceForm.category || shop.category,
+      is_active: serviceForm.is_active ?? true,
+      discount: editingService?.discount
+    };
+
+    setShop(prev => {
+      const services = prev.services || [];
+      if (editingService) {
+        return {
+          ...prev,
+          services: services.map(s => s.id === editingService.id ? newService : s)
+        };
+      } else {
+        return {
+          ...prev,
+          services: [...services, newService]
+        };
+      }
+    });
+
+    setShowServiceModal(false);
+    setEditingService(null);
+  };
+
+  const deleteService = (serviceId: string) => {
+    Alert.alert(
+      'Delete Service',
+      'Are you sure you want to delete this service?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setShop(prev => ({
+              ...prev,
+              services: (prev.services || []).filter(s => s.id !== serviceId)
+            }));
+          }
+        }
+      ]
+    );
+  };
+
+  // Discount management
+  const openDiscountModal = (discount?: Discount) => {
+    if (discount) {
+      setEditingDiscount(discount);
+      setDiscountForm(discount);
+    } else {
+      setEditingDiscount(null);
+      setDiscountForm({
+        type: 'percentage',
+        value: 0,
+        description: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        is_active: true,
+        used_count: 0
+      });
+    }
+    setShowDiscountModal(true);
+  };
+
+  const saveDiscount = () => {
+    if (!discountForm.description?.trim()) {
+      Alert.alert('Error', 'Discount description is required');
+      return;
+    }
+    if (!discountForm.value || discountForm.value <= 0) {
+      Alert.alert('Error', 'Discount value must be greater than 0');
+      return;
+    }
+
+    const newDiscount: Discount = {
+      id: editingDiscount?.id || Date.now().toString(),
+      type: discountForm.type!,
+      value: discountForm.value!,
+      description: discountForm.description!.trim(),
+      start_date: discountForm.start_date!,
+      end_date: discountForm.end_date!,
+      is_active: discountForm.is_active ?? true,
+      used_count: discountForm.used_count || 0,
+      min_amount: discountForm.min_amount,
+      max_discount: discountForm.max_discount,
+      usage_limit: discountForm.usage_limit,
+      applicable_services: discountForm.applicable_services,
+      conditions: discountForm.conditions
+    };
+
+    setShop(prev => {
+      const discounts = prev.discounts || [];
+      if (editingDiscount) {
+        return {
+          ...prev,
+          discounts: discounts.map(d => d.id === editingDiscount.id ? newDiscount : d)
+        };
+      } else {
+        return {
+          ...prev,
+          discounts: [...discounts, newDiscount]
+        };
+      }
+    });
+
+    setShowDiscountModal(false);
+    setEditingDiscount(null);
+  };
+
+  const deleteDiscount = (discountId: string) => {
+    Alert.alert(
+      'Delete Discount',
+      'Are you sure you want to delete this discount?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setShop(prev => ({
+              ...prev,
+              discounts: (prev.discounts || []).filter(d => d.id !== discountId)
+            }));
+          }
+        }
+      ]
+    );
+  };
+
+  // Image picker
+  const pickImage = () => {
+    const options: ImagePickerOptions = {
+      mediaType: 'photo',
+      quality: 0.7,
+      maxWidth: 800,
+      maxHeight: 600,
+    };
+
+    Alert.alert(
+      'Select Photo',
+      'Choose how you want to select a photo',
+      [
+        { text: 'Camera', onPress: () => launchCamera(options, handleImageResponse) },
+        { text: 'Gallery', onPress: () => launchImageLibrary(options, handleImageResponse) },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleImageResponse = (response: ImagePickerResponse) => {
+    if (response.assets && response.assets[0]) {
+      const asset = response.assets[0];
+      if (asset.uri) {
+        setShop(prev => ({ ...prev, image_url: asset.uri! }));
+      }
+    }
+  };
+
+  // Render methods
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#1F2937" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>
+        {isEditing ? 'Edit Shop' : 'Create New Shop'}
+      </Text>
+      <TouchableOpacity 
+        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={isSaving}
+      >
+        {isSaving ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderTabBar = () => (
+    <View style={styles.tabBar}>
+      {[
+        { id: 'basic', label: 'Basic Info', icon: 'information-circle-outline' },
+        { id: 'services', label: 'Services', icon: 'construct-outline' },
+        { id: 'discounts', label: 'Discounts', icon: 'pricetag-outline' },
+        { id: 'hours', label: 'Hours', icon: 'time-outline' }
+      ].map((tab) => (
+        <TouchableOpacity
+          key={tab.id}
+          style={[styles.tabItem, activeTab === tab.id && styles.activeTabItem]}
+          onPress={() => setActiveTab(tab.id as any)}
+        >
+          <Ionicons 
+            name={tab.icon as any} 
+            size={20} 
+            color={activeTab === tab.id ? '#F59E0B' : '#6B7280'} 
+          />
+          <Text style={[
+            styles.tabLabel,
+            activeTab === tab.id && styles.activeTabLabel
+          ]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderBasicInfo = () => (
+    <View style={styles.section}>
+      {/* Shop Image */}
+      <View style={styles.imageSection}>
+        <Text style={styles.sectionTitle}>Shop Photo</Text>
+        <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
+          {shop.image_url ? (
+            <Image source={{ uri: shop.image_url }} style={styles.shopImage} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="camera-outline" size={32} color="#9CA3AF" />
+              <Text style={styles.imagePlaceholderText}>Add Photo</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Basic Information */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Basic Information</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Shop Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.name}
+            onChangeText={(text) => setShop(prev => ({ ...prev, name: text }))}
+            placeholder="Enter shop name"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Category *</Text>
+          <TouchableOpacity 
+            style={styles.selectInput}
+            onPress={() => setShowCategoryModal(true)}
+          >
+            <Text style={styles.selectInputText}>{shop.category}</Text>
+            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={shop.description}
+            onChangeText={(text) => setShop(prev => ({ ...prev, description: text }))}
+            placeholder="Describe your shop and services"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+      </View>
+
+      {/* Contact Information */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Contact Information</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.phone}
+            onChangeText={(text) => setShop(prev => ({ ...prev, phone: text }))}
+            placeholder="+46 XX XXX XX XX"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email Address *</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.email}
+            onChangeText={(text) => setShop(prev => ({ ...prev, email: text }))}
+            placeholder="shop@example.com"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Website (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.website_url}
+            onChangeText={(text) => setShop(prev => ({ ...prev, website_url: text }))}
+            placeholder="https://yourwebsite.com"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="url"
+            autoCapitalize="none"
+          />
+        </View>
+      </View>
+
+      {/* Address Information */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Address</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Street Address *</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.address}
+            onChangeText={(text) => setShop(prev => ({ ...prev, address: text }))}
+            placeholder="Street address"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        <View style={styles.row}>
+          <View style={[styles.inputGroup, styles.flex1]}>
+            <Text style={styles.label}>City *</Text>
+            <TextInput
+              style={styles.input}
+              value={shop.city}
+              onChangeText={(text) => setShop(prev => ({ ...prev, city: text }))}
+              placeholder="City"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+
+          <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+            <Text style={styles.label}>State/Province</Text>
+            <TextInput
+              style={styles.input}
+              value={shop.state}
+              onChangeText={(text) => setShop(prev => ({ ...prev, state: text }))}
+              placeholder="State"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Country</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.country}
+            onChangeText={(text) => setShop(prev => ({ ...prev, country: text }))}
+            placeholder="Country"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+      </View>
+
+      {/* Shop Status */}
+      <View style={styles.formSection}>
+        <View style={styles.switchRow}>
+          <View>
+            <Text style={styles.switchLabel}>Shop Active</Text>
+            <Text style={styles.switchDescription}>
+              Enable to make your shop visible to customers
+            </Text>
+          </View>
+          <Switch
+            value={shop.is_active}
+            onValueChange={(value) => setShop(prev => ({ ...prev, is_active: value }))}
+            trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
+            thumbColor={shop.is_active ? '#F59E0B' : '#9CA3AF'}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderServices = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Services</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openServiceModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Service</Text>
+        </TouchableOpacity>
+      </View>
+
+      {shop.services && shop.services.length > 0 ? (
+        <FlatList
+          data={shop.services}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceHeader}>
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>{item.name}</Text>
+                  <Text style={styles.serviceCategory}>{item.category}</Text>
+                </View>
+                <View style={styles.serviceActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => openServiceModal(item)}
+                  >
+                    <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => deleteService(item.id)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <Text style={styles.serviceDescription}>{item.description}</Text>
+              
+              <View style={styles.serviceDetails}>
+                <View style={styles.serviceDetail}>
+                  <Ionicons name="cash-outline" size={16} color="#10B981" />
+                  <Text style={styles.serviceDetailText}>${item.price}</Text>
+                </View>
+                <View style={styles.serviceDetail}>
+                  <Ionicons name="time-outline" size={16} color="#6B7280" />
+                  <Text style={styles.serviceDetailText}>{item.duration} min</Text>
+                </View>
+                <View style={styles.serviceDetail}>
+                  <View style={[
+                    styles.statusDot,
+                    { backgroundColor: item.is_active ? '#10B981' : '#EF4444' }
+                  ]} />
+                  <Text style={styles.serviceDetailText}>
+                    {item.is_active ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              </View>
+              
+              {item.discount && (
+                <View style={styles.discountBadge}>
+                  <Ionicons name="pricetag" size={14} color="#F59E0B" />
+                  <Text style={styles.discountText}>{item.discount.description}</Text>
+                </View>
+              )}
+            </View>
+          )}
+          scrollEnabled={false}
+        />
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons name="construct-outline" size={48} color="#D1D5DB" />
+          <Text style={styles.emptyStateTitle}>No Services Added</Text>
+          <Text style={styles.emptyStateDescription}>
+            Add services that your shop offers to attract customers
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderDiscounts = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Discounts & Offers</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openDiscountModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Discount</Text>
+        </TouchableOpacity>
+      </View>
+
+      {shop.discounts && shop.discounts.length > 0 ? (
+        <FlatList
+          data={shop.discounts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.discountCard}>
+              <View style={styles.discountHeader}>
+                <View style={styles.discountIcon}>
+                  <Ionicons 
+                    name={DISCOUNT_TYPES.find(t => t.id === item.type)?.icon as any || 'pricetag'} 
+                    size={20} 
+                    color="#F59E0B" 
+                  />
+                </View>
+                <View style={styles.discountInfo}>
+                  <Text style={styles.discountTitle}>{item.description}</Text>
+                  <Text style={styles.discountType}>
+                    {DISCOUNT_TYPES.find(t => t.id === item.type)?.name}
+                  </Text>
+                </View>
+                <View style={styles.discountActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => openDiscountModal(item)}
+                  >
+                    <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => deleteDiscount(item.id)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.discountDetails}>
+                <View style={styles.discountDetail}>
+                  <Text style={styles.discountValue}>
+                    {item.type === 'percentage' ? `${item.value}%` : `$${item.value}`}
+                  </Text>
+                  <Text style={styles.discountLabel}>Discount</Text>
+                </View>
+                <View style={styles.discountDetail}>
+                  <Text style={styles.discountValue}>{item.used_count}</Text>
+                  <Text style={styles.discountLabel}>Used</Text>
+                </View>
+                <View style={styles.discountDetail}>
+                  <View style={[
+                    styles.statusDot,
+                    { backgroundColor: item.is_active ? '#10B981' : '#EF4444' }
+                  ]} />
+                  <Text style={styles.discountLabel}>
+                    {item.is_active ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.discountPeriod}>
+                <Text style={styles.discountPeriodText}>
+                  Valid: {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+          )}
+          scrollEnabled={false}
+        />
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons name="pricetag-outline" size={48} color="#D1D5DB" />
+          <Text style={styles.emptyStateTitle}>No Discounts Created</Text>
+          <Text style={styles.emptyStateDescription}>
+            Create attractive discounts to boost customer engagement
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderBusinessHours = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Business Hours</Text>
+      
+      <View style={styles.hoursContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Opening Time</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.business_hours_start}
+            onChangeText={(text) => setShop(prev => ({ ...prev, business_hours_start: text }))}
+            placeholder="09:00"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Closing Time</Text>
+          <TextInput
+            style={styles.input}
+            value={shop.business_hours_end}
+            onChangeText={(text) => setShop(prev => ({ ...prev, business_hours_end: text }))}
+            placeholder="17:00"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+      </View>
+
+      <View style={styles.hoursInfo}>
+        <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+        <Text style={styles.hoursInfoText}>
+          Use 24-hour format (e.g., 09:00, 17:30). Advanced scheduling will be available in future updates.
+        </Text>
+      </View>
+    </View>
+  );
+
+  // Modal components
+  const renderCategoryModal = () => (
+    <Modal
+      visible={showCategoryModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowCategoryModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Category</Text>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={SERVICE_CATEGORIES}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryOption,
+                  shop.category === item && styles.selectedCategoryOption
+                ]}
+                onPress={() => {
+                  setShop(prev => ({ ...prev, category: item }));
+                  setShowCategoryModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.categoryOptionText,
+                  shop.category === item && styles.selectedCategoryOptionText
+                ]}>
+                  {item}
+                </Text>
+                {shop.category === item && (
+                  <Ionicons name="checkmark" size={20} color="#F59E0B" />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderServiceModal = () => (
+    <Modal
+      visible={showServiceModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowServiceModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalKeyboardView}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingService ? 'Edit Service' : 'Add Service'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowServiceModal(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Service Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={serviceForm.name}
+                  onChangeText={(text) => setServiceForm(prev => ({ ...prev, name: text }))}
+                  placeholder="e.g., Hair Cut & Style"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={serviceForm.description}
+                  onChangeText={(text) => setServiceForm(prev => ({ ...prev, description: text }))}
+                  placeholder="Describe your service"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.flex1]}>
+                  <Text style={styles.label}>Price ($) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={serviceForm.price?.toString()}
+                    onChangeText={(text) => setServiceForm(prev => ({ 
+                      ...prev, 
+                      price: parseFloat(text) || 0 
+                    }))}
+                    placeholder="0.00"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+                  <Text style={styles.label}>Duration (min)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={serviceForm.duration?.toString()}
+                    onChangeText={(text) => setServiceForm(prev => ({ 
+                      ...prev, 
+                      duration: parseInt(text) || 60 
+                    }))}
+                    placeholder="60"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.switchLabel}>Service Active</Text>
+                  <Text style={styles.switchDescription}>
+                    Enable to make this service available for booking
+                  </Text>
+                </View>
+                <Switch
+                  value={serviceForm.is_active}
+                  onValueChange={(value) => setServiceForm(prev => ({ ...prev, is_active: value }))}
+                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
+                  thumbColor={serviceForm.is_active ? '#F59E0B' : '#9CA3AF'}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowServiceModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveModalButton}
+                onPress={saveService}
+              >
+                <Text style={styles.saveModalButtonText}>
+                  {editingService ? 'Update' : 'Add'} Service
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+
+  const renderDiscountModal = () => (
+    <Modal
+      visible={showDiscountModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowDiscountModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalKeyboardView}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingDiscount ? 'Edit Discount' : 'Create Discount'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowDiscountModal(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Discount Type</Text>
+                <View style={styles.discountTypeGrid}>
+                  {DISCOUNT_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[
+                        styles.discountTypeOption,
+                        discountForm.type === type.id && styles.selectedDiscountType
+                      ]}
+                      onPress={() => setDiscountForm(prev => ({ ...prev, type: type.id as any }))}
+                    >
+                      <Ionicons 
+                        name={type.icon as any} 
+                        size={24} 
+                        color={discountForm.type === type.id ? '#F59E0B' : '#6B7280'} 
+                      />
+                      <Text style={[
+                        styles.discountTypeName,
+                        discountForm.type === type.id && styles.selectedDiscountTypeName
+                      ]}>
+                        {type.name}
+                      </Text>
+                      <Text style={styles.discountTypeDesc}>{type.description}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Description *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={discountForm.description}
+                  onChangeText={(text) => setDiscountForm(prev => ({ ...prev, description: text }))}
+                  placeholder="e.g., Summer Special - 20% off all services"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.flex1]}>
+                  <Text style={styles.label}>
+                    {discountForm.type === 'percentage' ? 'Percentage (%)' : 'Amount ($)'} *
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={discountForm.value?.toString()}
+                    onChangeText={(text) => setDiscountForm(prev => ({ 
+                      ...prev, 
+                      value: parseFloat(text) || 0 
+                    }))}
+                    placeholder={discountForm.type === 'percentage' ? '20' : '10.00'}
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+                  <Text style={styles.label}>Usage Limit</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={discountForm.usage_limit?.toString()}
+                    onChangeText={(text) => setDiscountForm(prev => ({ 
+                      ...prev, 
+                      usage_limit: parseInt(text) || undefined 
+                    }))}
+                    placeholder="Unlimited"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.flex1]}>
+                  <Text style={styles.label}>Start Date</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={discountForm.start_date}
+                    onChangeText={(text) => setDiscountForm(prev => ({ ...prev, start_date: text }))}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+                  <Text style={styles.label}>End Date</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={discountForm.end_date}
+                    onChangeText={(text) => setDiscountForm(prev => ({ ...prev, end_date: text }))}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              {discountForm.type === 'percentage' && (
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, styles.flex1]}>
+                    <Text style={styles.label}>Min. Amount ($)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={discountForm.min_amount?.toString()}
+                      onChangeText={(text) => setDiscountForm(prev => ({ 
+                        ...prev, 
+                        min_amount: parseFloat(text) || undefined 
+                      }))}
+                      placeholder="0.00"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+                    <Text style={styles.label}>Max. Discount ($)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={discountForm.max_discount?.toString()}
+                      onChangeText={(text) => setDiscountForm(prev => ({ 
+                        ...prev, 
+                        max_discount: parseFloat(text) || undefined 
+                      }))}
+                      placeholder="No limit"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Conditions (Optional)</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={discountForm.conditions}
+                  onChangeText={(text) => setDiscountForm(prev => ({ ...prev, conditions: text }))}
+                  placeholder="e.g., Valid for new customers only, Cannot be combined with other offers"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.switchLabel}>Discount Active</Text>
+                  <Text style={styles.switchDescription}>
+                    Enable to make this discount available to customers
+                  </Text>
+                </View>
+                <Switch
+                  value={discountForm.is_active}
+                  onValueChange={(value) => setDiscountForm(prev => ({ ...prev, is_active: value }))}
+                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
+                  thumbColor={discountForm.is_active ? '#F59E0B' : '#9CA3AF'}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowDiscountModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveModalButton}
+                onPress={saveDiscount}
+              >
+                <Text style={styles.saveModalButtonText}>
+                  {editingDiscount ? 'Update' : 'Create'} Discount
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Loading shop details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      
+      {renderHeader()}
+      {renderTabBar()}
+      
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {activeTab === 'basic' && renderBasicInfo()}
+        {activeTab === 'services' && renderServices()}
+        {activeTab === 'discounts' && renderDiscounts()}
+        {activeTab === 'hours' && renderBusinessHours()}
+        
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+
+      {/* Modals */}
+      {renderCategoryModal()}
+      {renderServiceModal()}
+      {renderDiscountModal()}
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FEFCE8',
+  },
+  
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FEFCE8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  saveButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Tab Bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    marginHorizontal: 2,
+  },
+  activeTabItem: {
+    backgroundColor: '#FEF3C7',
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  activeTabLabel: {
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+
+  // Content
+  content: {
+    flex: 1,
+  },
+  section: {
+    padding: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  
+  // Forms
+  formSection: {
+    marginBottom: 24,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1F2937',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  selectInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  selectInputText: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  flex1: {
+    flex: 1,
+  },
+  marginLeft: {
+    marginLeft: 12,
+  },
+
+  // Switch
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  switchDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+
+  // Image
+  imageSection: {
+    marginBottom: 24,
+  },
+  imageContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  shopImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  imagePlaceholderText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+
+  // Hours
+  hoursContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  hoursInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  hoursInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#4B5563',
+    marginLeft: 8,
+    lineHeight: 18,
+  },
+
+  // Buttons
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+
+  // Cards
+  serviceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  serviceCategory: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  serviceActions: {
+    flexDirection: 'row',
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  serviceDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  serviceDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  serviceDetailText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  discountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  discountText: {
+    fontSize: 12,
+    color: '#92400E',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+
+  // Discount Cards
+  discountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  discountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  discountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  discountInfo: {
+    flex: 1,
+  },
+  discountTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  discountType: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  discountActions: {
+    flexDirection: 'row',
+  },
+  discountDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 8,
+  },
+  discountDetail: {
+    alignItems: 'center',
+  },
+  discountValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  discountLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  discountPeriod: {
+    backgroundColor: '#F9FAFB',
+    padding: 8,
+    borderRadius: 6,
+  },
+  discountPeriodText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalKeyboardView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  modalBody: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  saveModalButton: {
+    flex: 1,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Category Modal
+  categoryOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedCategoryOption: {
+    backgroundColor: '#FEF3C7',
+  },
+  categoryOptionText: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  selectedCategoryOptionText: {
+    fontWeight: '600',
+    color: '#92400E',
+  },
+
+  // Discount Type Grid
+  discountTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  discountTypeOption: {
+    flex: 1,
+    minWidth: (width - 64) / 2 - 6,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  selectedDiscountType: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+  },
+  discountTypeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  selectedDiscountTypeName: {
+    color: '#92400E',
+  },
+  discountTypeDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+
+  // Bottom spacing
+  bottomSpacing: {
+    height: 32,
+  },
+});
+
+export default ShopDetailsScreen;

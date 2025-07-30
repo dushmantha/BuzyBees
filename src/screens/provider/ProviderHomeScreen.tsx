@@ -15,14 +15,15 @@ import {
   StatusBar,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useAccount } from '../../navigation/AppNavigator';
+import { useAccount, useAuth } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
+import { authService } from '../../lib/supabase/index';
 
 const { width } = Dimensions.get('window');
 
 // Import navigation types
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import type { StackNavigationProp, RouteProp } from '@react-navigation/stack';
 
 // Define navigation types
 type RootStackParamList = {
@@ -37,8 +38,13 @@ type RootStackParamList = {
   Earnings: undefined;
   ProviderTabs: {
     screen?: 'ProviderHomeTab' | 'QueueTab' | 'ServicesTab' | 'EarningsTab' | 'ProfileTab';
+    params?: {
+      newShop?: any;
+    };
   } | undefined;
 };
+
+type ProviderHomeRouteProp = RouteProp<RootStackParamList, 'ProviderTabs'>;
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -146,7 +152,9 @@ interface QuickAction {
 
 const ProviderHomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { isPro, user } = useAccount();
+  const route = useRoute<ProviderHomeRouteProp>();
+  const { isPro } = useAccount();
+  const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -170,29 +178,150 @@ const ProviderHomeScreen: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  // Provider API service - Single endpoint for all dashboard data
+  // Provider API service - Using real Supabase data
   const providerAPI = {
     async getDashboardData(providerId: string): Promise<ProviderDashboardData> {
       try {
-        // Replace with your actual API endpoint
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/dashboard/${providerId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`, // Add your auth token
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('📊 Fetching real dashboard data from Supabase...');
+        
+        // Get real shops data directly from provider_businesses table
+        console.log('🔄 Calling getProviderBusinesses for provider:', providerId);
+        const shopsResponse = await authService.getProviderBusinesses(providerId);
+        console.log('📥 Shops response:', shopsResponse);
+        let realShops: Shop[] = [];
+        
+        if (shopsResponse.success && shopsResponse.data) {
+          console.log('✅ Real shops data received:', shopsResponse.data);
+          
+          // Transform provider_businesses data to Shop interface
+          realShops = shopsResponse.data.map((business: any) => ({
+            id: business.id,
+            name: business.name,
+            description: business.description || '',
+            image: business.image_url || business.logo_url || '',
+            location: business.address ? `${business.address}, ${business.city}, ${business.state}` : `${business.city || ''}, ${business.state || ''}`,
+            category: business.category || 'General Services',
+            rating: 0, // New shops start with no rating
+            reviews_count: 0,
+            is_active: business.is_active !== undefined ? business.is_active : true,
+            total_services: business.services?.length || 0,
+            monthly_revenue: 0, // New shops start with no revenue
+            certificate_images: [],
+            business_hours: {
+              start: business.business_hours_start || '09:00',
+              end: business.business_hours_end || '17:00'
+            },
+            contact_info: {
+              phone: business.phone || '',
+              email: business.email || '',
+              website: business.website_url || ''
+            },
+            created_at: business.created_at || new Date().toISOString(),
+            // Additional fields for compatibility
+            city: business.city || '',
+            state: business.state || '',
+            address: business.address || '',
+            phone: business.phone || '',
+            email: business.email || '',
+            website_url: business.website_url || '',
+            image_url: business.image_url || business.logo_url || '',
+            images: business.images || [],
+            logo_url: business.logo_url || '',
+            isActive: business.is_active !== undefined ? business.is_active : true,
+            openingHours: `${business.business_hours_start || '09:00'} - ${business.business_hours_end || '17:00'}`,
+            services: business.services?.map((s: any) => typeof s === 'string' ? s : s.name || s.title || 'Service') || [],
+            imageUrl: business.image_url || business.logo_url || ''
+          }));
+          
+          console.log('🏪 Transformed real shops:', realShops);
+        } else {
+          console.warn('⚠️ Failed to get real shops data:', shopsResponse.error);
+          console.warn('⚠️ Full response object:', JSON.stringify(shopsResponse, null, 2));
         }
-
-        const data = await response.json();
-        return data;
+        
+        // Get basic stats (use mock for now since complex dashboard stats would require additional tables)
+        const mockStats = {
+          totalEarnings: 0,
+          activeJobs: 0,
+          completedJobs: 0,
+          customerRating: 0,
+          pendingBookings: 0,
+          thisMonthEarnings: 0,
+          responseRate: 0,
+          totalCustomers: 0,
+          averageJobValue: 0,
+          growthPercentage: 0,
+          weeklyBookings: 0,
+          monthlyGrowth: 0,
+        };
+        
+        // Get basic activity (use mock for now)
+        const mockActivity: ActivityItem[] = [
+          {
+            id: '1',
+            type: 'new_booking',
+            title: 'New Shop Created',
+            description: realShops.length > 0 ? `Your shop "${realShops[0].name}" is now live and ready for bookings!` : 'Your business is ready to start accepting bookings',
+            timestamp: new Date().toISOString(),
+            priority: 'high',
+          }
+        ];
+        
+        const mockNotifications: Notification[] = [
+          {
+            id: '1',
+            type: 'system',
+            title: 'Welcome to BuzyBees!',
+            message: 'Your provider dashboard is ready. Start by managing your shop details.',
+            timestamp: new Date().toISOString(),
+            is_read: false,
+            priority: 'medium',
+          }
+        ];
+        
+        return {
+          stats: mockStats,
+          activity: mockActivity,
+          shops: realShops, // Use real shops data!
+          notifications: mockNotifications,
+        };
       } catch (error) {
-        console.error('API Error:', error);
-        // Fallback to mock data for development/testing
-        return this.getMockDashboardData();
+        console.error('❌ API Error getting real data:', error);
+        // Return minimal real data structure instead of mock data
+        return {
+          stats: {
+            totalEarnings: 0,
+            activeJobs: 0,
+            completedJobs: 0,
+            customerRating: 0,
+            pendingBookings: 0,
+            thisMonthEarnings: 0,
+            responseRate: 0,
+            totalCustomers: 0,
+            averageJobValue: 0,
+            growthPercentage: 0,
+            weeklyBookings: 0,
+            monthlyGrowth: 0,
+          },
+          activity: [{
+            id: '1',
+            type: 'system',
+            title: 'Welcome to BuzyBees',
+            description: 'Start by creating your first shop to begin accepting bookings',
+            timestamp: new Date().toISOString(),
+            priority: 'medium',
+          }],
+          shops: [], // Return empty shops array instead of mock shops
+          notifications: [{
+            id: '1',
+            type: 'system',
+            title: 'Get Started',
+            message: 'Create your first shop to start your business journey',
+            timestamp: new Date().toISOString(),
+            is_read: false,
+            priority: 'medium',
+          }],
+        };
       }
     },
 
@@ -505,14 +634,32 @@ const ProviderHomeScreen: React.FC = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const providerId = user?.id || 'provider-123'; // Use actual user ID
+      
+      // Check if user is authenticated
+      if (!user?.id) {
+        console.warn('⚠️ No authenticated user found, falling back to mock data');
+        const mockData = await providerAPI.getMockDashboardData();
+        setDashboardStats(mockData.stats);
+        setRecentActivity(mockData.activity);
+        setMyShops(mockData.shops);
+        setNotifications(mockData.notifications);
+        const unreadCount = mockData.notifications.filter(n => !n.is_read).length;
+        setUnreadNotifications(unreadCount);
+        return;
+      }
 
-      const dashboardData = await providerAPI.getDashboardData(providerId);
+      console.log('🔄 Calling getDashboardData for user:', user.id);
+      const dashboardData = await providerAPI.getDashboardData(user.id);
+      console.log('📊 Dashboard data received:', dashboardData);
+      console.log('🏪 Raw shops data:', dashboardData.shops);
 
       // Update all state with the single API response
       setDashboardStats(dashboardData.stats);
       setRecentActivity(dashboardData.activity);
-      setMyShops(dashboardData.shops);
+      
+      // Use shops data directly (already transformed in getDashboardData)
+      console.log('🏪 Setting shops state with:', dashboardData.shops);
+      setMyShops(dashboardData.shops || []);
       setNotifications(dashboardData.notifications);
       
       const unreadCount = dashboardData.notifications.filter(n => !n.is_read).length;
@@ -536,9 +683,105 @@ const ProviderHomeScreen: React.FC = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Handle new shop data from navigation params
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔍 Checking for new shop data...');
+      console.log('Route params:', route.params);
+      console.log('Route params params:', route.params?.params);
+      const newShop = route.params?.params?.newShop;
+      console.log('New shop extracted:', newShop);
+      
+      if (newShop) {
+        console.log('🏪 Received new shop data:', newShop);
+        console.log('🖼️ Image data - image_url:', newShop.image_url);
+        console.log('🖼️ Image data - images array:', newShop.images);
+        
+        // Transform the new shop data to match our Shop interface
+        const transformedShop: Shop = {
+          id: newShop.id,
+          name: newShop.name,
+          description: newShop.description || '',
+          image: newShop.image_url || newShop.logo_url || '',
+          location: newShop.address ? `${newShop.address}, ${newShop.city}, ${newShop.state}` : `${newShop.city}, ${newShop.state}`,
+          category: newShop.category,
+          // Add missing required fields
+          city: newShop.city,
+          state: newShop.state,
+          address: newShop.address,
+          phone: newShop.phone,
+          email: newShop.email,
+          website_url: newShop.website_url,
+          image_url: newShop.image_url || '',
+          images: newShop.images || [],
+          rating: 0, // New shop starts with no rating
+          reviews_count: 0,
+          is_active: newShop.is_active,
+          total_services: newShop.services?.length || 0,
+          monthly_revenue: 0, // New shop starts with no revenue
+          certificate_images: [],
+          business_hours: {
+            start: newShop.business_hours?.[0]?.openTime || '09:00',
+            end: newShop.business_hours?.[0]?.closeTime || '17:00'
+          },
+          contact_info: {
+            phone: newShop.phone,
+            email: newShop.email,
+            website: newShop.website_url
+          },
+          created_at: newShop.created_at || new Date().toISOString(),
+          address: newShop.address,
+          isActive: newShop.is_active,
+          openingHours: `${newShop.business_hours?.[0]?.openTime || '09:00'} - ${newShop.business_hours?.[0]?.closeTime || '17:00'}`,
+          services: newShop.services?.map((s: any) => s.name) || [],
+          imageUrl: newShop.image_url || '',
+          phone: newShop.phone,
+          email: newShop.email
+        };
+        
+        console.log('🔄 Transformed shop for display:', transformedShop);
+        console.log('🖼️ Final image value:', transformedShop.image);
+        
+        // Add the new shop to the beginning of the shops list
+        setMyShops(prevShops => {
+          // Check if shop already exists to avoid duplicates
+          const exists = prevShops.some(shop => shop.id === transformedShop.id);
+          if (exists) {
+            return prevShops.map(shop => 
+              shop.id === transformedShop.id ? transformedShop : shop
+            );
+          }
+          return [transformedShop, ...prevShops];
+        });
+        
+        // Clear the navigation params to prevent re-processing
+        navigation.setParams({ params: undefined } as any);
+        
+        // Show success message
+        Alert.alert(
+          '🎉 Shop Created Successfully!',
+          `${newShop.name} has been created and is now visible on your dashboard.`,
+          [{ text: 'Great!', style: 'default' }]
+        );
+        
+        // Refresh dashboard data to get the latest shop information from database
+        setTimeout(() => {
+          console.log('🔄 Refreshing dashboard data to ensure consistency...');
+          fetchDashboardData();
+        }, 1000);
+      }
+    }, [route.params?.params?.newShop, navigation])
+  );
+
   // Utility functions
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
-  const formatPercentage = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const formatCurrency = (amount: number | undefined | null) => {
+    const safeAmount = amount || 0;
+    return `$${safeAmount.toFixed(2)}`;
+  };
+  const formatPercentage = (value: number | undefined | null) => {
+    const safeValue = value || 0;
+    return `${safeValue > 0 ? '+' : ''}${safeValue.toFixed(1)}%`;
+  };
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
@@ -572,7 +815,27 @@ const ProviderHomeScreen: React.FC = () => {
   };
 
   // Navigation handlers
-  const handleNotificationPress = () => navigation.navigate('Notifications');
+  const handleNotificationPress = async () => {
+    // Mark unread notifications as read
+    if (unreadNotifications > 0) {
+      try {
+        const unreadNotificationIds = notifications
+          .filter(n => !n.is_read)
+          .map(n => n.id);
+        
+        if (unreadNotificationIds.length > 0) {
+          await authService.markNotificationsAsRead(unreadNotificationIds);
+          setUnreadNotifications(0);
+          setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to mark notifications as read:', error);
+      }
+    }
+    
+    navigation.navigate('Notifications');
+  };
+  
   const handleUpgradePress = () => {
     setShowUpgradeModal(false);
     navigation.navigate('Subscription');
@@ -580,18 +843,43 @@ const ProviderHomeScreen: React.FC = () => {
 
   // Shop management with updated navigation
   const handleShopPress = (shop: Shop) => {
+    // Create proper business hours structure from the simple start/end times
+    const defaultBusinessHours = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ].map(day => ({
+      day,
+      isOpen: ['Saturday', 'Sunday'].includes(day) ? false : true,
+      openTime: shop.business_hours?.start || '09:00',
+      closeTime: shop.business_hours?.end || '17:00'
+    }));
+
     navigation.navigate('ShopDetails', { 
       shop: {
         id: shop.id,
         name: shop.name,
-        address: shop.location,
-        phone: shop.contact_info.phone,
-        email: shop.contact_info.email,
-        description: shop.description,
-        isActive: shop.is_active,
-        openingHours: `${shop.business_hours.start} - ${shop.business_hours.end}`,
-        services: [shop.category],
-        imageUrl: shop.image
+        address: shop.address || shop.location || '',
+        city: shop.city || '',
+        state: shop.state || '',
+        country: 'Sweden',
+        phone: shop.phone || shop.contact_info?.phone || '',
+        email: shop.email || shop.contact_info?.email || '',
+        description: shop.description || '',
+        category: shop.category || 'Beauty & Wellness',
+        website_url: shop.website_url || shop.contact_info?.website || '',
+        image_url: shop.image_url || shop.image || '',
+        images: shop.images || [],
+        logo_url: shop.logo_url || '',
+        business_hours: defaultBusinessHours,
+        special_days: [],
+        timezone: 'Europe/Stockholm',
+        advance_booking_days: 30,
+        slot_duration: 60,
+        buffer_time: 15,
+        auto_approval: true,
+        is_active: shop.is_active !== undefined ? shop.is_active : true,
+        services: shop.services || [],
+        discounts: shop.discounts || [],
+        staff: shop.staff || []
       },
     });
   };
@@ -601,10 +889,36 @@ const ProviderHomeScreen: React.FC = () => {
     navigation.navigate('ShopDetails', undefined);
   };
 
-  const toggleShopStatus = (shopId: string) => {
-    setMyShops(prev => prev.map(shop => 
-      shop.id === shopId ? { ...shop, is_active: !shop.is_active, isActive: !shop.is_active } : shop
-    ));
+  const toggleShopStatus = async (shopId: string) => {
+    try {
+      const currentShop = myShops.find(shop => shop.id === shopId);
+      if (!currentShop) return;
+
+      const newStatus = !currentShop.is_active;
+      
+      // Optimistically update UI
+      setMyShops(prev => prev.map(shop => 
+        shop.id === shopId ? { ...shop, is_active: newStatus, isActive: newStatus } : shop
+      ));
+
+      // Update in Supabase
+      const response = await authService.updateProviderBusiness(shopId, {
+        is_active: newStatus
+      });
+
+      if (!response.success) {
+        // Revert optimistic update on failure
+        setMyShops(prev => prev.map(shop => 
+          shop.id === shopId ? { ...shop, is_active: !newStatus, isActive: !newStatus } : shop
+        ));
+        Alert.alert('Error', 'Failed to update shop status. Please try again.');
+      } else {
+        console.log('✅ Shop status updated successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error updating shop status:', error);
+      Alert.alert('Error', 'Failed to update shop status. Please try again.');
+    }
   };
 
   // Pro features for dashboard
@@ -688,7 +1002,7 @@ const ProviderHomeScreen: React.FC = () => {
           <View style={styles.statIconContainer}>
             <Ionicons name="people" size={18} color="#3B82F6" />
           </View>
-          <Text style={styles.statValue}>{dashboardStats.totalCustomers}</Text>
+          <Text style={styles.statValue}>{dashboardStats.totalCustomers || 0}</Text>
           <Text style={styles.statLabel}>Total Customers</Text>
         </View>
         
@@ -696,7 +1010,7 @@ const ProviderHomeScreen: React.FC = () => {
           <View style={styles.statIconContainer}>
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
           </View>
-          <Text style={styles.statValue}>{dashboardStats.completedJobs}</Text>
+          <Text style={styles.statValue}>{dashboardStats.completedJobs || 0}</Text>
           <Text style={styles.statLabel}>Jobs Completed</Text>
         </View>
       </View>
@@ -739,13 +1053,13 @@ const ProviderHomeScreen: React.FC = () => {
           </Text>
           <View style={styles.overviewChange}>
             <Ionicons 
-              name={dashboardStats.monthlyGrowth > 0 ? "arrow-up" : "arrow-down"} 
+              name={(dashboardStats.monthlyGrowth || 0) > 0 ? "arrow-up" : "arrow-down"} 
               size={12} 
-              color={dashboardStats.monthlyGrowth > 0 ? "#10B981" : "#EF4444"} 
+              color={(dashboardStats.monthlyGrowth || 0) > 0 ? "#10B981" : "#EF4444"} 
             />
             <Text style={[
               styles.overviewChangeText,
-              { color: dashboardStats.monthlyGrowth > 0 ? "#10B981" : "#EF4444" }
+              { color: (dashboardStats.monthlyGrowth || 0) > 0 ? "#10B981" : "#EF4444" }
             ]}>
               {formatPercentage(dashboardStats.monthlyGrowth)}
             </Text>
@@ -757,7 +1071,7 @@ const ProviderHomeScreen: React.FC = () => {
             <Ionicons name="star-outline" size={16} color="#4B5563" />
             <Text style={styles.overviewLabel}>Rating</Text>
           </View>
-          <Text style={styles.overviewValue}>{dashboardStats.customerRating.toFixed(1)}</Text>
+          <Text style={styles.overviewValue}>{(dashboardStats.customerRating || 0).toFixed(1)}</Text>
           <Text style={styles.overviewSubtext}>Based on reviews</Text>
         </View>
 
@@ -777,7 +1091,7 @@ const ProviderHomeScreen: React.FC = () => {
             <Ionicons name="time-outline" size={16} color="#4B5563" />
             <Text style={styles.overviewLabel}>Response Rate</Text>
           </View>
-          <Text style={styles.overviewValue}>{dashboardStats.responseRate}%</Text>
+          <Text style={styles.overviewValue}>{dashboardStats.responseRate || 0}%</Text>
           <Text style={styles.overviewSubtext}>Within 1 hour</Text>
         </View>
       </View>
@@ -801,7 +1115,26 @@ const ProviderHomeScreen: React.FC = () => {
 
     return (
       <TouchableOpacity style={styles.shopCard} onPress={() => handleShopPress(item)}>
-        <Image source={{ uri: item.image }} style={styles.shopImage} />
+        {(item.image || item.imageUrl || item.image_url || item.logo_url) && 
+         (item.image || item.imageUrl || item.image_url || item.logo_url).trim() !== '' ? (
+          <Image 
+            source={{ uri: item.image || item.imageUrl || item.image_url || item.logo_url }} 
+            style={styles.shopImage}
+            onError={(error) => {
+              console.warn('❌ Image load error:', error.nativeEvent.error);
+            }}
+            onLoad={() => {
+              console.log('✅ Image loaded successfully:', item.image || item.imageUrl || item.image_url || item.logo_url);
+            }}
+          />
+        ) : (
+          <View style={[styles.shopImage, styles.shopImagePlaceholder]}>
+            <Ionicons name="business-outline" size={40} color="#9CA3AF" />
+            <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>
+              No Image
+            </Text>
+          </View>
+        )}
         
         <View style={styles.shopBadgeContainer}>
           <TouchableOpacity
@@ -821,11 +1154,11 @@ const ProviderHomeScreen: React.FC = () => {
           <View style={styles.shopMetrics}>
             <View style={styles.shopMetric}>
               <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={styles.shopMetricText}>{item.rating}</Text>
+              <Text style={styles.shopMetricText}>{item.rating || 0}</Text>
             </View>
             <View style={styles.shopMetric}>
               <Ionicons name="people" size={12} color="#4B5563" />
-              <Text style={styles.shopMetricText}>{item.reviews_count}</Text>
+              <Text style={styles.shopMetricText}>{item.reviews_count || 0}</Text>
             </View>
           </View>
 
@@ -1331,6 +1664,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 140,
     backgroundColor: '#E5E7EB',
+  },
+  shopImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shopBadgeContainer: {
     position: 'absolute',

@@ -33,7 +33,6 @@ import { compressLogoImage, compressShopImage, compressAvatarImage } from '../..
 
 // Import our Supabase service and auth context
 import { authService } from '../../lib/supabase/index';
-import normalizedShopService, { supabase } from '../../lib/supabase/normalized';
 import integratedShopService from '../../lib/supabase/integrated';
 import { useAuth } from '../../navigation/AppNavigator';
 
@@ -232,210 +231,30 @@ const ShopDetailsScreen: React.FC = () => {
   const existingShop = route.params?.shop;
   const onSave = route.params?.onSave;
   const isEditing = !!existingShop;
-  
-  // State to track if we've loaded data from the database
-  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   // Debug: Log the existing shop data structure and test storage
   React.useEffect(() => {
     if (existingShop) {
-      
+      console.log('🔍 Existing shop data structure:', JSON.stringify(existingShop, null, 2));
+      console.log('🔍 Business hours:', existingShop.business_hours);
+      console.log('🔍 Images:', existingShop.images);
+      console.log('🔍 Services:', existingShop.services);
+      console.log('🔍 Staff:', existingShop.staff);
     }
 
     // Test storage connection when component loads (non-blocking)
     const testStorage = async () => {
       try {
-        
-        const result = await integratedShopService.setupStorage();
-        
+        console.log('🧪 Running storage test...');
+        const result = await authService.testStorageConnection();
+        console.log('🧪 Storage test result:', result);
       } catch (error) {
-        
+        console.log('🧪 Storage test failed (non-blocking):', error);
       }
     };
     
     testStorage();
   }, [existingShop]);
-
-  // Helper function to deduplicate arrays by ID
-  const deduplicateById = <T extends { id: string }>(array: T[]): T[] => {
-    const seen = new Set<string>();
-    return array.filter(item => {
-      if (seen.has(item.id)) {
-        return false;
-      }
-      seen.add(item.id);
-      return true;
-    });
-  };
-
-  // Function to refresh shop data from database for editing mode  
-  const refreshShopData = async (source = 'manual') => {
-    if (!isEditing || !existingShop?.id) {
-      return;
-    }
-    
-    setIsRefreshing(true);
-    
-    try {
-        // Try to get shop data using the normalized service
-        const result = await normalizedShopService.getShopById(existingShop.id);
-        
-        // If normalized service fails, try direct queries for each data type
-        if (!result.success) {
-          
-          try {
-            // Load staff data
-            const { data: staffData, error: staffError } = await supabase
-              .from('shop_staff')
-              .select('*')
-              .eq('shop_id', existingShop.id)
-              .eq('is_active', true)
-              .order('created_at', { ascending: false });
-
-            // Load services data
-            const { data: servicesData, error: servicesError } = await supabase
-              .from('shop_services')
-              .select('*')
-              .eq('shop_id', existingShop.id)
-              .eq('is_active', true)
-              .order('created_at', { ascending: false });
-
-            // Load discounts data
-            const { data: discountsData, error: discountsError } = await supabase
-              .from('shop_discounts')
-              .select('*')
-              .eq('shop_id', existingShop.id)
-              .eq('is_active', true)
-              .order('created_at', { ascending: false });
-            // Update shop state with all the data we could fetch (deduplicated)
-            setShop(prev => ({
-              ...prev,
-              staff: !staffError ? deduplicateById(staffData || []) : prev.staff,
-              services: !servicesError ? deduplicateById(servicesData || []) : prev.services,
-              discounts: !discountsError ? deduplicateById(discountsData || []) : prev.discounts
-            }));
-            
-            return; // Exit early after direct queries
-          } catch (directError) {
-            
-            // Continue to check normalized service result below
-          }
-        }
-        if (result.success && result.data) {
-          
-          // Log the actual staff data to see what we're getting
-          if (result.data.staff && result.data.staff.length > 0) {
-            
-          }
-          
-          setShop(prev => {
-            const updatedShop = {
-              ...prev,
-              staff: deduplicateById(result.data!.staff || []),
-              services: deduplicateById(result.data!.services || []),
-              discounts: deduplicateById(result.data!.discounts || [])
-            };
-            
-            return updatedShop;
-          });
-        } else {
-          
-          // Set empty arrays if no data is available at all
-          setShop(prev => ({
-            ...prev,
-            staff: prev.staff?.length > 0 ? prev.staff : [],
-            services: prev.services?.length > 0 ? prev.services : [],
-            discounts: prev.discounts?.length > 0 ? prev.discounts : []
-          }));
-        }
-      } catch (error) {
-        
-        // Keep existing data on error
-      } finally {
-        setIsRefreshing(false);
-        setHasLoadedData(true);  // Mark as loaded after any refresh
-      }
-  };
-  // hasLoadedData state is declared above
-  
-  // AUTO-LOAD DATA: Load immediately when we detect editing mode
-  React.useEffect(() => {
-    if (!isEditing || !existingShop?.id) return;
-    
-    // Create an async function to load data
-    const autoLoadData = async () => {
-      try {
-        // Method 1: Try the normalized service
-        const shopResult = await normalizedShopService.getShopById(existingShop.id);
-        
-        if (shopResult.success && shopResult.data) {
-          
-          // Update the state (deduplicated)
-          setShop(prev => {
-            const updated = {
-              ...prev,
-              staff: deduplicateById(shopResult.data!.staff || []),
-              services: deduplicateById(shopResult.data!.services || []),
-              discounts: deduplicateById(shopResult.data!.discounts || [])
-            };
-            
-            return updated;
-          });
-          
-          setHasLoadedData(true);
-          return; // Success, exit early
-        }
-        
-        // Method 2: Direct table queries as fallback
-        const [staffRes, servicesRes, discountsRes] = await Promise.all([
-          supabase.from('shop_staff').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false }),
-          supabase.from('shop_services').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false }),
-          supabase.from('shop_discounts').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false })
-        ]);
-        // Update state with whatever data we got (deduplicated)
-        setShop(prev => {
-          const updated = {
-            ...prev,
-            staff: deduplicateById(staffRes.data || []),
-            services: deduplicateById(servicesRes.data || []),
-            discounts: deduplicateById(discountsRes.data || [])
-          };
-          
-          return updated;
-        });
-        
-        setHasLoadedData(true);
-        
-      } catch (error) {
-        
-        // Even on error, mark as loaded to prevent infinite attempts
-        setHasLoadedData(true);
-      }
-    };
-    
-    // Execute the auto-load immediately
-    autoLoadData();
-    
-    // FAILSAFE: Force a refresh after 1 second if data is still empty
-    const failsafeTimer = setTimeout(() => {
-      if (shop.staff.length === 0 && shop.services.length === 0 && shop.discounts.length === 0) {
-        
-        refreshShopData('failsafe');
-      }
-    }, 1000);
-    
-    return () => clearTimeout(failsafeTimer);
-    
-  }, [isEditing, existingShop?.id]); // Remove hasLoadedData from dependencies!
-
-  // Tab refresh: Refresh data when switching to staff, services, or discounts tabs
-  React.useEffect(() => {
-    if (!isEditing || !existingShop?.id) return;
-    if (!['staff', 'services', 'discounts'].includes(activeTab)) return;
-    if (!hasLoadedData) return; // Only refresh after initial load
-    refreshShopData('tab-switch');
-    
-  }, [activeTab]); // Simplified dependencies
 
   // Create default business hours
   const createDefaultBusinessHours = (): BusinessHours[] => {
@@ -447,59 +266,39 @@ const ShopDetailsScreen: React.FC = () => {
     }));
   };
 
-  // Main shop state  
-  const [shop, setShop] = useState<Shop>(() => {
-    const initialShop = {
-      id: existingShop?.id || '',
-      name: existingShop?.name || '',
-      address: existingShop?.address || '',
-      city: existingShop?.city || '',
-      state: existingShop?.state || '',
-      country: existingShop?.country || 'Sweden',
-      phone: existingShop?.phone || '',
-      email: existingShop?.email || '',
-      description: existingShop?.description || '',
-      category: existingShop?.category || SERVICE_CATEGORIES[0],
-      website_url: existingShop?.website_url || '',
-      image_url: existingShop?.image_url || '',
-      images: existingShop?.images || [],
-      logo_url: existingShop?.logo_url || '',
-      business_hours: existingShop?.business_hours || createDefaultBusinessHours(),
-      special_days: existingShop?.special_days || [],
-      timezone: existingShop?.timezone || 'Europe/Stockholm',
-      advance_booking_days: existingShop?.advance_booking_days || 30,
-      slot_duration: existingShop?.slot_duration || 60,
-      buffer_time: existingShop?.buffer_time || 15,
-      auto_approval: existingShop?.auto_approval ?? true,
-      is_active: existingShop?.is_active ?? true,
-      services: [],  // Always start with empty arrays
-      discounts: [],  // Data will be loaded from database
-      staff: []  // This ensures fresh data is always loaded
-    };
-    return initialShop;
-  });
+  // Main shop state
+  const [shop, setShop] = useState<Shop>(() => ({
+    id: existingShop?.id || '',
+    name: existingShop?.name || '',
+    address: existingShop?.address || '',
+    city: existingShop?.city || '',
+    state: existingShop?.state || '',
+    country: existingShop?.country || 'Sweden',
+    phone: existingShop?.phone || '',
+    email: existingShop?.email || '',
+    description: existingShop?.description || '',
+    category: existingShop?.category || SERVICE_CATEGORIES[0],
+    website_url: existingShop?.website_url || '',
+    image_url: existingShop?.image_url || '',
+    images: existingShop?.images || [],
+    logo_url: existingShop?.logo_url || '',
+    business_hours: existingShop?.business_hours || createDefaultBusinessHours(),
+    special_days: existingShop?.special_days || [],
+    timezone: existingShop?.timezone || 'Europe/Stockholm',
+    advance_booking_days: existingShop?.advance_booking_days || 30,
+    slot_duration: existingShop?.slot_duration || 60,
+    buffer_time: existingShop?.buffer_time || 15,
+    auto_approval: existingShop?.auto_approval ?? true,
+    is_active: existingShop?.is_active ?? true,
+    services: existingShop?.services || [],
+    discounts: existingShop?.discounts || [],
+    staff: existingShop?.staff || []
+  }));
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'schedule' | 'staff' | 'services' | 'discounts' | 'settings'>('basic');
-  
-  // Upload progress state
-  const [uploadProgress, setUploadProgress] = useState({
-    isUploading: false,
-    currentImage: 0,
-    totalImages: 0,
-    currentImageName: '',
-    uploadedImages: 0,
-    message: ''
-  });
-  
-  // Debug: Log progress state changes
-  React.useEffect(() => {
-    
-  }, [uploadProgress]);
   
   // Modal states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -533,9 +332,6 @@ const ShopDetailsScreen: React.FC = () => {
     name: existingShop?.name || '',
     description: existingShop?.description || '',
     address: existingShop?.address || '',
-    city: existingShop?.city || '',
-    state: existingShop?.state || '',
-    country: existingShop?.country || 'Sweden',
     phone: existingShop?.phone || '',
     email: existingShop?.email || ''
   });
@@ -581,7 +377,7 @@ const ShopDetailsScreen: React.FC = () => {
   useEffect(() => {
     const loadCompleteShopData = async () => {
       if (isEditing && existingShop && existingShop.id) {
-        
+        console.log('🔄 Loading complete shop data for edit mode...');
         setIsLoading(true);
         
         try {
@@ -590,6 +386,8 @@ const ShopDetailsScreen: React.FC = () => {
           if (response.success && response.data) {
             const completeShop = response.data.find((shop: any) => shop.id === existingShop.id);
             if (completeShop) {
+              console.log('✅ Found complete shop data:', completeShop);
+              
               // Map the complete shop data to our expected format
               const mappedShop = {
                 ...existingShop, // Start with the basic data
@@ -597,19 +395,7 @@ const ShopDetailsScreen: React.FC = () => {
                 images: completeShop.images || [],
                 services: completeShop.services || [],
                 staff: completeShop.staff || [],
-                business_hours: completeShop.business_hours || existingShop.business_hours || createDefaultBusinessHours(),
-                special_days: completeShop.special_days || [],
-                discounts: completeShop.discounts || [],
-                logo_url: completeShop.logo_url || existingShop.logo_url || '',
-                timezone: completeShop.timezone || existingShop.timezone || 'Europe/Stockholm',
-                advance_booking_days: completeShop.advance_booking_days || existingShop.advance_booking_days || 30,
-                slot_duration: completeShop.slot_duration || existingShop.slot_duration || 60,
-                buffer_time: completeShop.buffer_time || existingShop.buffer_time || 15,
-                auto_approval: completeShop.auto_approval ?? existingShop.auto_approval ?? true,
-                // Location fields
-                city: completeShop.city || existingShop.city || '',
-                state: completeShop.state || existingShop.state || '',
-                country: completeShop.country || existingShop.country || 'Sweden',
+                // Any other enhanced fields that might be available
               };
               
               setShop(mappedShop);
@@ -618,29 +404,23 @@ const ShopDetailsScreen: React.FC = () => {
                 name: mappedShop.name || '',
                 description: mappedShop.description || '',
                 address: mappedShop.address || '',
-                city: mappedShop.city || '',
-                state: mappedShop.state || '',
-                country: mappedShop.country || 'Sweden',
                 phone: mappedShop.phone || '',
                 email: mappedShop.email || ''
               };
             } else {
-              
+              console.log('⚠️ Complete shop data not found, using basic data');
               setShop(existingShop);
               // Also update formValues ref
               formValues.current = {
                 name: existingShop.name || '',
                 description: existingShop.description || '',
                 address: existingShop.address || '',
-                city: existingShop.city || '',
-                state: existingShop.state || '',
-                country: existingShop.country || 'Sweden',
                 phone: existingShop.phone || '',
                 email: existingShop.email || ''
               };
             }
           } else {
-            
+            console.log('⚠️ Failed to fetch complete shop data, using basic data');
             setShop(existingShop);
             // Also update formValues ref
             formValues.current = {
@@ -652,7 +432,7 @@ const ShopDetailsScreen: React.FC = () => {
             };
           }
         } catch (error) {
-          
+          console.error('❌ Error loading complete shop data:', error);
           setShop(existingShop);
           // Also update formValues ref
           formValues.current = {
@@ -683,27 +463,39 @@ const ShopDetailsScreen: React.FC = () => {
 
   // More robust validation that uses formValues ref to bypass state timing issues
   const validateBasicInfo = useCallback((): boolean => {
+    console.log('🔍 Validation check - State value:', shop.name);
+    console.log('🔍 Validation check - FormValues ref value:', formValues.current.name);
     
-    // Use the formValues ref as the primary source of truth, with fallback to state
-    const currentName = formValues.current.name || shop.name || '';
+    // Use the formValues ref as the primary source of truth
+    const currentName = formValues.current.name;
     const trimmedName = currentName.trim();
     
+    console.log('🔍 Using formValues.current.name:', currentName);
+    console.log('🔍 Trimmed name:', trimmedName);
+    console.log('🔍 Trimmed name length:', trimmedName.length);
+    
     if (!trimmedName || trimmedName.length === 0) {
-      
+      console.log('❌ Validation failed - shop name is empty');
       setActiveTab('basic'); // Switch to basic tab to show the error
       Alert.alert('Validation Error', 'Shop name is required');
       return false;
     }
     
+    console.log('✅ Validation passed - shop name is:', trimmedName);
+    
     // Check address validation using formValues
-    const currentAddress = formValues.current.address || shop.address || '';
+    const currentAddress = formValues.current.address;
     const trimmedAddress = currentAddress.trim();
+    console.log('🔍 Address validation - FormValues ref value:', currentAddress);
+    console.log('🔍 Address trimmed:', trimmedAddress);
     
     if (!trimmedAddress || trimmedAddress.length === 0) {
-      
+      console.log('❌ Address validation failed - address is empty');
       Alert.alert('Validation Error', 'Address is required');
       return false;
     }
+    
+    console.log('✅ Address validation passed - address is:', trimmedAddress);
     
     // Check phone validation using formValues
     const currentPhone = formValues.current.phone;
@@ -726,50 +518,60 @@ const ShopDetailsScreen: React.FC = () => {
   // Save shop
   const handleSave = async () => {
     try {
+      console.log('🚨 SAVE BUTTON PRESSED - handleSave function called');
+      console.log('💾 Starting save process...');
+      console.log('💾 Current shop state:', JSON.stringify(shop, null, 2));
+      console.log('💾 Shop images in state:', shop.images);
+      console.log('💾 Shop logo_url in state:', shop.logo_url);
+      console.log('💾 Images array length:', (shop.images || []).length);
+      console.log('💾 Images array contents:', shop.images);
       
       // Check if any images are actually selected
       const hasImages = shop.images && shop.images.length > 0 && shop.images.some(img => img && img.trim() !== '');
       const hasLogo = shop.logo_url && shop.logo_url.trim() !== '';
+      console.log('💾 Has images:', hasImages);
+      console.log('💾 Has logo:', hasLogo);
       
       if (!hasImages && !hasLogo) {
-        
+        console.log('ℹ️ No images or logo provided - shop will be created without images');
       } else {
-        
+        console.log('✅ Images detected, proceeding with upload...');
       }
 
       // Check storage connection before proceeding (but don't block shop creation)
+      console.log('🧪 Testing storage connection before upload...');
+      const storageTest = await authService.testStorageConnection();
+      console.log('🧪 Storage test result:', storageTest);
       
-      const storageTest = await integratedShopService.setupStorage();
-      // Also try verifying with integrated service
-      
-      const integratedTest = await integratedShopService.verifySetup();
-      // Try to initialize schema/storage if needed
-      if (!storageTest.success && !integratedTest.success) {
-        
-        const initResult = await integratedShopService.initializeSchema();
-        
-      }
-      
-      // Determine storage availability - prioritize storage accessibility over bucket existence
       let storageAvailable = false;
+    
+    if (!storageTest.success) {
+      console.warn('⚠️ Storage not available, attempting to create buckets...');
       
-      // Check if storage is accessible (even if buckets are missing)
-      if (storageTest.success && storageTest.data?.storage_accessible) {
-        
-        storageAvailable = true;
-        
-        // Log bucket status for debugging
-        if (storageTest.data.shop_images_bucket && storageTest.data.user_avatars_bucket) {
-          
-        } else {
-        }
-      } else if (integratedTest.success && integratedTest.data?.storage_buckets) {
-        
+      // Try to create buckets automatically
+      const createResult = await authService.createStorageBuckets();
+      if (createResult.success) {
+        console.log('✅ Buckets created successfully, continuing with save...');
         storageAvailable = true;
       } else {
-        
+        console.warn('⚠️ Failed to create buckets automatically');
+        console.warn('⚠️ Shop will be created without image upload capability');
+        console.warn('⚠️ Please run: fix_storage_buckets_rls.sql in Supabase SQL Editor');
         storageAvailable = false;
+        
+        // Show warning but allow shop creation to continue
+        if (hasImages || hasLogo) {
+          Alert.alert(
+            'Storage Warning', 
+            'Storage buckets are not available. The shop will be created but images cannot be uploaded. You can add images later after fixing the storage setup.',
+            [{ text: 'Continue', style: 'default' }]
+          );
+        }
       }
+    } else {
+      console.log('✅ Storage connection successful');
+      storageAvailable = true;
+    }
     
     // Force a longer delay and multiple state checks to ensure synchronization
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -777,25 +579,21 @@ const ShopDetailsScreen: React.FC = () => {
     // Force React to flush any pending state updates
     await new Promise(resolve => {
       setShop(prevShop => {
-        
+        console.log('🔄 Forcing state flush - current name:', prevShop.name);
         return prevShop; // No change, just force a re-render
       });
       setTimeout(resolve, 100);
     });
     
     // Re-check the current shop state before validation
-    try {
-      const validationResult = validateBasicInfo();
-      
-      if (!validationResult) {
-        
-        return;
-      }
-    } catch (validationError) {
-      
-      Alert.alert('Validation Error', 'Failed to validate shop data: ' + (validationError.message || 'Unknown error'));
-      return;
-    }
+    console.log('Current shop state before validation:', {
+      name: shop.name,
+      nameLength: shop.name.length,
+      trimmedName: shop.name.trim(),
+      trimmedLength: shop.name.trim().length
+    });
+    
+    if (!validateBasicInfo()) return;
     
     // Get the latest shop state (in case of async state updates)
     const currentShop = await new Promise<typeof shop>(resolve => {
@@ -804,6 +602,12 @@ const ShopDetailsScreen: React.FC = () => {
         return prevShop;
       });
     });
+    
+    console.log('🔍 Current shop state at validation:', {
+      logo_url: currentShop.logo_url,
+      images: currentShop.images
+    });
+    
     // Validate that at least one image is provided
     const isValidImageUrl = (url: string | undefined | null): boolean => {
       if (!url || typeof url !== 'string') return false;
@@ -816,14 +620,26 @@ const ShopDetailsScreen: React.FC = () => {
     
     const hasValidImages = currentShop.images && currentShop.images.length > 0 && currentShop.images.some(img => isValidImageUrl(img));
     const hasValidLogo = isValidImageUrl(currentShop.logo_url);
+    
+    console.log('🖼️ Image validation check:');
+    console.log('  - Logo URL:', currentShop.logo_url);
+    console.log('  - Logo URL type:', typeof currentShop.logo_url);
+    console.log('  - Logo URL trimmed:', currentShop.logo_url?.trim());
+    console.log('  - Logo valid:', hasValidLogo);
+    console.log('  - Images:', currentShop.images);
+    console.log('  - Images length:', currentShop.images?.length);
     if (currentShop.images && currentShop.images.length > 0) {
       currentShop.images.forEach((img, i) => {
         const valid = isValidImageUrl(img);
-        
+        console.log(`  - Image ${i}: ${img?.substring(0, 50)}... valid: ${valid}`);
       });
     }
+    console.log('  - Images valid:', hasValidImages);
+    console.log('  - At least one valid image:', hasValidImages || hasValidLogo);
     
     if (!hasValidImages && !hasValidLogo) {
+      console.warn('⚠️ NO VALID IMAGES FOUND - but continuing anyway for debugging');
+      console.warn('⚠️ This validation is temporarily disabled to debug the issue');
       // Alert.alert(
       //   'Image Required',
       //   'Please add at least one image or logo for your shop.',
@@ -837,165 +653,81 @@ const ShopDetailsScreen: React.FC = () => {
     }
 
     setIsSaving(true);
-    
-    // Show initial message about what we're doing
-    if (hasImages || hasLogo) {
-      
-    }
-      
-      // Initialize upload progress if there are any images to upload
-      // Use currentShop instead of shop to ensure we have the latest state
-      const hasLogoToUpload = currentShop.logo_url && currentShop.logo_url.startsWith('file://');
-      const localImages = (currentShop.images || []).filter(img => img && img.startsWith('file://'));
-      const totalImagesToUpload = (hasLogoToUpload ? 1 : 0) + localImages.length;
-      
-      // Debug: Check if images are properly stored
-      
-      if (shop.images && Array.isArray(shop.images)) {
-        shop.images.forEach((img, index) => {
-          
-        });
-      }
-      
-      if (shop.logo_url) {
-        
-      }
-      
-      
-      if (totalImagesToUpload > 0) {
-        
-        setUploadProgress({
-          isUploading: true,
-          currentImage: 0,
-          totalImages: totalImagesToUpload,
-          currentImageName: '',
-          uploadedImages: 0,
-          message: `Starting upload of ${totalImagesToUpload} image(s)...`
-        });
-        
-        // Small delay to show the initial progress
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else {
-        
-      }
+
+    try {
+      console.log('🖼️ ===== IMAGE UPLOAD DEBUG START =====');
+      console.log('🖼️ Preparing to upload images...');
+      console.log('🖼️ Current logo URL:', shop.logo_url);
+      console.log('🖼️ Current images array:', shop.images);
+      console.log('🖼️ Images array length:', shop.images?.length || 0);
+      console.log('🖼️ Logo URL type:', typeof shop.logo_url);
+      console.log('🖼️ Logo URL starts with file://?', shop.logo_url?.startsWith('file://'));
       
       // Check each image in the array
       if (shop.images && shop.images.length > 0) {
         shop.images.forEach((img, index) => {
-          
+          console.log(`🖼️ Image ${index}:`, img, 'Type:', typeof img, 'Starts with file://?', img?.startsWith('file://'));
         });
       } else {
-        
+        console.log('🖼️ No images in array to upload');
       }
       
       // Upload logo if it's a local URI (and storage is available)
-      let uploadedLogoUrl = currentShop.logo_url;
-      if (currentShop.logo_url && currentShop.logo_url.startsWith('file://')) {
+      let uploadedLogoUrl = shop.logo_url;
+      if (shop.logo_url && shop.logo_url.startsWith('file://')) {
         if (storageAvailable) {
+          console.log('📸 Uploading shop logo...');
+          console.log('📸 Logo local URI:', shop.logo_url);
+          const logoResult = await integratedShopService.uploadImage(shop.logo_url, 'shops/logos');
+          console.log('📸 Logo upload result:', logoResult);
           
-          // Update progress for logo upload
-          setUploadProgress(prev => ({
-            ...prev,
-            currentImage: 1,
-            currentImageName: 'Logo',
-            message: 'Uploading shop logo...'
-          }));
-          
-          const logoResult = await integratedShopService.uploadImage(currentShop.logo_url, 'shops/logos');
           if (logoResult.success && logoResult.data) {
             uploadedLogoUrl = logoResult.data;
-            
-            // Update progress - logo completed
-            setUploadProgress(prev => ({
-              ...prev,
-              uploadedImages: 1,
-              message: '✅ Logo uploaded successfully!'
-            }));
+            console.log('✅ Logo uploaded successfully:', uploadedLogoUrl);
+            console.log('✅ Logo URL length:', uploadedLogoUrl.length);
           } else {
+            console.error('❌ Failed to upload logo:', logoResult.error);
+            console.warn('⚠️ Creating shop without logo due to upload failure');
             uploadedLogoUrl = ''; // Set to empty string instead of keeping local URI
-            
-            // Update progress - logo failed
-            setUploadProgress(prev => ({
-              ...prev,
-              message: '❌ Logo upload failed: ' + (logoResult.error || 'Unknown error')
-            }));
           }
         } else {
-          
+          console.warn('⚠️ Storage not available, skipping logo upload');
           uploadedLogoUrl = '';
         }
-      } else if (currentShop.logo_url && !currentShop.logo_url.startsWith('http')) {
-        
+      } else if (shop.logo_url && !shop.logo_url.startsWith('http')) {
+        console.log('ℹ️ Logo URL exists but is not a valid URI, clearing it');
         uploadedLogoUrl = '';
       } else {
-        
+        console.log('ℹ️ No logo to upload or already uploaded');
       }
       
       // Upload shop images that are local URIs
       let uploadedImageUrls: string[] = [];
-      const existingImages = (currentShop.images || []).filter(img => img && !img.startsWith('file://'));
+      const localImages = (shop.images || []).filter(img => img && img.startsWith('file://'));
+      const existingImages = (shop.images || []).filter(img => img && !img.startsWith('file://'));
+      
+      console.log(`🖼️ Found ${localImages.length} local images to upload`);
+      console.log(`🖼️ Found ${existingImages.length} existing images`);
+      
       if (localImages.length > 0) {
         if (storageAvailable) {
+          console.log(`📸 Uploading ${localImages.length} shop images...`);
+          console.log('📸 Local images to upload:', localImages);
+          const imagesResult = await integratedShopService.uploadMultipleImages(localImages, 'shops/images');
+          console.log('📸 Multiple images upload result:', imagesResult);
           
-          // Use already calculated values
-          let uploadedCount = hasLogoToUpload ? 1 : 0; // Start counting from logo if uploaded
-          
-          // Upload images one by one to show progress
-          for (let i = 0; i < localImages.length; i++) {
-            const imageUri = localImages[i];
-            
-            // Update progress for current image
-            setUploadProgress(prev => ({
-              ...prev,
-              currentImage: uploadedCount + 1,
-              currentImageName: `Image ${i + 1}`,
-              uploadedImages: uploadedCount,
-              message: `Uploading image ${i + 1} of ${localImages.length}...`
-            }));
-            const imageResult = await integratedShopService.uploadImage(imageUri, 'shops/images');
-            
-            if (imageResult.success && imageResult.data) {
-              uploadedImageUrls.push(imageResult.data);
-              uploadedCount++;
-              // Update progress - image completed
-              setUploadProgress(prev => ({
-                ...prev,
-                uploadedImages: uploadedCount,
-                message: `✅ Image ${i + 1} uploaded successfully!`
-              }));
-            } else {
-              // Update progress - image failed
-              setUploadProgress(prev => ({
-                ...prev,
-                message: `❌ Image ${i + 1} failed: ${imageResult.error || 'Unknown error'}`
-              }));
-            }
-            
-            // Small delay to show progress
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-          
-          // Final upload completion message
-          const totalUploaded = uploadedImageUrls.length + (uploadedLogoUrl && uploadedLogoUrl !== currentShop.logo_url ? 1 : 0);
-          if (totalUploaded > 0) {
-            setUploadProgress(prev => ({
-              ...prev,
-              message: `🎉 All uploads complete! ${totalUploaded} image(s) uploaded successfully.`
-            }));
-            
-            // Show completion message briefly
-            setTimeout(() => {
-              setUploadProgress(prev => ({
-                ...prev,
-                isUploading: false
-              }));
-            }, 2000);
+          if (imagesResult.success && imagesResult.data && imagesResult.data.length > 0) {
+            uploadedImageUrls = imagesResult.data.filter(url => url && url.trim() !== '');
+            console.log(`✅ Successfully uploaded ${uploadedImageUrls.length} images:`, uploadedImageUrls);
+          } else {
+            console.error('❌ Failed to upload images:', imagesResult.error);
+            console.warn('⚠️ Creating shop without images due to upload failure');
           }
         } else {
-          
+          console.warn(`⚠️ Storage not available, skipping upload of ${localImages.length} images`);
         }
       } else {
-        
+        console.log('ℹ️ No new images to upload');
       }
       
       // Combine existing and newly uploaded images
@@ -1008,11 +740,21 @@ const ShopDetailsScreen: React.FC = () => {
       const validAllImages = allImages.filter(url => url && url.trim() !== '' && url.startsWith('http'));
       const validLogoUrl = (uploadedLogoUrl && uploadedLogoUrl.startsWith('http')) ? uploadedLogoUrl : '';
       const validMainImageUrl = (mainImageUrl && mainImageUrl.startsWith('http')) ? mainImageUrl : '';
+      
+      console.log('🖼️ Final image summary:');
+      console.log('  - Original logo URL:', uploadedLogoUrl);
+      console.log('  - Original all images array:', allImages);
+      console.log('  - Original main image URL:', mainImageUrl);
+      console.log('🖼️ After validation:');
+      console.log('  - Valid logo URL:', validLogoUrl);
+      console.log('  - Valid all images array:', validAllImages);
+      console.log('  - Valid main image URL for database:', validMainImageUrl);
+      console.log('🖼️ Verifying image URLs are valid HTTP URLs:');
       validAllImages.forEach((url, index) => {
-        
+        console.log(`  - Valid Image ${index + 1}: ${url} (starts with http: ${url.startsWith('http')})`);
       });
       if (validLogoUrl) {
-        
+        console.log(`  - Valid Logo: ${validLogoUrl} (starts with http: ${validLogoUrl.startsWith('http')})`);
       }
       
       // Extract basic business hours for backward compatibility
@@ -1024,31 +766,24 @@ const ShopDetailsScreen: React.FC = () => {
         };
       };
 
-      const hours = getBusinessHours(currentShop.business_hours || []);
+      const hours = getBusinessHours(shop.business_hours || []);
 
       // Use formValues ref as primary source of truth (consistent with validation)
-      // Ensure we have valid data before proceeding
-      const safeName = formValues.current.name || currentShop.name || '';
-      const safeDescription = formValues.current.description || currentShop.description || '';
-      const safeAddress = formValues.current.address || currentShop.address || '';
-      const safePhone = formValues.current.phone || currentShop.phone || '';
-      const safeEmail = formValues.current.email || currentShop.email || '';
-      
       const shopData = {
-        name: safeName.trim(),
-        description: safeDescription.trim(),
-        category: currentShop.category || 'Beauty & Wellness',
-        address: safeAddress.trim(),
-        city: (formValues.current.city || currentShop.city || '').trim(),
-        state: (formValues.current.state || currentShop.state || '').trim(),
-        country: (formValues.current.country || currentShop.country || 'Sweden').trim(),
-        phone: safePhone.trim(),
-        email: safeEmail.trim(),
-        website_url: currentShop.website_url?.trim() || null,
+        name: (formValues.current.name || shop.name).trim(),
+        description: (formValues.current.description || shop.description).trim(),
+        category: shop.category,
+        address: (formValues.current.address || shop.address).trim(),
+        city: shop.city.trim(),
+        state: shop.state.trim(),
+        country: shop.country.trim(),
+        phone: (formValues.current.phone || shop.phone).trim(),
+        email: (formValues.current.email || shop.email).trim(),
+        website_url: shop.website_url?.trim() || null,
         image_url: validMainImageUrl,
         business_hours_start: hours.start,
         business_hours_end: hours.end,
-        is_active: currentShop.is_active,
+        is_active: shop.is_active,
         // Enhanced data fields
         logo_url: validLogoUrl,
         images: validAllImages, // Send as array, will be handled properly by auth service
@@ -1057,38 +792,43 @@ const ShopDetailsScreen: React.FC = () => {
         services: shop.services || [],
         staff: shop.staff || [],
         discounts: shop.discounts || [],
-        timezone: currentShop.timezone || 'Europe/Stockholm',
-        advance_booking_days: currentShop.advance_booking_days || 30,
-        slot_duration: currentShop.slot_duration || 60,
-        buffer_time: currentShop.buffer_time || 15,
-        auto_approval: currentShop.auto_approval ?? true
+        timezone: shop.timezone || 'Europe/Stockholm',
+        advance_booking_days: shop.advance_booking_days || 30,
+        slot_duration: shop.slot_duration || 60,
+        buffer_time: shop.buffer_time || 15,
+        auto_approval: shop.auto_approval ?? true
       };
+
+      console.log('🏪 Final shop data being sent to database:', JSON.stringify(shopData, null, 2));
+      console.log('🖼️ IMAGE UPLOAD SUMMARY:');
+      console.log('  - Images to upload (local):', localImages.length);
+      console.log('  - Uploaded image URLs:', uploadedImageUrls);
+      console.log('  - Valid all images for DB:', validAllImages);
+      console.log('  - Logo URL for DB:', validLogoUrl);
+      console.log('  - Main image URL for DB:', validMainImageUrl);
+      console.log('🏪 Key fields check:');
+      console.log('  - Name:', `"${shopData.name}" (length: ${shopData.name.length})`);
+      console.log('  - Description:', `"${shopData.description}" (length: ${shopData.description.length})`);
+      console.log('  - Address:', `"${shopData.address}" (length: ${shopData.address.length})`);
+      console.log('  - City:', `"${shopData.city}" (length: ${shopData.city.length})`);
+      console.log('  - State:', `"${shopData.state}" (length: ${shopData.state.length})`);
+      console.log('  - Phone:', `"${shopData.phone}" (length: ${shopData.phone.length})`);
+      console.log('  - Email:', `"${shopData.email}" (length: ${shopData.email.length})`);
+      console.log('🖼️ Image fields for database:');
+      console.log('  - image_url:', `"${shopData.image_url}" (length: ${shopData.image_url?.length || 0})`);
+      console.log('  - logo_url:', `"${shopData.logo_url}" (length: ${shopData.logo_url?.length || 0})`);
+      console.log('  - images JSON:', shopData.images);
+
       let result;
       if (isEditing && shop.id) {
-        
-        result = await normalizedShopService.updateShop(shop.id, shopData);
+        console.log('🔄 Updating existing shop with ID:', shop.id);
+        // TODO: Implement updateShop in integrated service
+        result = await authService.updateProviderBusiness(shop.id, shopData);
       } else {
-        
-        // Extra safety check
-        if (!shopData) {
-          
-          throw new Error('CRITICAL: shopData is undefined before service call');
-        }
-        if (!shopData.name || shopData.name.trim() === '') {
-          
-          throw new Error('CRITICAL: shopData.name is empty before service call');
-        }
-        // Make absolutely sure we have valid data
-        if (!shopData) {
-          
-          throw new Error('shopData became undefined before service call');
-        }
-        
-        // Create a fresh copy to avoid any reference issues
-        const finalShopData = { ...shopData };
-        
-        result = await normalizedShopService.createShop(finalShopData);
-        
+        console.log('➕ Creating new shop using integrated service');
+        console.log('🏪 Calling integratedShopService.createShop with data:', JSON.stringify(shopData, null, 2));
+        result = await integratedShopService.createShop(shopData);
+        console.log('🏪 IntegratedShopService result:', result);
       }
 
       if (result.success) {
@@ -1119,93 +859,9 @@ const ShopDetailsScreen: React.FC = () => {
           images: validAllImages
         };
 
-        // Create detailed success message about images
-        let successMessage = isEditing ? 'Shop updated successfully!' : 'Shop created successfully!';
-        let imageStatusMessage = '';
-        
-        // Check image upload status - handle both new and existing images
-        // More robust checking for valid image URLs - include both local file URIs and HTTP URLs
-        const isValidImageUrl = (url) => {
-          if (!url || typeof url !== 'string') return false;
-          const trimmed = url.trim();
-          if (trimmed === '') return false;
-          // Accept both local file URIs and HTTP URLs (for both new and existing images)
-          return trimmed.startsWith('file://') || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.includes('supabase');
-        };
-        
-        const existingImages = shop.images?.filter(img => isValidImageUrl(img)) || [];
-        const existingLogo = isValidImageUrl(shop.logo_url) ? 1 : 0;
-        const newImages = validAllImages?.length || 0;
-        const newLogo = isValidImageUrl(validLogoUrl) ? 1 : 0;
-        
-        const totalExistingImages = existingImages.length + existingLogo;
-        const totalNewImages = newImages + newLogo;
-        const totalFinalImages = totalExistingImages + totalNewImages;
-        
-        // Debug each image URL individually
-        if (shop.images && shop.images.length > 0) {
-          shop.images.forEach((img, index) => {
-            
-          });
-        }
-        if (shop.logo_url) {
-          
-        }
-        
-        if (isEditing) {
-          // For editing existing shops
-          // Fallback: if we can't count properly, check if there are ANY images present
-          const hasValidImages = shop.images && shop.images.some(img => isValidImageUrl(img));
-          const hasValidLogo = isValidImageUrl(shop.logo_url);
-          const hasAnyImages = hasValidImages || hasValidLogo;
-          
-          if (totalFinalImages === 0 && !hasAnyImages) {
-            imageStatusMessage = '\n\nℹ️ Your shop has no images.';
-          } else if (totalFinalImages === 0 && hasAnyImages) {
-            // Images exist but are already uploaded (HTTP URLs, not file:// URIs)
-            const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `\n\n✅ Shop updated! Your shop has ${validImageCount} existing image(s) (already uploaded).`;
-          } else if (totalNewImages > 0) {
-            imageStatusMessage = `\n\n✅ Shop updated! Total images: ${totalFinalImages} (${totalNewImages} new image(s) added this session)`;
-          } else {
-            imageStatusMessage = `\n\n✅ Shop updated! Your shop has ${totalFinalImages} image(s).`;
-          }
-        } else {
-          // For creating new shops
-          // Check if images were selected but not uploaded due to storage issues
-          const hasValidImages = shop.images && shop.images.some(img => isValidImageUrl(img));
-          const hasValidLogo = isValidImageUrl(shop.logo_url);
-          const hasAnyImages = hasValidImages || hasValidLogo;
-          
-          if (totalNewImages === 0 && !hasAnyImages) {
-            imageStatusMessage = '\n\nℹ️ No images were added to your shop.';
-          } else if (totalNewImages === 0 && hasAnyImages) {
-            // Images exist but are already uploaded (HTTP URLs, not new file:// URIs)
-            const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `\n\n✅ Shop created! ${validImageCount} existing image(s) (already uploaded).`;
-          } else {
-            imageStatusMessage = `\n\n✅ Shop created with ${totalNewImages} image(s) uploaded successfully!`;
-          }
-        }
-        
-        // Add storage status if there were upload issues during this session
-        const localImages = shop.images?.filter(img => img && img.startsWith('file://')) || [];
-        const localLogo = shop.logo_url && shop.logo_url.startsWith('file://') ? 1 : 0;
-        const totalLocalImages = localImages.length + localLogo;
-        
-        if (totalLocalImages > 0 && totalNewImages < totalLocalImages) {
-          if (!storageAvailable) {
-            imageStatusMessage += '\n\n💡 Some images could not be uploaded - storage is not properly configured.';
-          } else {
-            imageStatusMessage += '\n\n💡 Some images failed to upload - check your internet connection.';
-          }
-        }
-        
-        const fullMessage = successMessage + imageStatusMessage;
-        
         Alert.alert(
           'Success',
-          fullMessage,
+          isEditing ? 'Shop updated successfully!' : 'Shop created successfully!',
           [
             {
               text: 'OK',
@@ -1228,23 +884,10 @@ const ShopDetailsScreen: React.FC = () => {
         Alert.alert('Error', result.error || 'Failed to save shop');
       }
     } catch (error) {
-      // Check if this is the "Shop data is required" error
-      if (error?.message?.includes('Shop data is required') || error?.message?.includes('undefined or null')) {
-        Alert.alert('Data Error', 'There was an issue with the shop data. Please check all required fields and try again.');
-      } else {
-        Alert.alert('Save Error', error instanceof Error ? error.message : 'An unexpected error occurred');
-      }
+      console.error('🚨 ERROR in handleSave:', error);
+      Alert.alert('Save Error', error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSaving(false);
-      // Reset upload progress
-      setUploadProgress({
-        isUploading: false,
-        currentImage: 0,
-        totalImages: 0,
-        currentImageName: '',
-        uploadedImages: 0,
-        message: ''
-      });
     }
   };
 
@@ -1259,23 +902,29 @@ const ShopDetailsScreen: React.FC = () => {
     };
 
     const handleResponse = async (response: ImagePickerResponse) => {
-      
+      console.log('🔄 handleResponse called for type:', type, 'with response:', response);
       if (response.assets && response.assets[0]) {
         const asset = response.assets[0];
-        
+        console.log('🔄 Asset found:', asset);
         if (asset.uri) {
           try {
+            console.log('🗜️ Compressing image before storing...');
+            
             // Skip compression for now and use original URI directly
             const imageUri = asset.uri;
+            console.log('✅ Using original image URI:', imageUri);
+            
             if (type === 'logo') {
-              
+              console.log('🔄 Setting logo URL:', imageUri);
               setShop(prev => {
+                console.log('🔄 Previous logo_url:', prev.logo_url);
+                console.log('🔄 New logo_url:', imageUri);
                 const updated = { ...prev, logo_url: imageUri };
+                console.log('🔄 Updated shop state:', updated);
                 return updated;
               });
-              
             } else {
-              
+              console.log('🔄 Adding shop image at index:', selectedImageIndex);
               setShop(prev => {
                 const newImages = [...(prev.images || [])];
                 // Ensure array is long enough
@@ -1283,18 +932,15 @@ const ShopDetailsScreen: React.FC = () => {
                   newImages.push('');
                 }
                 newImages[selectedImageIndex] = imageUri;
+                console.log('🔄 Previous images:', prev.images);
+                console.log('🔄 New images array:', newImages);
                 const updated = { ...prev, images: newImages };
-                
+                console.log('🔄 Updated shop state:', updated);
                 return updated;
               });
-              
-              // Verify state was set (delayed check)
-              setTimeout(() => {
-                
-              }, 100);
             }
           } catch (error) {
-            
+            console.error('❌ Compression error:', error);
             // Fall back to original image
             if (type === 'logo') {
               setShop(prev => ({ ...prev, logo_url: asset.uri! }));
@@ -1307,10 +953,10 @@ const ShopDetailsScreen: React.FC = () => {
             }
           }
         } else {
-          
+          console.log('❌ No URI found in asset');
         }
       } else {
-        
+        console.log('❌ No assets found in response');
       }
     };
 
@@ -1331,29 +977,35 @@ const ShopDetailsScreen: React.FC = () => {
       if (asset.uri) {
         try {
           if (imageUploadType === 'staff') {
+            console.log('🗜️ Compressing staff avatar...');
+            
             // Compress avatar image
             const compressionResult = await compressAvatarImage(asset.uri);
             
             if (compressionResult.success && compressionResult.uri) {
-              
+              console.log('✅ Staff avatar compressed successfully');
+              console.log('✅ Original size:', (compressionResult.originalSize! / 1024 / 1024).toFixed(2), 'MB');
+              console.log('✅ Compressed size:', (compressionResult.compressedSize! / 1024 / 1024).toFixed(2), 'MB');
               setStaffForm(prev => ({ ...prev, avatar_url: compressionResult.uri! }));
             } else {
-              
+              console.error('❌ Staff avatar compression failed:', compressionResult.error);
               setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
             }
           } else {
+            console.log('🗜️ Compressing shop image...');
+            
             // Compress shop image
             const compressionResult = await compressShopImage(asset.uri);
             
             if (compressionResult.success && compressionResult.uri) {
-              
+              console.log('✅ Shop image compressed successfully');
               setShop(prev => {
                 const newImages = [...(prev.images || [])];
                 newImages[selectedImageIndex] = compressionResult.uri!;
                 return { ...prev, images: newImages };
               });
             } else {
-              
+              console.error('❌ Shop image compression failed:', compressionResult.error);
               setShop(prev => {
                 const newImages = [...(prev.images || [])];
                 newImages[selectedImageIndex] = asset.uri!;
@@ -1362,7 +1014,7 @@ const ShopDetailsScreen: React.FC = () => {
             }
           }
         } catch (error) {
-          
+          console.error('❌ Compression error:', error);
           // Fall back to original images
           if (imageUploadType === 'staff') {
             setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
@@ -1377,6 +1029,8 @@ const ShopDetailsScreen: React.FC = () => {
       }
     }
   };
+
+
   const pickStaffAvatar = () => {
     setImageUploadType('staff');
     const options: ImagePickerOptions = {
@@ -1409,15 +1063,19 @@ const ShopDetailsScreen: React.FC = () => {
     };
 
     const handleShopImageResponse = async (response: ImagePickerResponse) => {
-      
+      console.log('🎯 handleShopImageResponse called with response:', response);
       if (response.assets && response.assets[0]) {
         const asset = response.assets[0];
-        
+        console.log('🎯 Asset found:', asset);
         if (asset.uri) {
           try {
+            console.log('🗜️ Compressing shop image before storing...');
+            
             // Use original image URI directly for now
             const imageUri = asset.uri;
+            console.log('✅ Using original shop image URI:', imageUri);
             
+            console.log('🎯 Adding shop image at index:', index, 'URI:', imageUri);
             setShop(prev => {
               const newImages = [...(prev.images || [])];
               // Ensure the array is long enough
@@ -1425,15 +1083,17 @@ const ShopDetailsScreen: React.FC = () => {
                 newImages.push('');
               }
               newImages[index] = imageUri;
-              
+              console.log('🎯 Updated images array:', newImages);
+              console.log('🎯 Previous shop state images:', prev.images);
+              console.log('🎯 New shop state will have images:', newImages);
               const updated = { ...prev, images: newImages };
+              console.log('🎯 Complete updated shop state:', updated);
               return updated;
             });
-            
           } catch (error) {
-            
+            console.error('❌ Compression error:', error);
             // Fall back to original image
-            
+            console.log('🎯 Adding original shop image at index:', index, 'URI:', asset.uri);
             setShop(prev => {
               const newImages = [...(prev.images || [])];
               while (newImages.length <= index) {
@@ -1444,10 +1104,10 @@ const ShopDetailsScreen: React.FC = () => {
             });
           }
         } else {
-          
+          console.log('❌ No URI found in asset');
         }
       } else {
-        
+        console.log('❌ No assets found in response');
       }
     };
 
@@ -1469,7 +1129,7 @@ const ShopDetailsScreen: React.FC = () => {
       // Set the specific index to empty string instead of removing the element
       // This keeps the array structure intact for the 5-slot grid
       newImages[index] = '';
-      
+      console.log('Removed image at index:', index, 'Updated array:', newImages);
       return { ...prev, images: newImages };
     });
   };
@@ -1618,7 +1278,7 @@ const ShopDetailsScreen: React.FC = () => {
     setShowServiceModal(true);
   };
 
-  const saveService = async () => {
+  const saveService = () => {
     if (!serviceForm.name?.trim()) {
       Alert.alert('Error', 'Service name is required');
       return;
@@ -1628,83 +1288,31 @@ const ShopDetailsScreen: React.FC = () => {
       return;
     }
 
-    const serviceData = {
+    const newService: Service = {
+      id: editingService?.id || Date.now().toString(),
       name: serviceForm.name!.trim(),
       description: serviceForm.description || '',
       price: serviceForm.price!,
       duration: serviceForm.duration || 60,
       category: serviceForm.category || shop.category,
-      assigned_staff: serviceForm.assigned_staff || [],
-      is_active: serviceForm.is_active ?? true
+      is_active: serviceForm.is_active ?? true,
+      discount: editingService?.discount
     };
 
-    if (isEditing && shop.id) {
-      // For existing shops, save directly to database
-      
-      try {
-        let result;
-        if (editingService) {
-          
-          result = await normalizedShopService.updateService(editingService.id!, serviceData);
-        } else {
-          
-          result = await normalizedShopService.createService(shop.id, serviceData);
-          
-          // If normalized service fails due to missing tables, fall back to local state
-          if (!result.success && result.error?.includes('does not exist')) {
-            
-            result = { success: true, data: serviceData };
-            
-            // Add to local state as fallback
-            const newService: Service = {
-              id: Date.now().toString(),
-              ...serviceData
-            };
-
-            setShop(prev => ({
-              ...prev,
-              services: deduplicateById([...(prev.services || []), newService])
-            }));
-          }
-        }
-        
-        if (result.success) {
-          
-          // Only refresh from database if it was actually saved to database (not fallback)
-          if (!result.error?.includes('does not exist')) {
-            await refreshShopData('after-save');
-          }
-        } else {
-          Alert.alert('Error', result.error || 'Failed to save service');
-        }
-      } catch (error) {
-        
-        Alert.alert('Error', 'An unexpected error occurred while saving service');
+    setShop(prev => {
+      const services = prev.services || [];
+      if (editingService) {
+        return {
+          ...prev,
+          services: services.map(s => s.id === editingService.id ? newService : s)
+        };
+      } else {
+        return {
+          ...prev,
+          services: [...services, newService]
+        };
       }
-    } else {
-      // For new shops, add to local state (will be saved when shop is created)
-      const newService: Service = {
-        id: editingService?.id || Date.now().toString(),
-        ...serviceData
-      };
-
-      setShop(prev => {
-        const services = prev.services || [];
-        let updatedShop;
-        if (editingService) {
-          updatedShop = {
-            ...prev,
-            services: services.map(s => s.id === editingService.id ? newService : s)
-          };
-        } else {
-          updatedShop = {
-            ...prev,
-            services: deduplicateById([...services, newService])
-          };
-        }
-        return updatedShop;
-      });
-    }
+    });
 
     setShowServiceModal(false);
     setEditingService(null);
@@ -1719,27 +1327,11 @@ const ShopDetailsScreen: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            if (isEditing && shop.id) {
-              // For existing shops, delete from database
-              const result = await normalizedShopService.deleteService(serviceId);
-              
-              if (result.success) {
-                
-                // Refresh the complete shop data
-                await refreshShopData('after-save');
-              } else {
-                
-                Alert.alert('Error', result.error || 'Failed to delete service');
-              }
-            } else {
-              // For new shops, remove from local state
-              
-              setShop(prev => ({
-                ...prev,
-                services: (prev.services || []).filter(s => s.id !== serviceId)
-              }));
-            }
+          onPress: () => {
+            setShop(prev => ({
+              ...prev,
+              services: (prev.services || []).filter(s => s.id !== serviceId)
+            }));
           }
         }
       ]
@@ -1763,7 +1355,7 @@ const ShopDetailsScreen: React.FC = () => {
     setShowDiscountModal(true);
   };
 
-  const saveDiscount = async () => {
+  const saveDiscount = () => {
     if (!discountForm.description?.trim()) {
       Alert.alert('Error', 'Discount description is required');
       return;
@@ -1773,7 +1365,8 @@ const ShopDetailsScreen: React.FC = () => {
       return;
     }
 
-    const discountData = {
+    const newDiscount: Discount = {
+      id: editingDiscount?.id || Date.now().toString(),
       type: discountForm.type!,
       value: discountForm.value!,
       description: discountForm.description!.trim(),
@@ -1784,75 +1377,24 @@ const ShopDetailsScreen: React.FC = () => {
       min_amount: discountForm.min_amount,
       max_discount: discountForm.max_discount,
       usage_limit: discountForm.usage_limit,
-      applicable_services: discountForm.applicable_services || [],
-      conditions: discountForm.conditions || {}
+      applicable_services: discountForm.applicable_services,
+      conditions: discountForm.conditions
     };
 
-    if (isEditing && shop.id) {
-      // For existing shops, save directly to database
-      
-      try {
-        let result;
-        if (editingDiscount) {
-          
-          result = await normalizedShopService.updateDiscount(editingDiscount.id!, discountData);
-        } else {
-          
-          result = await normalizedShopService.createDiscount(shop.id, discountData);
-          
-          // If normalized service fails due to missing tables, fall back to local state
-          if (!result.success && result.error?.includes('does not exist')) {
-            
-            result = { success: true, data: discountData };
-            
-            // Add to local state as fallback
-            const newDiscount: Discount = {
-              id: Date.now().toString(),
-              ...discountData
-            };
-
-            setShop(prev => ({
-              ...prev,
-              discounts: deduplicateById([...(prev.discounts || []), newDiscount])
-            }));
-          }
-        }
-        
-        if (result.success) {
-          
-          // Only refresh from database if it was actually saved to database (not fallback)
-          if (!result.error?.includes('does not exist')) {
-            await refreshShopData('after-save');
-          }
-        } else {
-          Alert.alert('Error', result.error || 'Failed to save discount');
-        }
-      } catch (error) {
-        
-        Alert.alert('Error', 'An unexpected error occurred while saving discount');
+    setShop(prev => {
+      const discounts = prev.discounts || [];
+      if (editingDiscount) {
+        return {
+          ...prev,
+          discounts: discounts.map(d => d.id === editingDiscount.id ? newDiscount : d)
+        };
+      } else {
+        return {
+          ...prev,
+          discounts: [...discounts, newDiscount]
+        };
       }
-    } else {
-      // For new shops, add to local state (will be saved when shop is created)
-      const newDiscount: Discount = {
-        id: editingDiscount?.id || Date.now().toString(),
-        ...discountData
-      };
-
-      setShop(prev => {
-        const discounts = prev.discounts || [];
-        if (editingDiscount) {
-          return {
-            ...prev,
-            discounts: discounts.map(d => d.id === editingDiscount.id ? newDiscount : d)
-          };
-        } else {
-          return {
-            ...prev,
-            discounts: deduplicateById([...discounts, newDiscount])
-          };
-        }
-      });
-    }
+    });
 
     setShowDiscountModal(false);
     setEditingDiscount(null);
@@ -1867,27 +1409,11 @@ const ShopDetailsScreen: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            if (isEditing && shop.id) {
-              // For existing shops, delete from database
-              const result = await normalizedShopService.deleteDiscount(discountId);
-              
-              if (result.success) {
-                
-                // Refresh the complete shop data
-                await refreshShopData('after-save');
-              } else {
-                
-                Alert.alert('Error', result.error || 'Failed to delete discount');
-              }
-            } else {
-              // For new shops, remove from local state
-              
-              setShop(prev => ({
-                ...prev,
-                discounts: (prev.discounts || []).filter(d => d.id !== discountId)
-              }));
-            }
+          onPress: () => {
+            setShop(prev => ({
+              ...prev,
+              discounts: (prev.discounts || []).filter(d => d.id !== discountId)
+            }));
           }
         }
       ]
@@ -1917,7 +1443,7 @@ const ShopDetailsScreen: React.FC = () => {
     setShowStaffModal(true);
   };
 
-  const saveStaff = async () => {
+  const saveStaff = () => {
     if (!staffForm.name?.trim()) {
       Alert.alert('Error', 'Staff name is required');
       return;
@@ -1927,7 +1453,8 @@ const ShopDetailsScreen: React.FC = () => {
       return;
     }
 
-    const staffData = {
+    const newStaff: Staff = {
+      id: editingStaff?.id || Date.now().toString(),
       name: staffForm.name!.trim(),
       email: staffForm.email!.trim(),
       phone: staffForm.phone || '',
@@ -1939,74 +1466,20 @@ const ShopDetailsScreen: React.FC = () => {
       is_active: staffForm.is_active ?? true
     };
 
-    if (isEditing && shop.id) {
-      // For existing shops, save directly to database
-      try {
-        let result;
-        if (editingStaff) {
-          
-          result = await normalizedShopService.updateStaff(editingStaff.id!, staffData);
-        } else {
-          
-          result = await normalizedShopService.createStaff(shop.id, staffData);
-          
-          // If normalized service fails due to missing tables, fall back to local state
-          if (!result.success && result.error?.includes('does not exist')) {
-            
-            result = { success: true, data: staffData };
-            
-            // Add to local state as fallback
-            const newStaff: Staff = {
-              id: Date.now().toString(),
-              ...staffData
-            };
-
-            setShop(prev => ({
-              ...prev,
-              staff: deduplicateById([...(prev.staff || []), newStaff])
-            }));
-          }
-        }
-        
-        if (result.success) {
-          
-          // Only refresh from database if it was actually saved to database (not fallback)
-          if (!result.error?.includes('does not exist')) {
-            await refreshShopData('after-save');
-          }
-        } else {
-          Alert.alert('Error', result.error || 'Failed to save staff member');
-        }
-      } catch (error) {
-        
-        Alert.alert('Error', 'An unexpected error occurred while saving staff');
+    setShop(prev => {
+      const staff = prev.staff || [];
+      if (editingStaff) {
+        return {
+          ...prev,
+          staff: staff.map(s => s.id === editingStaff.id ? newStaff : s)
+        };
+      } else {
+        return {
+          ...prev,
+          staff: [...staff, newStaff]
+        };
       }
-    } else {
-      // For new shops, add to local state (will be saved when shop is created)
-      const newStaff: Staff = {
-        id: editingStaff?.id || Date.now().toString(),
-        ...staffData
-      };
-
-      setShop(prev => {
-        
-        const staff = prev.staff || [];
-        let updatedShop;
-        if (editingStaff) {
-          updatedShop = {
-            ...prev,
-            staff: staff.map(s => s.id === editingStaff.id ? newStaff : s)
-          };
-        } else {
-          updatedShop = {
-            ...prev,
-            staff: deduplicateById([...staff, newStaff])
-          };
-        }
-        
-        return updatedShop;
-      });
-    }
+    });
 
     setShowStaffModal(false);
     setEditingStaff(null);
@@ -2021,27 +1494,11 @@ const ShopDetailsScreen: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            if (isEditing && shop.id) {
-              // For existing shops, delete from database
-              const result = await normalizedShopService.deleteStaff(staffId);
-              
-              if (result.success) {
-                
-                // Refresh the complete shop data
-                await refreshShopData('after-save');
-              } else {
-                
-                Alert.alert('Error', result.error || 'Failed to delete staff member');
-              }
-            } else {
-              // For new shops, remove from local state
-              
-              setShop(prev => ({
-                ...prev,
-                staff: (prev.staff || []).filter(s => s.id !== staffId)
-              }));
-            }
+          onPress: () => {
+            setShop(prev => ({
+              ...prev,
+              staff: (prev.staff || []).filter(s => s.id !== staffId)
+            }));
           }
         }
       ]
@@ -2161,13 +1618,15 @@ const ShopDetailsScreen: React.FC = () => {
                 flex: 1
               }}
               onPress={() => {
-                
+                console.log('🧪 TEST: Current shop state images:', shop.images);
+                console.log('🧪 TEST: Current shop state logo:', shop.logo_url);
+                console.log('🧪 TEST: Testing fake image URLs...');
                 setShop(prev => ({
                   ...prev,
                   logo_url: 'https://fezdmxvqurczeqmqvgzm.supabase.co/storage/v1/object/public/user-avatars//WhatsApp%20Image%202024-08-05%20at%2013.01.37.jpeg',
                   images: ['https://fezdmxvqurczeqmqvgzm.supabase.co/storage/v1/object/public/shop-images//Simulator%20Screenshot%20-%20iPhone%2015%20-%202025-07-27%20at%2000.08.21.png']
                 }));
-                
+                console.log('🧪 TEST: Set fake URLs, check debug info above');
               }}
             >
               <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
@@ -2185,21 +1644,27 @@ const ShopDetailsScreen: React.FC = () => {
                 flex: 1
               }}
               onPress={async () => {
+                console.log('🧪 COMPREHENSIVE TEST: Starting...');
+                
                 // Test 1: Authentication
-                
+                console.log('🔐 Testing authentication...');
                 const currentUser = await authService.getCurrentUser();
-                // Test 2: Storage
+                console.log('🔐 Current user:', currentUser);
                 
-                const storageTest = await integratedShopService.setupStorage();
+                // Test 2: Storage
+                console.log('🗄️ Testing storage...');
+                const storageTest = await authService.testStorageConnection();
+                console.log('🗄️ Storage test:', storageTest);
+                
                 // Test 3: Upload a test image
                 if (shop.logo_url && shop.logo_url.startsWith('file://')) {
-                  
-                  const uploadResult = await integratedShopService.uploadImage(shop.logo_url, 'shops/test');
-                  
+                  console.log('📸 Testing image upload...');
+                  const uploadResult = await authService.uploadImage(shop.logo_url, 'shops/test');
+                  console.log('📸 Upload result:', uploadResult);
                 }
                 
                 // Test 4: Create a minimal shop
-                
+                console.log('🏪 Testing shop creation...');
                 const testShopData = {
                   name: 'Test Shop ' + Date.now(),
                   description: 'Test Description',
@@ -2219,11 +1684,15 @@ const ShopDetailsScreen: React.FC = () => {
                   discounts: shop.discounts || [],
                   special_days: shop.special_days || []
                 };
+                
+                console.log('🏪 Test shop data:', testShopData);
                 const createResult = await authService.createProviderBusiness(testShopData);
+                console.log('🏪 Create result:', createResult);
+                
                 if (createResult.success) {
-                  // Test shop created successfully
+                  Alert.alert('Success!', 'Test shop created successfully');
                 } else {
-                  // Shop creation failed
+                  Alert.alert('Error', 'Shop creation failed: ' + createResult.error);
                 }
               }}
             >
@@ -2240,7 +1709,17 @@ const ShopDetailsScreen: React.FC = () => {
                 margin: 2,
               }}
               onPress={() => {
-                // Debug test button - no action needed
+                console.log('🔍 DEBUG: Current shop state:');
+                console.log('  - Shop object:', JSON.stringify(shop, null, 2));
+                console.log('  - Logo URL:', shop.logo_url);
+                console.log('  - Images array:', shop.images);
+                console.log('  - Image count:', shop.images?.length || 0);
+                
+                const imageInfo = `Logo URL: ${shop.logo_url || 'None'}\n\nImages (${shop.images?.length || 0}):\n${
+                  shop.images?.map((img, i) => `${i + 1}. ${img || 'empty'}`).join('\n') || 'No images'
+                }`;
+                
+                Alert.alert('Shop Image State', imageInfo);
               }}
             >
               <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
@@ -2256,11 +1735,15 @@ const ShopDetailsScreen: React.FC = () => {
                 margin: 2,
               }}
               onPress={async () => {
+                console.log('🔍 VERIFY DATABASE: Starting integrated verification...');
+                
                 const verifyResult = await integratedShopService.verifySetup();
+                console.log('🔍 Integrated verification result:', verifyResult);
+                
                 if (verifyResult.success) {
-                  // Integrated setup is working correctly
+                  Alert.alert('Integrated Setup OK!', verifyResult.message || 'Integrated shop system is working correctly');
                 } else {
-                  // Integrated setup has issues
+                  Alert.alert('Integrated Setup Issues', verifyResult.error || 'Integrated setup has issues. Check console for details.');
                 }
               }}
             >
@@ -2285,7 +1768,11 @@ const ShopDetailsScreen: React.FC = () => {
                     { 
                       text: 'Show Console', 
                       onPress: () => {
-                        
+                        console.log('📋 STORAGE FIX INSTRUCTIONS:');
+                        console.log('1. Open Supabase Dashboard');
+                        console.log('2. Go to SQL Editor');
+                        console.log('3. Run file: fix_storage_rls_complete.sql');
+                        console.log('4. This will fix all storage bucket and RLS issues');
                       }
                     }
                   ]
@@ -2338,13 +1825,16 @@ const ShopDetailsScreen: React.FC = () => {
             style={styles.input}
             value={shop.name}
             onChangeText={(text) => {
+              console.log('📝 Shop name onChange called with:', text);
+              console.log('📝 Text length:', text.length);
               // Update the ref value immediately
               formValues.current.name = text;
-              
+              console.log('📝 Updated formValues.name:', formValues.current.name);
               // Also update state for UI
               setShop(prev => {
+                console.log('📝 Previous state name:', prev.name);
                 const newState = { ...prev, name: text };
-                
+                console.log('📝 New state name:', newState.name);
                 return newState;
               });
             }}
@@ -2370,7 +1860,7 @@ const ShopDetailsScreen: React.FC = () => {
             style={[styles.input, styles.textArea]}
             value={shop.description}
             onChangeText={(text) => {
-              
+              console.log('📝 Shop description onChange called with:', text);
               formValues.current.description = text;
               setShop(prev => ({ ...prev, description: text }));
             }}
@@ -2441,14 +1931,16 @@ const ShopDetailsScreen: React.FC = () => {
             style={styles.input}
             value={shop.address}
             onChangeText={(text) => {
+              console.log('🏠 Address onChange called with:', text);
+              console.log('🏠 Address text length:', text.length);
               // Update the ref value immediately
               formValues.current.address = text;
-              
+              console.log('🏠 Updated formValues.address:', formValues.current.address);
               // Also update state for UI
               setShop(prev => {
-                
+                console.log('🏠 Previous address state:', prev.address);
                 const newState = { ...prev, address: text };
-                
+                console.log('🏠 New address state:', newState.address);
                 return newState;
               });
             }}
@@ -2463,10 +1955,7 @@ const ShopDetailsScreen: React.FC = () => {
             <TextInput
               style={styles.input}
               value={shop.city}
-              onChangeText={(text) => {
-                formValues.current.city = text;
-                setShop(prev => ({ ...prev, city: text }));
-              }}
+              onChangeText={(text) => setShop(prev => ({ ...prev, city: text }))}
               placeholder="City"
               placeholderTextColor="#9CA3AF"
             />
@@ -2477,10 +1966,7 @@ const ShopDetailsScreen: React.FC = () => {
             <TextInput
               style={styles.input}
               value={shop.state}
-              onChangeText={(text) => {
-                formValues.current.state = text;
-                setShop(prev => ({ ...prev, state: text }));
-              }}
+              onChangeText={(text) => setShop(prev => ({ ...prev, state: text }))}
               placeholder="State"
               placeholderTextColor="#9CA3AF"
             />
@@ -2492,10 +1978,7 @@ const ShopDetailsScreen: React.FC = () => {
           <TextInput
             style={styles.input}
             value={shop.country}
-            onChangeText={(text) => {
-              formValues.current.country = text;
-              setShop(prev => ({ ...prev, country: text }));
-            }}
+            onChangeText={(text) => setShop(prev => ({ ...prev, country: text }))}
             placeholder="Country"
             placeholderTextColor="#9CA3AF"
           />
@@ -2650,32 +2133,16 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Services</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openServiceModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Service</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openServiceModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Service</Text>
+        </TouchableOpacity>
       </View>
 
-      {isRefreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading services...</Text>
-        </View>
-      ) : shop.services && shop.services.length > 0 ? (
+      {shop.services && shop.services.length > 0 ? (
         <FlatList
           data={shop.services}
           keyExtractor={(item) => item.id}
@@ -2750,32 +2217,16 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Staff Members</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openStaffModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Staff</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openStaffModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Staff</Text>
+        </TouchableOpacity>
       </View>
 
-      {isRefreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading staff...</Text>
-        </View>
-      ) : shop.staff && shop.staff.length > 0 ? (
+      {shop.staff && shop.staff.length > 0 ? (
         <FlatList
           data={shop.staff}
           keyExtractor={(item) => item.id}
@@ -2864,32 +2315,16 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Discounts & Offers</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openDiscountModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Discount</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openDiscountModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Discount</Text>
+        </TouchableOpacity>
       </View>
 
-      {isRefreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading discounts...</Text>
-        </View>
-      ) : shop.discounts && shop.discounts.length > 0 ? (
+      {shop.discounts && shop.discounts.length > 0 ? (
         <FlatList
           data={shop.discounts}
           keyExtractor={(item) => item.id}
@@ -3505,7 +2940,7 @@ const ShopDetailsScreen: React.FC = () => {
         </KeyboardAvoidingView>
       </View>
     </Modal>
-  )
+  );
 
   const renderDiscountModal = () => (
     <Modal
@@ -3662,7 +3097,7 @@ const ShopDetailsScreen: React.FC = () => {
         </KeyboardAvoidingView>
       </View>
     </Modal>
-  )
+  );
 
   const renderStaffModal = () => (
     <Modal
@@ -3917,7 +3352,6 @@ const ShopDetailsScreen: React.FC = () => {
           <FlatList
             data={generateTimeSlots()}
             numColumns={4}
-            style={styles.timeSlotGrid}
             keyExtractor={(item) => item}
             renderItem={({ item }) => {
               const currentTime = editingTimeSlot ? 
@@ -3942,15 +3376,14 @@ const ShopDetailsScreen: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
               );
-            }
-          }
+            }}
+            style={styles.timeSlotGrid}
           />
         </View>
       </View>
     </Modal>
   );
 
-  // Main component render
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -3968,39 +3401,6 @@ const ShopDetailsScreen: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
       
       {renderTabBar()}
-      
-      {/* Upload Progress Indicator */}
-      {uploadProgress.isUploading && (
-        <View style={styles.uploadProgressContainer}>
-          <View style={styles.uploadProgressHeader}>
-            <Text style={styles.uploadProgressTitle}>
-              📸 Uploading Images ({uploadProgress.uploadedImages}/{uploadProgress.totalImages})
-            </Text>
-            <Text style={styles.uploadProgressMessage}>
-              {uploadProgress.message}
-            </Text>
-          </View>
-          
-          {/* Progress Bar */}
-          <View style={styles.progressBarContainer}>
-            <View 
-              style={[
-                styles.progressBar, 
-                { 
-                  width: `${(uploadProgress.uploadedImages / uploadProgress.totalImages) * 100}%` 
-                }
-              ]} 
-            />
-          </View>
-          
-          {/* Current Image Info */}
-          {uploadProgress.currentImageName && (
-            <Text style={styles.currentImageText}>
-              {uploadProgress.currentImageName}
-            </Text>
-          )}
-        </View>
-      )}
       
       <ScrollView 
         style={styles.content}
@@ -4044,6 +3444,7 @@ const ShopDetailsScreen: React.FC = () => {
           onChange={handleTimeChange}
         />
       )}
+
       {/* Modals */}
       {renderCategoryModal()}
       {renderTimezoneModal()}
@@ -4053,7 +3454,7 @@ const ShopDetailsScreen: React.FC = () => {
       {renderStaffModal()}
       {renderCustomTimePicker()}
     </SafeAreaView>
-  )
+  );
 };
 
 const styles = StyleSheet.create({
@@ -4138,20 +3539,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  sectionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  refreshButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
   },
   sectionTitle: {
     fontSize: 22,
@@ -5133,58 +4520,6 @@ const styles = StyleSheet.create({
   // Bottom spacing
   bottomSpacing: {
     height: 32,
-  },
-
-  // Upload Progress Styles
-  uploadProgressContainer: {
-    backgroundColor: '#F0F9FF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-  },
-  uploadProgressHeader: {
-    marginBottom: 12,
-  },
-  uploadProgressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E40AF',
-    marginBottom: 4,
-  },
-  uploadProgressMessage: {
-    fontSize: 14,
-    color: '#374151',
-    fontStyle: 'italic',
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 4,
-    transition: 'width 0.3s ease',
-  },
-  currentImageText: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 4,
   },
 });
 

@@ -1,14 +1,16 @@
-// Updated AppNavigator.tsx - Fixed Navigation Import Error
+// navigation/AppNavigator.tsx - FINAL FIXED VERSION
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, ActivityIndicator, View, Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../context/AuthContext';
+
+// FIXED IMPORTS - Use named imports from the corrected service
+import { supabase, authService } from '../lib/supabase/index';
+import type { User, Session } from '@supabase/supabase-js';
 import SplashScreen from '../screens/SplashScreen';
 
 // Import Screens
@@ -20,20 +22,6 @@ import BookingDateTimeScreen from '../screens/BookingDateTimeScreen';
 import BookingsScreen from '../screens/BookingsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
-// Import SearchScreen with fallback
-let SearchScreen;
-try {
-  SearchScreen = require('../screens/SearchScreen').default;
-} catch (error) {
-  // Fallback component if SearchScreen doesn't exist
-  SearchScreen = ({ navigation }: any) => {
-    React.useEffect(() => {
-      navigation.goBack();
-    }, []);
-    return null;
-  };
-}
 
 // Provider-specific screens
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
@@ -50,15 +38,401 @@ import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import HelpCenterScreen from '../screens/HelpCenterScreen';
 import TermsConditionsScreen from '../screens/TermsConditionsScreen';
 
-// Auth screens - Import directly instead of AuthNavigator to avoid circular dependency
+// Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
-// Import Service type
-import type { Service } from '../services/types/service';
+// Import Service type with fallback
+let Service;
+try {
+  Service = require('../services/types/service').Service;
+} catch (error) {
+  // Fallback if service types don't exist
+  console.warn('Service types not found, using fallback');
+}
 
-// Notification Context
+// ==============================================
+// AUTH CONTEXT (Supabase Integration)
+// ==============================================
+
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  isAuthenticated: false,
+  isLoading: true,
+  signOut: async () => {},
+  refreshUser: async () => {},
+});
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
+// Auth Provider Component with Supabase
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        console.log('🔄 Getting initial session...');
+        
+        // Check if supabase is properly imported
+        if (!supabase) {
+          throw new Error('Supabase client not initialized');
+        }
+        
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        console.log('📱 Initial session:', initialSession?.user?.email || 'No session');
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+      } catch (error) {
+        console.error('❌ Error getting initial session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 Auth state changed:', event, session?.user?.email || 'No user');
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signOut = async () => {
+    try {
+      console.log('👋 Signing out...');
+      setIsLoading(true);
+      
+      // Check if authService is properly imported
+      if (!authService) {
+        throw new Error('AuthService not initialized');
+      }
+      
+      const result = await authService.signOut();
+      
+      if (!result.success) {
+        console.error('❌ Sign out failed:', result.error);
+      } else {
+        console.log('✅ Sign out successful');
+      }
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      console.log('🔄 Refreshing user...');
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+    } catch (error) {
+      console.error('❌ Error refreshing user:', error);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isAuthenticated: !!session,
+        isLoading,
+        signOut,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// ==============================================
+// ACCOUNT CONTEXT (Profile Management)
+// ==============================================
+
+interface AccountContextType {
+  accountType: 'provider' | 'consumer';
+  setAccountType: (type: 'provider' | 'consumer') => void;
+  isLoading: boolean;
+  userProfile: any;
+  refreshProfile: () => Promise<void>;
+  isPro: boolean;
+}
+
+const AccountContext = createContext<AccountContextType>({
+  accountType: 'consumer',
+  setAccountType: () => {},
+  isLoading: false,
+  userProfile: null,
+  refreshProfile: async () => {},
+  isPro: false,
+});
+
+export const useAccount = () => {
+  const context = useContext(AccountContext);
+  if (!context) {
+    throw new Error('useAccount must be used within AccountProvider');
+  }
+  return context;
+};
+
+// Account Provider Component with Supabase integration
+const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
+  const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [isPro] = useState(false); // Mock Pro status for now
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadUserProfile();
+    } else {
+      // Reset profile when user logs out
+      setUserProfile(null);
+      setAccountTypeState('consumer');
+    }
+  }, [isAuthenticated, user]);
+
+  // Initialize account type from AsyncStorage only when not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const loadSavedAccountType = async () => {
+        try {
+          const savedType = await AsyncStorage.getItem('accountType');
+          if (savedType && (savedType === 'provider' || savedType === 'consumer')) {
+            setAccountTypeState(savedType as 'provider' | 'consumer');
+            console.log('📱 Loaded saved account type for guest:', savedType);
+          } else {
+            // Default to consumer if no valid saved type
+            setAccountTypeState('consumer');
+            await AsyncStorage.setItem('accountType', 'consumer');
+          }
+        } catch (error) {
+          console.error('❌ Error loading saved account type:', error);
+          setAccountTypeState('consumer');
+        }
+      };
+      
+      loadSavedAccountType();
+    }
+  }, [isAuthenticated]);
+
+  const loadUserProfile = async () => {
+    if (!user || !authService) return;
+    
+    try {
+      console.log('📝 Loading user profile for:', user.id);
+      setIsLoading(true);
+      
+      const response = await authService.getUserProfile(user.id);
+      console.log('📝 Profile response:', response.success ? 'Success' : response.error);
+      
+      if (response.success && response.data) {
+        setUserProfile(response.data);
+        
+        // Priority: Database account_type > AsyncStorage > default 'consumer'
+        const dbAccountType = response.data.account_type;
+        if (dbAccountType && (dbAccountType === 'provider' || dbAccountType === 'consumer')) {
+          setAccountTypeState(dbAccountType);
+          await AsyncStorage.setItem('accountType', dbAccountType);
+          console.log('✅ Profile loaded, account type from DB:', dbAccountType);
+        } else {
+          // Fallback to AsyncStorage if DB doesn't have account_type
+          const savedType = await AsyncStorage.getItem('accountType');
+          const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+          setAccountTypeState(finalType);
+          
+          // Update the profile with the selected account type
+          setUserProfile(prev => prev ? { ...prev, account_type: finalType } : {
+            id: user.id,
+            email: user.email || '',
+            first_name: user.user_metadata?.first_name || 'User',
+            last_name: user.user_metadata?.last_name || 'Name',
+            account_type: finalType,
+            is_premium: false
+          });
+          
+          console.log('✅ Profile loaded, using saved account type:', finalType);
+        }
+      } else {
+        console.warn('⚠️ Failed to load profile, creating fallback profile:', response.error);
+        
+        // Create a fallback profile from auth user data
+        const savedType = await AsyncStorage.getItem('accountType');
+        const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+        
+        const fallbackProfile = {
+          id: user.id,
+          email: user.email || '',
+          first_name: user.user_metadata?.first_name || 'User',
+          last_name: user.user_metadata?.last_name || 'Name',
+          full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || 'User'} ${user.user_metadata?.last_name || 'Name'}`,
+          phone: user.phone || '',
+          account_type: finalType,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          is_premium: false,
+          email_verified: user.email_confirmed_at ? true : false,
+          phone_verified: false,
+          created_at: user.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setUserProfile(fallbackProfile);
+        setAccountTypeState(finalType);
+        await AsyncStorage.setItem('accountType', finalType);
+        console.log('✅ Fallback profile created with account type:', finalType);
+      }
+    } catch (error) {
+      console.error('❌ Error loading user profile:', error);
+      
+      // Create emergency fallback profile
+      const savedType = await AsyncStorage.getItem('accountType');
+      const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+      
+      const emergencyProfile = {
+        id: user.id,
+        email: user.email || 'user@example.com',
+        first_name: 'User',
+        last_name: 'Name',
+        full_name: 'User Name',
+        phone: '',
+        account_type: finalType,
+        avatar_url: null,
+        is_premium: false,
+        email_verified: false,
+        phone_verified: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      setUserProfile(emergencyProfile);
+      setAccountTypeState(finalType);
+      console.log('❌ Emergency profile created with account type:', finalType);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setAccountType = async (type: 'provider' | 'consumer') => {
+    try {
+      // Validate the type parameter
+      if (!type || (type !== 'provider' && type !== 'consumer')) {
+        console.error('❌ Invalid account type:', type);
+        return;
+      }
+
+      console.log('🔄 Updating account type to:', type);
+      setIsLoading(true);
+      
+      // For authenticated users, update database
+      if (user && authService) {
+        try {
+          // Update the users table directly with account_type
+          const { error } = await supabase
+            .from('users')
+            .update({ account_type: type, updated_at: new Date().toISOString() })
+            .eq('id', user.id);
+          
+          if (error) {
+            console.error('❌ Database update failed:', error);
+            // Still continue with local update for better UX
+          } else {
+            console.log('✅ Account type updated successfully in database');
+          }
+        } catch (dbError) {
+          console.error('❌ Database error:', dbError);
+          // Continue with local update
+        }
+      }
+      
+      // Always update local state and AsyncStorage (works for both auth and guest)
+      setAccountTypeState(type);
+      await AsyncStorage.setItem('accountType', type);
+      console.log('✅ Account type updated locally to:', type);
+      
+      // Update the profile state immediately if available
+      if (userProfile) {
+        setUserProfile({ ...userProfile, account_type: type });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error updating account type:', error);
+      // Try to revert the state
+      try {
+        const savedType = await AsyncStorage.getItem('accountType');
+        if (savedType && (savedType === 'provider' || savedType === 'consumer') && savedType !== type) {
+          setAccountTypeState(savedType as 'provider' | 'consumer');
+        } else {
+          // If no valid saved type, default to consumer
+          setAccountTypeState('consumer');
+          await AsyncStorage.setItem('accountType', 'consumer');
+        }
+      } catch (revertError) {
+        console.error('❌ Error reverting account type:', revertError);
+        // Final fallback
+        setAccountTypeState('consumer');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    await loadUserProfile();
+  };
+
+  return (
+    <AccountContext.Provider 
+      value={{ 
+        accountType, 
+        setAccountType, 
+        isLoading, 
+        userProfile, 
+        refreshProfile,
+        isPro 
+      }}
+    >
+      {children}
+    </AccountContext.Provider>
+  );
+};
+
+// ==============================================
+// NOTIFICATION CONTEXT
+// ==============================================
+
 interface NotificationContextType {
   notificationCount: number;
   setNotificationCount: (count: number) => void;
@@ -79,53 +453,31 @@ export const useNotifications = () => {
   return context;
 };
 
-// Account Type Context
-interface AccountContextType {
-  accountType: 'provider' | 'consumer';
-  setAccountType: (type: 'provider' | 'consumer') => void;
-  isLoading: boolean;
-  isPro: boolean;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-  } | null;
-}
-
-const AccountContext = createContext<AccountContextType>({
-  accountType: 'consumer',
-  setAccountType: () => {},
-  isLoading: false,
-  isPro: false,
-  user: null,
-});
-
-export const useAccount = () => {
-  const context = useContext(AccountContext);
-  if (!context) {
-    throw new Error('useAccount must be used within AccountProvider');
-  }
-  return context;
-};
-
 // Notification Provider Component
 const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const { accountType } = useAccount();
+  const { user } = useAuth();
 
   const refreshNotifications = async () => {
+    if (!user) return;
+    
     try {
-      // Mock notification count based on account type
+      // In a real app, this would fetch from Supabase
+      // For now, using mock data based on account type
       setNotificationCount(accountType === 'provider' ? 2 : 3);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('❌ Error fetching notifications:', error);
     }
   };
 
   useEffect(() => {
-    refreshNotifications();
-  }, [accountType]);
+    if (user) {
+      refreshNotifications();
+    } else {
+      setNotificationCount(0);
+    }
+  }, [accountType, user]);
 
   return (
     <NotificationContext.Provider 
@@ -140,58 +492,9 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-// Account Provider Component
-const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPro] = useState(false); // Mock Pro status
-  const [user] = useState({
-    id: 'user-123',
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    avatar: undefined,
-  });
-
-  useEffect(() => {
-    loadAccountType();
-  }, []);
-
-  const loadAccountType = async () => {
-    try {
-      const savedAccountType = await AsyncStorage.getItem('accountType');
-      if (savedAccountType && (savedAccountType === 'provider' || savedAccountType === 'consumer')) {
-        setAccountTypeState(savedAccountType);
-      }
-    } catch (error) {
-      console.error('Error loading account type:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const setAccountType = async (type: 'provider' | 'consumer') => {
-    try {
-      setIsLoading(true);
-      await AsyncStorage.setItem('accountType', type);
-      setAccountTypeState(type);
-      
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 800);
-    } catch (error) {
-      console.error('Error saving account type:', error);
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <AccountContext.Provider value={{ accountType, setAccountType, isLoading, isPro, user }}>
-      <NotificationProvider>
-        {children}
-      </NotificationProvider>
-    </AccountContext.Provider>
-  );
-};
+// ==============================================
+// TYPES & INTERFACES
+// ==============================================
 
 // Shop interface for ShopDetails
 export interface Shop {
@@ -214,7 +517,7 @@ export interface Shop {
   timeZone?: string;
 }
 
-// Updated Types with Popular Services Support
+// Navigation Types
 export type RootStackParamList = {
   // Auth Screens
   Login: undefined;
@@ -234,14 +537,14 @@ export type RootStackParamList = {
   ServiceList: { 
     category: string; 
     categoryId: string;
-    showPopular?: boolean; // Added support for popular services
+    showPopular?: boolean;
   };
   ServiceDetail: { 
-    service: Service;
+    service: any; // Using any since Service type might not exist
     serviceId?: string;
   } | {
     serviceId: string;
-    service?: Service;
+    service?: any;
   };
   BookingSummary: { 
     selectedServices: Array<{
@@ -275,24 +578,11 @@ export type RootStackParamList = {
   HelpCenter: undefined;
   TermsConditions: undefined;
   
-  // Search Screen
-  Search: { 
+  // Search Screen (optional)
+  Search?: { 
     query?: string;
     initialResults?: any;
     filter?: string;
-  };
-  
-  // Payment related
-  Payment: {
-    selectedServices: Array<{
-      id: string;
-      name: string;
-      price: string;
-      duration: string;
-    }>;
-    totalPrice: number;
-    selectedDate: string;
-    selectedTime: string;
   };
 };
 
@@ -320,6 +610,10 @@ declare global {
     interface RootParamList extends RootStackParamList {}
   }
 }
+
+// ==============================================
+// COMPONENTS
+// ==============================================
 
 // Notification Badge Component
 const NotificationBadge: React.FC<{ count: number }> = ({ count }) => {
@@ -380,8 +674,8 @@ const ConsumerTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#F59E0B', // Orange for consumer theme
-        tabBarInactiveTintColor: '#6B7280', // Consistent gray for inactive
+        tabBarActiveTintColor: '#F59E0B',
+        tabBarInactiveTintColor: '#6B7280',
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -430,7 +724,7 @@ const ConsumerTabs = () => {
   );
 };
 
-// Provider Tab Navigator with Fixed Styling
+// Provider Tab Navigator
 const ProviderTabs = () => {
   const { notificationCount } = useNotifications();
   const insets = useSafeAreaInsets();
@@ -462,16 +756,16 @@ const ProviderTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#10B981', // Green for provider theme
-        tabBarInactiveTintColor: '#6B7280', // Consistent gray for inactive
+        tabBarActiveTintColor: '#10B981',
+        tabBarInactiveTintColor: '#6B7280',
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E5E7EB',
           borderTopWidth: 1,
-          paddingBottom: Math.max(insets.bottom, 16), // Ensure minimum padding
+          paddingBottom: Math.max(insets.bottom, 16),
           paddingTop: 12,
-          height: Math.max(insets.bottom + 65, 85), // Proper height calculation
+          height: Math.max(insets.bottom + 65, 85),
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -517,23 +811,6 @@ const ProviderTabs = () => {
   );
 };
 
-// Auth Navigator - Inline to avoid circular dependency
-const AuthNavigator = () => {
-  return (
-    <RootStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#FEFCE8' },
-      }}
-    >
-      <RootStack.Screen name="Login" component={LoginScreen} />
-      <RootStack.Screen name="Register" component={RegisterScreen} />
-      <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-    </RootStack.Navigator>
-  );
-};
-
 // Loading Component for Account Switch
 const AccountSwitchLoader = () => {
   return (
@@ -550,7 +827,7 @@ const AccountSwitchLoader = () => {
         color: '#6B7280',
         textAlign: 'center',
       }}>
-        Switching account mode...
+        Loading your profile...
       </Text>
     </View>
   );
@@ -562,7 +839,7 @@ const getHeaderStyle = () => ({
     backgroundColor: '#FFFFFF',
     elevation: 0,
     shadowOpacity: 0,
-    borderBottomWidth: 0, // Remove border
+    borderBottomWidth: 0,
   },
   headerTitleStyle: {
     fontWeight: '600' as const,
@@ -571,8 +848,25 @@ const getHeaderStyle = () => ({
   },
   headerTintColor: '#1F2937',
   headerBackTitle: 'Back',
-  headerShadowVisible: false, // Remove shadow line
+  headerShadowVisible: false,
 });
+
+// Auth Navigator
+const AuthNavigator = () => {
+  return (
+    <RootStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#FEFCE8' },
+      }}
+    >
+      <RootStack.Screen name="Login" component={LoginScreen} />
+      <RootStack.Screen name="Register" component={RegisterScreen} />
+      <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </RootStack.Navigator>
+  );
+};
 
 // Main App Navigator
 const AppNavigator = () => {
@@ -635,62 +929,6 @@ const AppNavigator = () => {
               ...getHeaderStyle(),
             }}
           />
-          {/* Search Screen for Consumer */}
-          <RootStack.Screen 
-            name="Search" 
-            component={SearchScreen}
-            options={{
-              title: 'Search Results',
-              headerShown: false,
-              ...getHeaderStyle(),
-            }}
-          />
-          {/* Profile Related Screens */}
-          <RootStack.Screen 
-            name="Notifications" 
-            component={NotificationsScreen}
-            options={{
-              title: 'Notifications',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="Privacy" 
-            component={PrivacyScreen}
-            options={{
-              title: 'Privacy Settings',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="PaymentMethods" 
-            component={PaymentMethodsScreen}
-            options={{
-              title: 'Payment Methods',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="HelpCenter" 
-            component={HelpCenterScreen}
-            options={{
-              title: 'Help Center',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="TermsConditions" 
-            component={TermsConditionsScreen}
-            options={{
-              title: 'Terms & Conditions',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
         </>
       ) : (
         <>
@@ -700,7 +938,6 @@ const AppNavigator = () => {
             component={ProviderTabs}
             options={{ headerShown: false }}
           />
-          {/* ServiceList and ServiceDetail for Provider */}
           <RootStack.Screen 
             name="ServiceList" 
             component={ServiceListScreen} 
@@ -717,24 +954,6 @@ const AppNavigator = () => {
               title: 'Service',
               headerShown: false,
               presentation: 'card',
-            }}
-          />
-          <RootStack.Screen 
-            name="ServiceManagement" 
-            component={ServiceManagementScreen} 
-            options={{
-              title: 'Manage Services',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="Earnings" 
-            component={EarningsScreen} 
-            options={{
-              title: 'Earnings Report',
-              headerShown: true,
-              ...getHeaderStyle(),
             }}
           />
           <RootStack.Screen 
@@ -756,69 +975,60 @@ const AppNavigator = () => {
               ...getHeaderStyle(),
             }}
           />
-          {/* Search Screen for Provider */}
-          <RootStack.Screen 
-            name="Search" 
-            component={SearchScreen}
-            options={{
-              title: 'Search Results',
-              headerShown: false,
-              ...getHeaderStyle(),
-            }}
-          />
-          {/* Profile Related Screens - Provider versions */}
-          <RootStack.Screen 
-            name="Notifications" 
-            component={NotificationsScreen}
-            options={{
-              title: 'Notifications',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="Privacy" 
-            component={PrivacyScreen}
-            options={{
-              title: 'Privacy Settings',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="PaymentMethods" 
-            component={PaymentMethodsScreen}
-            options={{
-              title: 'Payment Methods',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="HelpCenter" 
-            component={HelpCenterScreen}
-            options={{
-              title: 'Help Center',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
-          <RootStack.Screen 
-            name="TermsConditions" 
-            component={TermsConditionsScreen}
-            options={{
-              title: 'Terms & Conditions',
-              headerShown: true,
-              ...getHeaderStyle(),
-            }}
-          />
         </>
       )}
+      
+      {/* Shared Profile Screens */}
+      <RootStack.Screen 
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{
+          title: 'Notifications',
+          headerShown: true,
+          ...getHeaderStyle(),
+        }}
+      />
+      <RootStack.Screen 
+        name="Privacy" 
+        component={PrivacyScreen}
+        options={{
+          title: 'Privacy Settings',
+          headerShown: true,
+          ...getHeaderStyle(),
+        }}
+      />
+      <RootStack.Screen 
+        name="PaymentMethods" 
+        component={PaymentMethodsScreen}
+        options={{
+          title: 'Payment Methods',
+          headerShown: true,
+          ...getHeaderStyle(),
+        }}
+      />
+      <RootStack.Screen 
+        name="HelpCenter" 
+        component={HelpCenterScreen}
+        options={{
+          title: 'Help Center',
+          headerShown: true,
+          ...getHeaderStyle(),
+        }}
+      />
+      <RootStack.Screen 
+        name="TermsConditions" 
+        component={TermsConditionsScreen}
+        options={{
+          title: 'Terms & Conditions',
+          headerShown: true,
+          ...getHeaderStyle(),
+        }}
+      />
     </RootStack.Navigator>
   );
 };
 
-// Root Navigator - FIXED VERSION with proper status bar
+// Root Navigator
 const RootNavigator = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -828,11 +1038,22 @@ const RootNavigator = () => {
 
   return (
     <AccountProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
-      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      <NotificationProvider>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+        {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      </NotificationProvider>
     </AccountProvider>
   );
 };
 
-export default RootNavigator;
-export { useAccount, useNotifications };
+// Main App Component with Auth Provider
+const App = () => {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  );
+};
+
+export default App;
+export { useAccount, useNotifications, useAuth };

@@ -3,7 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../navigation/AppNavigator';
+import { authService } from '../../lib/supabase/index';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
@@ -50,14 +51,13 @@ const LoginScreen = () => {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { signIn, isLoading: authLoading } = useAuth();
 
-  // Demo credentials for testing
+  // Demo credentials for testing - these should be actual accounts in your Supabase
   const demoCredentials = [
-    { email: 'admin@example.com', password: 'admin123', role: 'Admin' },
-    { email: 'consumer@example.com', password: 'consumer123', role: 'Consumer' },
-    { email: 'provider@example.com', password: 'provider123', role: 'Provider' },
-    { email: 'test@example.com', password: 'test123', role: 'Tester' }
+    { email: 'demo.admin@buzybees.com', password: 'Demo123!@#', role: 'Admin User' },
+    { email: 'demo.consumer@buzybees.com', password: 'Demo123!@#', role: 'Consumer' },
+    { email: 'demo.provider@buzybees.com', password: 'Demo123!@#', role: 'Provider' },
+    { email: 'test.user@buzybees.com', password: 'Test123!@#', role: 'Test User' }
   ];
 
   // Validation functions
@@ -80,7 +80,7 @@ const LoginScreen = () => {
 
   const validatePassword = (value: string): string | null => {
     if (!value) return 'Password is required';
-    if (value.length < 4) return 'Password must be at least 4 characters';
+    if (value.length < 6) return 'Password must be at least 6 characters';
     return null;
   };
 
@@ -145,14 +145,21 @@ const LoginScreen = () => {
     setLoading(true);
     
     try {
-      await signIn({ email, password });
+      const response = await authService.signIn(email, password);
       
-      console.log(`✅ Demo login successful for ${role}: ${email}`);
+      if (response.success) {
+        console.log(`✅ Demo login successful for ${role}: ${email}`);
+        // Navigation will be handled by auth state change
+      } else {
+        setErrors({
+          general: response.error || 'Failed to sign in with demo account. Please try again.'
+        });
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Demo login failed:', error);
       setErrors({
-        general: 'Failed to sign in with demo account. Please try again.'
+        general: error.message || 'Failed to sign in with demo account. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -169,18 +176,22 @@ const LoginScreen = () => {
     setLoading(true);
 
     try {
-      await signIn({ 
-        email: identifier, 
-        password 
-      });
-
-      console.log('✅ Manual login successful');
-      // Navigation is handled by AuthContext state change
+      const response = await authService.signIn(identifier, password);
+      
+      if (response.success) {
+        console.log('✅ Manual login successful');
+        // Navigation is handled by AuthContext state change in AppNavigator
+      } else {
+        setErrors({ 
+          general: response.error || 'Invalid credentials. Please try again.' 
+        });
+      }
       
     } catch (error: any) {
       console.error('❌ Manual login failed:', error);
-      const errorMessage = error.message || 'Invalid credentials. Please try again.';
-      setErrors({ general: errorMessage });
+      setErrors({ 
+        general: error.message || 'Network error. Please check your connection and try again.' 
+      });
     } finally {
       setLoading(false);
     }
@@ -257,17 +268,73 @@ const LoginScreen = () => {
               </View>
               
               <Text style={styles.demoDescription}>
-                Quick access to demo accounts for testing
+                Quick access to demo accounts for testing{'\n'}
+                <Text style={styles.demoNote}>
+                  Note: Demo accounts must be created in Supabase first
+                </Text>
               </Text>
               
-              <TouchableOpacity 
-                style={styles.demoButton}
-                onPress={showDemoCredentials}
-                disabled={loading}
-              >
-                <Ionicons name="people-outline" size={16} color={colors.white} />
-                <Text style={styles.demoButtonText}>Try Demo Accounts</Text>
-              </TouchableOpacity>
+              <View style={styles.demoButtonContainer}>
+                <TouchableOpacity 
+                  style={styles.demoButton}
+                  onPress={showDemoCredentials}
+                  disabled={loading}
+                >
+                  <Ionicons name="people-outline" size={16} color={colors.white} />
+                  <Text style={styles.demoButtonText}>Try Demo Accounts</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.actionButtonsContainer}>
+                
+                <TouchableOpacity 
+                  style={styles.createUsersButton}
+                  onPress={async () => {
+                    setLoading(true);
+                    try {
+                      await authService.createTestUsers();
+                      Alert.alert('Success', 'Test users created! Check console for details.');
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to create test users. Check console.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <Ionicons name="person-add-outline" size={16} color={colors.primary} />
+                  <Text style={styles.createUsersButtonText}>Create Test Users</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.createSampleDataButton}
+                  onPress={async () => {
+                    setLoading(true);
+                    try {
+                      // Insert sample data for demo provider
+                      const demoProviderId = await authService.checkUserExists('demo.provider@buzybees.com');
+                      if (demoProviderId) {
+                        const response = await authService.insertSampleProviderData();
+                        if (response.success) {
+                          Alert.alert('Success', 'Sample provider data created! You can now test the provider dashboard.');
+                        } else {
+                          Alert.alert('Error', response.error || 'Failed to create sample data.');
+                        }
+                      } else {
+                        Alert.alert('Info', 'Please create test users first, then try again.');
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to create sample data. Check console.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <Ionicons name="business-outline" size={16} color={colors.info} />
+                  <Text style={styles.createSampleDataButtonText}>Create Sample Data</Text>
+                </TouchableOpacity>
+              </View>
               
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
@@ -489,11 +556,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+  demoNote: {
+    color: colors.gray400,
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  demoButtonContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
   demoButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.info,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 24,
     shadowColor: colors.info,
@@ -502,8 +580,49 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
   demoButtonText: {
     color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  createUsersButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  createUsersButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  createSampleDataButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 2,
+    borderColor: colors.info,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  createSampleDataButtonText: {
+    color: colors.info,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,

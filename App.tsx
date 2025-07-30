@@ -4,6 +4,7 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import integratedShopService from './src/lib/supabase/integrated';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -50,6 +51,26 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 function App(): React.JSX.Element {
   useEffect(() => {
     console.log('App mounted');
+    
+    // Initialize integrated shop service schema
+    const initializeDatabase = async () => {
+      try {
+        console.log('🚀 Initializing integrated shop service...');
+        const result = await integratedShopService.initializeSchema();
+        
+        if (result.success) {
+          console.log('✅ Integrated shop service initialized successfully');
+        } else {
+          console.warn('⚠️ Integrated shop service initialization had issues:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize integrated shop service:', error);
+      }
+    };
+    
+    // Initialize after a small delay to let the app load
+    setTimeout(initializeDatabase, 2000);
+    
     return () => console.log('App unmounted');
   }, []);
 

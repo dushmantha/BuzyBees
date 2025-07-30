@@ -13,14 +13,16 @@
     "reset-cache": "npx react-native start --reset-cache"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.1.0",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-native-community/datetimepicker": "^8.2.0",
+    "@react-native-community/geolocation": "^3.4.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "@react-navigation/stack": "^6.4.1",
-    "@supabase/supabase-js": "^2.47.10",
+    "@supabase/supabase-js": "^2.52.0",
     "axios": "^1.7.9",
     "lottie-react-native": "^6.7.2",
     "react": "18.3.1",
@@ -28,7 +30,9 @@
     "react-native-calendars": "^1.1313.0",
     "react-native-config": "^1.5.3",
     "react-native-fast-image": "^8.6.3",
+    "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "^2.20.2",
+    "react-native-get-random-values": "^1.11.0",
     "react-native-image-picker": "^7.2.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-linear-gradient": "^2.8.3",
@@ -39,6 +43,7 @@
     "react-native-screens": "^3.34.0",
     "react-native-svg": "^15.8.0",
     "react-native-toast-message": "^2.2.1",
+    "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-webview": "^13.12.5"
   },
@@ -65,6 +70,7 @@
     "metro-react-native-babel-preset": "^0.77.0",
     "prettier": "^3.4.2",
     "react-test-renderer": "18.3.1",
+    "rn-nodeify": "^10.3.0",
     "typescript": "^5.3.3"
   },
   "engines": {

@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useAccount, useNotifications } from '../navigation/AppNavigator';
+import { useAuth, useAccount, useNotifications } from '../navigation/AppNavigator';
 import { 
   View, 
   Text, 
@@ -22,33 +21,97 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import useImagePicker from '../hooks/useImagePicker';
 import mockService from '../services/api/mock/index';
 import UpgradeModal from '../components/UpgradeModal';
+import { authService } from '../lib/supabase/index';
 
 interface ProfileData {
   id: string;
-  full_name: string;
   email: string;
   phone: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  gender?: string;
+  birth_date?: string;
   address?: string;
   bio?: string;
-  avatar_url: string;
+  avatar_url?: string;
   account_type: 'provider' | 'consumer';
   is_premium: boolean;
+  email_verified: boolean;
+  phone_verified: boolean;
+  created_at: string;
+  updated_at: string;
+  
+  // Location data from user_locations table
+  location?: {
+    id: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postal_code: string;
+    is_primary: boolean;
+  };
+  
+  // Provider-specific data from provider_details table
   provider_details?: {
+    id: string;
     business_name: string;
     service_category: string;
     experience_years: number;
     hourly_rate: number;
     availability: string;
-    skills: string[];
-    certifications: string[];
+    bio?: string;
     rating: number;
     completed_jobs: number;
+    total_earnings: number;
+    is_verified: boolean;
+    verification_date?: string;
+    created_at: string;
+    updated_at: string;
+    provider_skills?: Array<{
+      skill_name: string;
+      experience_level: string;
+    }>;
+    provider_certifications?: Array<{
+      certification_name: string;
+      issued_by: string;
+      issue_date: string;
+      expiry_date?: string;
+    }>;
   };
+  
+  // Consumer-specific data from consumer_details table
   consumer_details?: {
-    preferred_services: string[];
+    id: string;
     budget_range: string;
     location_preference: string;
     service_history: number;
+    total_spent: number;
+    average_rating_given: number;
+    created_at: string;
+    updated_at: string;
+    consumer_preferred_services?: Array<{
+      service_category: string;
+    }>;
+  };
+  
+  // User preferences from user_preferences table
+  preferences?: {
+    id: string;
+    email_notifications: boolean;
+    push_notifications: boolean;
+    sms_notifications: boolean;
+    profile_visibility: string;
+    location_sharing: boolean;
+    theme: string;
+    language: string;
+    timezone: string;
+    marketing_emails: boolean;
+    created_at: string;
+    updated_at: string;
   };
 }
 
@@ -100,34 +163,20 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const userId = '1';
   const FREE_PAYMENT_LIMIT = 3;
 
-  // Updated mock profile data with premium status
+  // Default mock profile data for fallback scenarios
   const mockProfileData = {
-    id: '1',
-    full_name: 'John Smith',
-    email: 'john.smith@example.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, Auckland, New Zealand',
-    bio: 'Passionate about delivering quality services and helping people achieve their goals.',
-    avatar_url: '',
-    account_type: accountType,
+    id: 'mock-user-id',
+    email: 'mock@example.com',
+    phone: '1234567890',
+    first_name: 'Demo',
+    last_name: 'User',
+    full_name: 'Demo User',
+    account_type: accountType as 'provider' | 'consumer',
     is_premium: false,
-    provider_details: {
-      business_name: 'Smith Professional Services',
-      service_category: 'Home Maintenance',
-      experience_years: 8,
-      hourly_rate: 45,
-      availability: 'Mon-Fri 9AM-6PM',
-      skills: ['Plumbing', 'Electrical', 'Carpentry', 'Painting'],
-      certifications: ['Licensed Electrician', 'Certified Plumber'],
-      rating: 4.8,
-      completed_jobs: 127
-    },
-    consumer_details: {
-      preferred_services: ['Cleaning', 'Gardening', 'Handyman'],
-      budget_range: '$20-50/hour',
-      location_preference: 'Auckland Central',
-      service_history: 23
-    }
+    email_verified: false,
+    phone_verified: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
 
   // Single API service function for comprehensive data fetching
@@ -257,12 +306,14 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         ];
         
         const allInvoices = accountType === 'provider' ? providerPayments : consumerInvoices;
-        const limit = accountType === 'provider' && !mockProfileData.is_premium ? FREE_PAYMENT_LIMIT : undefined;
+        // Use actual profile data if available, otherwise fall back to mock data
+        const profileToUse = profile || mockProfileData;
+        const limit = accountType === 'provider' && !profileToUse.is_premium ? FREE_PAYMENT_LIMIT : undefined;
         const limitedInvoices = limit ? allInvoices.slice(0, limit) : allInvoices;
         
         return {
           data: {
-            profile: { ...mockProfileData, account_type: accountType },
+            profile: { ...profileToUse, account_type: accountType },
             invoices: limitedInvoices,
             total_count: allInvoices.length,
             has_more: limit ? allInvoices.length > limit : false
@@ -277,8 +328,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
     async updateProfile(userId: string, profileData: Partial<ProfileData>): Promise<ApiResponse<ProfileData>> {
       await new Promise(resolve => setTimeout(resolve, 1500));
+      const profileToUse = profile || mockProfileData;
       return {
-        data: { ...mockProfileData, ...profileData },
+        data: { ...profileToUse, ...profileData },
         success: true
       };
     },
@@ -294,42 +346,165 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     },
 
     async upgradeToPremium(userId: string): Promise<ApiResponse<ProfileData>> {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return {
-        data: { ...mockProfileData, is_premium: true },
-        success: true
-      };
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('🎯 Upgrading to premium for user:', userId);
+        
+        const profileToUse = profile || mockProfileData;
+        if (!profileToUse) {
+          console.warn('⚠️ Falling back to default profile data');
+          const fallbackProfile = {
+            id: userId,
+            email: 'user@example.com',
+            first_name: 'User',
+            last_name: 'Name',
+            full_name: 'User Name',
+            phone: '',
+            avatar_url: null,
+            account_type: 'consumer' as const,
+            is_premium: true, // This will be set to true after upgrade
+            email_verified: false,
+            phone_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          return {
+            data: fallbackProfile,
+            success: true
+          };
+        }
+        
+        return {
+          data: { ...profileToUse, is_premium: true },
+          success: true
+        };
+      } catch (error) {
+        console.error('❌ Upgrade to premium error:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to upgrade to premium'
+        };
+      }
     }
   };
 
-  // Single comprehensive data fetch on component mount
+  // Fetch real user profile from Supabase
   useEffect(() => {
-    const fetchProfileManagementData = async () => {
+    const fetchUserProfile = async () => {
       try {
         setIsLoading(true);
-        const response = await apiService.getProfileManagementData(userId);
+        console.log('🔄 Fetching user profile...');
         
-        if (response.success) {
-          setProfile(response.data.profile);
-          setInvoices(response.data.invoices);
-          setTotalInvoiceCount(response.data.total_count);
-          setHasMoreInvoices(response.data.has_more);
+        // Check if we have an authenticated user first
+        const currentUser = await authService.getCurrentUser();
+        if (!currentUser) {
+          console.warn('⚠️ No authenticated user found, using default profile data');
+          // Set default profile data for unauthenticated users
+          const defaultProfile = {
+            id: 'temp-user-id',
+            email: 'user@example.com',
+            phone: '1234567890',
+            first_name: 'Demo',
+            last_name: 'User', 
+            full_name: 'Demo User',
+            account_type: accountType,
+            is_premium: false,
+            email_verified: false,
+            phone_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setProfile(defaultProfile);
           
-          const newInvoicesCount = response.data.invoices.filter(invoice => invoice.is_new).length;
-          setUnreadCount(newInvoicesCount);
-        } else {
-          throw new Error('Failed to fetch profile management data');
+          // Still load mock invoices
+          const mockInvoiceResponse = await apiService.getProfileManagementData('current');
+          if (mockInvoiceResponse.success) {
+            setInvoices(mockInvoiceResponse.data.invoices);
+            setTotalInvoiceCount(mockInvoiceResponse.data.total_count);
+            setHasMoreInvoices(mockInvoiceResponse.data.has_more);
+            
+            const newInvoicesCount = mockInvoiceResponse.data.invoices.filter(invoice => invoice.is_new).length;
+            setUnreadCount(newInvoicesCount);
+          }
+          
+          setIsLoading(false);
+          return;
         }
+        
+        // Get real user profile from authService
+        const profileResponse = await authService.getUserProfile();
+        
+        if (profileResponse.success && profileResponse.data) {
+          console.log('✅ Real profile loaded:', profileResponse.data.account_type);
+          setProfile(profileResponse.data);
+          
+          // Update account type in context if different
+          const profileAccountType = profileResponse.data.account_type;
+          if (profileAccountType && 
+              (profileAccountType === 'provider' || profileAccountType === 'consumer') && 
+              profileAccountType !== accountType) {
+            setAccountType(profileAccountType);
+          }
+        } else {
+          console.error('❌ Failed to load profile:', profileResponse.error);
+          // Fall back to default profile instead of throwing error
+          console.warn('⚠️ Falling back to default profile data');
+          const defaultProfile = {
+            id: currentUser.id,
+            email: currentUser.email || 'user@example.com',
+            phone: '1234567890',
+            first_name: 'User',
+            last_name: 'Profile', 
+            full_name: 'User Profile',
+            account_type: accountType,
+            is_premium: false,
+            email_verified: false,
+            phone_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setProfile(defaultProfile);
+        }
+        
+        // Still use mock data for invoices (for now)
+        const mockInvoiceResponse = await apiService.getProfileManagementData('current');
+        if (mockInvoiceResponse.success) {
+          setInvoices(mockInvoiceResponse.data.invoices);
+          setTotalInvoiceCount(mockInvoiceResponse.data.total_count);
+          setHasMoreInvoices(mockInvoiceResponse.data.has_more);
+          
+          const newInvoicesCount = mockInvoiceResponse.data.invoices.filter(invoice => invoice.is_new).length;
+          setUnreadCount(newInvoicesCount);
+        }
+        
       } catch (error) {
-        console.error('Error fetching profile management data:', error);
-        Alert.alert('Error', 'Failed to load profile data');
+        console.error('Error fetching profile data:', error);
+        // Instead of showing alert, fall back to default data
+        console.warn('⚠️ Error occurred, using fallback profile data');
+        const defaultProfile = {
+          id: 'fallback-user-id',
+          email: 'fallback@example.com',
+          phone: '1234567890',
+          first_name: 'Demo',
+          last_name: 'User', 
+          full_name: 'Demo User',
+          account_type: accountType,
+          is_premium: false,
+          email_verified: false,
+          phone_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setProfile(defaultProfile);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchProfileManagementData();
-  }, [userId, accountType]);
+    fetchUserProfile();
+  }, [accountType]);
 
   // Refresh invoices only when tab changes or account switches
   const refreshInvoicesData = useCallback(async () => {
@@ -383,6 +558,13 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const handleAccountSwitch = async (newAccountType: 'provider' | 'consumer') => {
     try {
       setShowAccountSwitchModal(false);
+      
+      // Validate the account type before setting
+      if (!newAccountType || (newAccountType !== 'provider' && newAccountType !== 'consumer')) {
+        console.error('❌ Invalid account type for switch:', newAccountType);
+        Alert.alert('Error', 'Invalid account type selection');
+        return;
+      }
       
       await setAccountType(newAccountType);
       
@@ -600,22 +782,40 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-      if (navigation?.navigate) {
-        navigation.navigate('Login');
-      } else {
-        Alert.alert('Success', 'Successfully logged out');
-      }
-    } catch (error) {
-      console.error('Error signing out:', error);
-      Alert.alert('Error', 'Failed to sign out. Please try again.');
-    }
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              // No manual navigation needed - auth state change will handle redirect
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderField = (label: string, field: keyof ProfileData, isTextArea = false) => {
     const currentProfile = isEditing ? tempProfile : profile;
     if (!currentProfile) return null;
+
+    // Handle nested fields properly
+    let value = currentProfile[field];
+    if (field === 'full_name' && !value) {
+      value = `${currentProfile.first_name || ''} ${currentProfile.last_name || ''}`.trim();
+    }
 
     return (
       <View style={styles.fieldContainer}>
@@ -623,13 +823,13 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         {isEditing ? (
           <TextInput
             style={[styles.input, isTextArea && styles.textArea]}
-            value={currentProfile[field] as string}
+            value={String(value || '')}
             onChangeText={(text) => updateField(field, text)}
             multiline={isTextArea}
             numberOfLines={isTextArea ? 3 : 1}
           />
         ) : (
-          <Text style={styles.value}>{currentProfile[field] || 'Not provided'}</Text>
+          <Text style={styles.value}>{value || 'Not provided'}</Text>
         )}
       </View>
     );
@@ -647,14 +847,14 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         {isEditing ? (
           <TextInput
             style={[styles.input, isTextArea && styles.textArea]}
-            value={String(value)}
+            value={String(value || '')}
             onChangeText={(text) => updateProviderField(field, text)}
             multiline={isTextArea}
             numberOfLines={isTextArea ? 3 : 1}
             keyboardType={field === 'hourly_rate' || field === 'experience_years' ? 'numeric' : 'default'}
           />
         ) : (
-          <Text style={styles.value}>{value || 'Not provided'}</Text>
+          <Text style={styles.value}>{String(value || 'Not provided')}</Text>
         )}
       </View>
     );
@@ -1198,11 +1398,42 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           {/* Basic Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
-            {renderField('Full Name', 'full_name')}
+            {renderField('First Name', 'first_name')}
+            {renderField('Last Name', 'last_name')}
             {renderField('Email', 'email')}
             {renderField('Phone', 'phone')}
             {renderField('Address', 'address')}
             {renderField('Bio', 'bio', true)}
+            
+            {/* Gender and Birth Date */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Gender</Text>
+              <Text style={styles.value}>{currentProfile?.gender || 'Not specified'}</Text>
+            </View>
+            
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Date of Birth</Text>
+              <Text style={styles.value}>
+                {currentProfile?.birth_date 
+                  ? new Date(currentProfile.birth_date).toLocaleDateString('en-NZ', {
+                      year: 'numeric',
+                      month: 'long', 
+                      day: 'numeric'
+                    })
+                  : 'Not provided'
+                }
+              </Text>
+            </View>
+            
+            {/* Location Information */}
+            {currentProfile?.location && (
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Location</Text>
+                <Text style={styles.value}>
+                  {currentProfile.location.city}, {currentProfile.location.state}, {currentProfile.location.country}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Account-specific fields */}
@@ -1215,15 +1446,34 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               {renderProviderField('Hourly Rate ($)', 'hourly_rate')}
               {renderProviderField('Availability', 'availability')}
               
+              {/* Skills from provider_skills table */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Skills</Text>
                 <Text style={styles.value}>
-                  {currentProfile?.provider_details?.skills?.join(', ') || 'Not provided'}
+                  {currentProfile?.provider_details?.provider_skills?.length > 0
+                    ? currentProfile.provider_details.provider_skills
+                        .map(skill => `${skill.skill_name} (${skill.experience_level})`)
+                        .join(', ')
+                    : 'No skills added yet'
+                  }
+                </Text>
+              </View>
+              
+              {/* Certifications from provider_certifications table */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Certifications</Text>
+                <Text style={styles.value}>
+                  {currentProfile?.provider_details?.provider_certifications?.length > 0
+                    ? currentProfile.provider_details.provider_certifications
+                        .map(cert => `${cert.certification_name} (${cert.issued_by})`)
+                        .join(', ')
+                    : 'No certifications added yet'
+                  }
                 </Text>
               </View>
               
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Rating</Text>
+                <Text style={styles.label}>Rating & Performance</Text>
                 <View style={styles.ratingContainer}>
                   <Ionicons name="star" size={16} color="#F59E0B" />
                   <Text style={styles.ratingText}>
@@ -1233,6 +1483,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     ({currentProfile?.provider_details?.completed_jobs || 0} jobs completed)
                   </Text>
                 </View>
+                <Text style={styles.value}>
+                  Total Earnings: ${currentProfile?.provider_details?.total_earnings || 0}
+                </Text>
+                <Text style={styles.value}>
+                  Verified: {currentProfile?.provider_details?.is_verified ? 'Yes' : 'No'}
+                </Text>
               </View>
             </View>
           )}
@@ -1240,14 +1496,32 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           {accountType === 'consumer' && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Consumer Preferences</Text>
-              {renderConsumerField('Preferred Services', 'preferred_services')}
               {renderConsumerField('Budget Range', 'budget_range')}
               {renderConsumerField('Location Preference', 'location_preference')}
               
+              {/* Preferred Services from consumer_preferred_services table */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Service History</Text>
+                <Text style={styles.label}>Preferred Services</Text>
                 <Text style={styles.value}>
-                  {currentProfile?.consumer_details?.service_history || 0} services booked
+                  {currentProfile?.consumer_details?.consumer_preferred_services?.length > 0
+                    ? currentProfile.consumer_details.consumer_preferred_services
+                        .map(service => service.service_category)
+                        .join(', ')
+                    : 'No preferred services set'
+                  }
+                </Text>
+              </View>
+              
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Service History & Stats</Text>
+                <Text style={styles.value}>
+                  Services Booked: {currentProfile?.consumer_details?.service_history || 0}
+                </Text>
+                <Text style={styles.value}>
+                  Total Spent: ${currentProfile?.consumer_details?.total_spent || 0}
+                </Text>
+                <Text style={styles.value}>
+                  Average Rating Given: {currentProfile?.consumer_details?.average_rating_given || 0}/5
                 </Text>
               </View>
             </View>
