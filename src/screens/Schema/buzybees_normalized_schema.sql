@@ -390,7 +390,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ===============================================
 
 -- View to get complete shop data with related records
-CREATE OR REPLACE VIEW shop_complete AS
+-- Drop existing view first to avoid column conflicts
+DO $$
+BEGIN
+    DROP VIEW IF EXISTS shop_complete CASCADE;
+    RAISE NOTICE '✅ Dropped existing shop_complete view';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '⚠️ Could not drop view (may not exist): %', SQLERRM;
+END $$;
+
+CREATE VIEW shop_complete AS
 SELECT 
   pb.id,
   pb.provider_id,

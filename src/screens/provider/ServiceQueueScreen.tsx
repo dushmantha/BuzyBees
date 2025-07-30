@@ -15,29 +15,32 @@ import {
   StatusBar,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccount } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
+import { normalizedShopService } from '../../lib/supabase/normalized';
 
 // Types
 interface QueueItem {
   id: string;
+  booking_id: string;
   title: string;
   service_type: string;
   client: string;
   client_phone: string;
   client_email: string;
-  time: string;
   date: string;
+  time: string;
   scheduled_time: string;
-  location: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'urgent';
-  priority: 'high' | 'medium' | 'low';
   duration: string;
   price: number;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  priority: 'high' | 'medium' | 'low';
   notes: string;
-  booking_id: string;
+  location_type: 'in_house' | 'on_location';
+  location: string;
+  staff_name: string;
   created_at: string;
   invoice_sent: boolean;
 }
@@ -45,10 +48,11 @@ interface QueueItem {
 interface QueueStats {
   totalBookings: number;
   pendingCount: number;
-  acceptedCount: number;
-  urgentCount: number;
+  confirmedCount: number;
+  inProgressCount: number;
   completedCount: number;
-  rejectedCount: number;
+  cancelledCount: number;
+  noShowCount: number;
   todayRevenue: number;
   weeklyRevenue: number;
 }
@@ -70,14 +74,58 @@ interface ApiResponse<T> {
 const ServiceQueueScreen = ({ navigation }) => {
   const { isPro, user } = useAccount();
   const [selectedFilter, setSelectedFilter] = useState('all');
+
+  // Helper function to format booking ID
+  const formatBookingId = (bookingId: string) => {
+    // Get last 5 characters and prepend with BKR
+    const last5 = bookingId.slice(-5).toUpperCase();
+    return `BKR${last5}`;
+  };
+
+  // Helper function to format date for display
+  const formatBookingDate = (dateString: string) => {
+    const bookingDate = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Reset time for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    tomorrow.setHours(0, 0, 0, 0);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    if (bookingDate.getTime() === today.getTime()) {
+      return 'Today';
+    } else if (bookingDate.getTime() === tomorrow.getTime()) {
+      return 'Tomorrow';
+    } else {
+      // Show day of week and date for other dates
+      const options: Intl.DateTimeFormatOptions = { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      };
+      return bookingDate.toLocaleDateString('en-US', options);
+    }
+  };
+
+  // Helper function to check if booking is upcoming (today or in the future)
+  const isUpcoming = (dateString: string) => {
+    const bookingDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    bookingDate.setHours(0, 0, 0, 0);
+    return bookingDate.getTime() >= today.getTime();
+  };
   const [queueData, setQueueData] = useState<QueueItem[]>([]);
   const [queueStats, setQueueStats] = useState<QueueStats>({
     totalBookings: 0,
     pendingCount: 0,
-    acceptedCount: 0,
-    urgentCount: 0,
+    confirmedCount: 0,
+    inProgressCount: 0,
     completedCount: 0,
-    rejectedCount: 0,
+    cancelledCount: 0,
+    noShowCount: 0,
     todayRevenue: 0,
     weeklyRevenue: 0,
   });
@@ -117,390 +165,159 @@ const ServiceQueueScreen = ({ navigation }) => {
     }
   ];
 
-  // Enhanced API service with single endpoint
-  const queueAPI = {
-    // Single API call to get all queue data
-    async getQueueDashboard(providerId: string, filters?: { status?: string; date?: string }): Promise<ApiResponse<QueueDashboardData>> {
-      try {
-        // Replace with your actual API endpoint
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/queue/${providerId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error('API Error:', error);
-        // Fallback to mock data for development/testing
-        return this.getMockQueueData();
-      }
-    },
-
-    // Mock data for development (remove this in production)
-    async getMockQueueData(): Promise<ApiResponse<QueueDashboardData>> {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      
-      const mockItems: QueueItem[] = [
-        {
-          id: '1',
-          title: 'Classic Manicure',
-          service_type: 'Beauty Service',
-          client: 'Sarah Wilson',
-          client_phone: '+64212345678',
-          client_email: 'sarah.wilson@email.com',
-          time: 'Today, 2:00 PM',
-          date: '2025-07-16',
-          scheduled_time: '14:00',
-          location: '123 Queen St, Auckland',
-          status: 'pending',
-          priority: 'high',
-          duration: '45 min',
-          price: 450,
-          notes: 'First time customer, requested classic style',
-          booking_id: 'BK001',
-          created_at: '2025-07-15T10:30:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '2',
-          title: 'Hair Cut & Style',
-          service_type: 'Hair Service',
-          client: 'Emma Thompson',
-          client_phone: '+64223456789',
-          client_email: 'emma.thompson@email.com',
-          time: 'Today, 4:30 PM',
-          date: '2025-07-16',
-          scheduled_time: '16:30',
-          location: '456 Ponsonby Rd, Auckland',
-          status: 'accepted',
-          priority: 'medium',
-          duration: '60 min',
-          price: 650,
-          notes: 'Regular customer, usual style',
-          booking_id: 'BK002',
-          created_at: '2025-07-15T11:45:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '3',
-          title: 'Swedish Massage',
-          service_type: 'Wellness Service',
-          client: 'Mike Chen',
-          client_phone: '+64234567890',
-          client_email: 'mike.chen@email.com',
-          time: 'Tomorrow, 10:00 AM',
-          date: '2025-07-17',
-          scheduled_time: '10:00',
-          location: '789 Parnell St, Auckland',
-          status: 'pending',
-          priority: 'medium',
-          duration: '60 min',
-          price: 750,
-          notes: 'Stressed muscles, focus on back and shoulders',
-          booking_id: 'BK003',
-          created_at: '2025-07-15T14:20:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '4',
-          title: 'Gel Manicure',
-          service_type: 'Beauty Service',
-          client: 'Lisa Brown',
-          client_phone: '+64245678901',
-          client_email: 'lisa.brown@email.com',
-          time: 'Jan 18, 3:00 PM',
-          date: '2025-07-18',
-          scheduled_time: '15:00',
-          location: '321 Newmarket Rd, Auckland',
-          status: 'urgent',
-          priority: 'high',
-          duration: '60 min',
-          price: 550,
-          notes: 'Special event tomorrow, needs to look perfect',
-          booking_id: 'BK004',
-          created_at: '2025-07-16T09:15:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '5',
-          title: 'Haircut & Color',
-          service_type: 'Hair Service',
-          client: 'Anna Johnson',
-          client_phone: '+64256789012',
-          client_email: 'anna.johnson@email.com',
-          time: 'Jan 19, 11:30 AM',
-          date: '2025-07-19',
-          scheduled_time: '11:30',
-          location: '654 K Rd, Auckland',
-          status: 'rejected',
-          priority: 'low',
-          duration: '120 min',
-          price: 850,
-          notes: 'Complete color change requested',
-          booking_id: 'BK005',
-          created_at: '2025-07-15T16:45:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '6',
-          title: 'Facial Treatment',
-          service_type: 'Beauty Service',
-          client: 'Rachel Green',
-          client_phone: '+64267890123',
-          client_email: 'rachel.green@email.com',
-          time: 'Jan 20, 2:00 PM',
-          date: '2025-07-20',
-          scheduled_time: '14:00',
-          location: '987 Newmarket Rd, Auckland',
-          status: 'completed',
-          priority: 'medium',
-          duration: '90 min',
-          price: 800,
-          notes: 'Anti-aging treatment, very satisfied customer',
-          booking_id: 'BK006',
-          created_at: '2025-07-15T09:20:00Z',
-          invoice_sent: true,
-        },
-        {
-          id: '7',
-          title: 'Deep Tissue Massage',
-          service_type: 'Wellness Service',
-          client: 'John Smith',
-          client_phone: '+64278901234',
-          client_email: 'john.smith@email.com',
-          time: 'Jan 21, 1:00 PM',
-          date: '2025-07-21',
-          scheduled_time: '13:00',
-          location: '111 Ponsonby Rd, Auckland',
-          status: 'pending',
-          priority: 'medium',
-          duration: '75 min',
-          price: 890,
-          notes: 'Athletic recovery session',
-          booking_id: 'BK007',
-          created_at: '2025-07-16T08:30:00Z',
-          invoice_sent: false,
-        },
-        {
-          id: '8',
-          title: 'Eyebrow Threading',
-          service_type: 'Beauty Service',
-          client: 'Maria Garcia',
-          client_phone: '+64289012345',
-          client_email: 'maria.garcia@email.com',
-          time: 'Jan 22, 11:00 AM',
-          date: '2025-07-22',
-          scheduled_time: '11:00',
-          location: '555 Karangahape Rd, Auckland',
-          status: 'pending',
-          priority: 'low',
-          duration: '30 min',
-          price: 280,
-          notes: 'Regular monthly appointment',
-          booking_id: 'BK008',
-          created_at: '2025-07-16T10:15:00Z',
-          invoice_sent: false,
-        },
-      ];
-
-      const mockStats: QueueStats = {
-        totalBookings: mockItems.length,
-        pendingCount: mockItems.filter(item => item.status === 'pending').length,
-        acceptedCount: mockItems.filter(item => item.status === 'accepted').length,
-        urgentCount: mockItems.filter(item => item.status === 'urgent').length,
-        completedCount: mockItems.filter(item => item.status === 'completed').length,
-        rejectedCount: mockItems.filter(item => item.status === 'rejected').length,
-        todayRevenue: mockItems
-          .filter(item => item.status === 'completed' && item.date === '2025-07-16')
-          .reduce((sum, item) => sum + item.price, 0),
-        weeklyRevenue: mockItems
-          .filter(item => item.status === 'completed')
-          .reduce((sum, item) => sum + item.price, 0),
-      };
-
-      const invoicesSent = mockItems
-        .filter(item => item.invoice_sent)
-        .map(item => item.booking_id);
-
-      return {
-        success: true,
-        data: {
-          items: mockItems,
-          stats: mockStats,
-          invoicesSent,
-        },
-        message: 'Queue data loaded successfully'
-      };
-    },
-
-    // Accept booking
-    async acceptBooking(bookingId: string, providerId: string): Promise<ApiResponse<any>> {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/bookings/${bookingId}/accept`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`,
-          },
-          body: JSON.stringify({ providerId }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        // Mock response for development
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return {
-          success: true,
-          message: 'Booking accepted successfully'
-        };
-      }
-    },
-
-    // Reject booking
-    async rejectBooking(bookingId: string, reason: string, providerId: string): Promise<ApiResponse<any>> {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/bookings/${bookingId}/reject`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`,
-          },
-          body: JSON.stringify({ reason, providerId }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        // Mock response for development
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return {
-          success: true,
-          message: 'Booking rejected successfully'
-        };
-      }
-    },
-
-    // Update booking status
-    async updateBookingStatus(bookingId: string, status: string, providerId: string): Promise<ApiResponse<any>> {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/bookings/${bookingId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`,
-          },
-          body: JSON.stringify({ status, providerId }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        // Mock response for development
-        await new Promise(resolve => setTimeout(resolve, 600));
-        return {
-          success: true,
-          message: `Booking status updated to ${status}`
-        };
-      }
-    },
-
-    // Send invoice
-    async sendInvoice(bookingId: string, providerId: string): Promise<ApiResponse<any>> {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.yourservice.com'}/provider/bookings/${bookingId}/invoice`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`,
-          },
-          body: JSON.stringify({ providerId }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        // Mock response for development
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return {
-          success: true,
-          message: 'Invoice sent successfully'
-        };
-      }
-    },
-  };
 
   // Filter options with honey theme
   const filterOptions = [
     { key: 'all', label: 'All', icon: 'list' },
     { key: 'pending', label: 'Pending', icon: 'time' },
-    { key: 'accepted', label: 'Accepted', icon: 'checkmark-circle' },
-    { key: 'urgent', label: 'Urgent', icon: 'warning' },
+    { key: 'confirmed', label: 'Confirmed', icon: 'checkmark-circle' },
+    { key: 'in_progress', label: 'In Progress', icon: 'play-circle' },
     { key: 'completed', label: 'Done', icon: 'checkmark-done' },
-    { key: 'rejected', label: 'Rejected', icon: 'close-circle' },
+    { key: 'cancelled', label: 'Cancelled', icon: 'close-circle' },
+    { key: 'no_show', label: 'No Show', icon: 'person-remove' },
   ];
 
-  // Load initial data with single API call
-  const loadQueueData = useCallback(async () => {
+  // Load initial data directly from Supabase
+  const loadQueueData = useCallback(async (showLoading = true) => {
     try {
-      setIsLoading(true);
-      const providerId = user?.id || 'provider-123';
+      if (showLoading) {
+        setIsLoading(true);
+      }
       
-      const response = await queueAPI.getQueueDashboard(providerId);
+      // Get user ID from multiple sources for reliability
+      let providerId = user?.id;
+      
+      // If context user is not available, try to get it from Supabase directly
+      if (!providerId) {
+        console.log('⚠️ User context not available, checking Supabase auth...');
+        const currentUser = await normalizedShopService.getCurrentUser();
+        providerId = currentUser?.id;
+      }
+      
+      if (!providerId) {
+        throw new Error('User not authenticated. Please log in again.');
+      }
+      
+      console.log('📋 Loading bookings directly from Supabase for provider:', providerId);
+      const response = await normalizedShopService.getBookings(providerId);
       
       if (response.success && response.data) {
-        const { items, stats, invoicesSent } = response.data;
+        const bookings = response.data;
+        console.log('📋 Loaded', bookings.length, 'bookings from Supabase');
         
-        // Update all state with the single API response
-        setQueueData(items);
+        // Transform the booking data to match our QueueItem interface
+        const queueItems: QueueItem[] = bookings.map(booking => ({
+          id: booking.id,
+          booking_id: booking.id,
+          title: booking.service_name || 'Service',
+          service_type: booking.service_category || 'General Service',
+          client: booking.customer_name,
+          client_phone: booking.customer_phone,
+          client_email: booking.customer_email || '',
+          date: booking.booking_date,
+          time: booking.start_time,
+          scheduled_time: `${booking.booking_date} ${booking.start_time}`,
+          duration: `${booking.duration_minutes} min`,
+          price: booking.total_amount,
+          status: booking.status,
+          priority: booking.status === 'pending' ? 'high' : 'medium',
+          notes: booking.notes || '',
+          location_type: booking.service_location_type || 'in_house',
+          location: booking.service_location_type === 'on_location' ? 'Client Location' : 'Shop Location',
+          staff_name: booking.staff?.name || 'Any Staff',
+          created_at: booking.created_at,
+          invoice_sent: false // Will be managed separately
+        }));
+        
+        // Update queue data
+        setQueueData(queueItems);
+        
+        // Calculate stats from the booking data
+        const stats: QueueStats = {
+          totalBookings: queueItems.length,
+          pendingCount: queueItems.filter(item => item.status === 'pending').length,
+          confirmedCount: queueItems.filter(item => item.status === 'confirmed').length,
+          inProgressCount: queueItems.filter(item => item.status === 'in_progress').length,
+          completedCount: queueItems.filter(item => item.status === 'completed').length,
+          cancelledCount: queueItems.filter(item => item.status === 'cancelled').length,
+          noShowCount: queueItems.filter(item => item.status === 'no_show').length,
+          todayRevenue: queueItems
+            .filter(item => item.status === 'completed' && item.date === new Date().toISOString().split('T')[0])
+            .reduce((sum, item) => sum + item.price, 0),
+          weeklyRevenue: queueItems
+            .filter(item => item.status === 'completed')
+            .reduce((sum, item) => sum + item.price, 0),
+        };
+        
         setQueueStats(stats);
-        setInvoiceSentItems(new Set(invoicesSent));
         
-        // Save invoice tracking data locally
-        await AsyncStorage.setItem('sentInvoices', JSON.stringify(invoicesSent));
+        // Load invoice tracking data from local storage (only on initial load)
+        if (showLoading) {
+          try {
+            const savedInvoices = await AsyncStorage.getItem('sentInvoices');
+            if (savedInvoices) {
+              setInvoiceSentItems(new Set(JSON.parse(savedInvoices)));
+            }
+          } catch (error) {
+            console.log('No saved invoice data found');
+          }
+        }
+        
       } else {
-        throw new Error(response.message);
+        throw new Error(response.error || 'Failed to load bookings');
       }
       
     } catch (error) {
-      console.error('Error loading queue data:', error);
-      Alert.alert('Error', 'Failed to load queue data. Please try again.');
+      console.error('Error loading booking queue:', error);
+      
+      // Handle authentication errors specifically
+      if (error.message?.includes('not authenticated')) {
+        Alert.alert(
+          'Authentication Required', 
+          'Please log in again to access your booking queue.',
+          [
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+      } else if (showLoading) {
+        Alert.alert('Error', 'Failed to load booking queue. Please try again.');
+      }
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
-    loadQueueData();
+    loadQueueData(true); // Initial load with loading indicator
+    
+    // Set up periodic refresh every 30 seconds for real-time updates
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing booking queue...');
+      loadQueueData(false); // Background refresh without loading indicator
+    }, 30000);
+    
+    // Clean up interval on unmount
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [loadQueueData]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📋 Screen focused, refreshing booking queue...');
+      loadQueueData(false); // Background refresh without loading indicator
+    }, [loadQueueData])
+  );
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await loadQueueData();
+    await loadQueueData(false); // Manual refresh doesn't need loading indicator
     setIsRefreshing(false);
   }, [loadQueueData]);
 
@@ -522,10 +339,11 @@ const ServiceQueueScreen = ({ navigation }) => {
     return {
       all: queueStats.totalBookings,
       pending: queueStats.pendingCount,
-      accepted: queueStats.acceptedCount,
-      urgent: queueStats.urgentCount,
+      confirmed: queueStats.confirmedCount,
+      in_progress: queueStats.inProgressCount,
       completed: queueStats.completedCount,
-      rejected: queueStats.rejectedCount,
+      cancelled: queueStats.cancelledCount,
+      no_show: queueStats.noShowCount,
     };
   }, [queueStats]);
 
@@ -575,33 +393,46 @@ const ServiceQueueScreen = ({ navigation }) => {
     }
   }, [navigation]);
 
-  // Accept booking with API integration
+  // Accept booking with direct Supabase integration
   const handleAcceptBooking = useCallback(async (item: QueueItem) => {
     try {
       setProcessingItems(prev => new Set([...prev, item.id]));
       
-      const response = await queueAPI.acceptBooking(item.booking_id, user?.id || 'provider-123');
+      console.log('📋 Confirming booking:', item.booking_id);
+      const response = await normalizedShopService.updateBookingStatus(
+        item.booking_id, 
+        'confirmed',
+        'Booking confirmed by provider'
+      );
       
       if (response.success) {
+        // Update local state immediately
         setQueueData(prevData =>
           prevData.map(queueItem =>
             queueItem.id === item.id
-              ? { ...queueItem, status: 'accepted' as const }
+              ? { ...queueItem, status: 'confirmed' as const }
               : queueItem
           )
         );
         
+        // Update stats
+        setQueueStats(prevStats => ({
+          ...prevStats,
+          pendingCount: prevStats.pendingCount - 1,
+          confirmedCount: prevStats.confirmedCount + 1
+        }));
+        
         Alert.alert(
-          'Booking Accepted',
-          `You've accepted the booking for ${item.client}. They will be notified.`,
+          'Booking Confirmed',
+          `You've confirmed the booking for ${item.client}. They will be notified.`,
           [{ text: 'OK' }]
         );
       } else {
-        throw new Error(response.message);
+        throw new Error(response.error || 'Failed to confirm booking');
       }
     } catch (error) {
-      console.error('Error accepting booking:', error);
-      Alert.alert('Error', 'Failed to accept booking. Please try again.');
+      console.error('Error confirming booking:', error);
+      Alert.alert('Error', 'Failed to confirm booking. Please try again.');
     } finally {
       setProcessingItems(prev => {
         const newSet = new Set(prev);
@@ -609,7 +440,7 @@ const ServiceQueueScreen = ({ navigation }) => {
         return newSet;
       });
     }
-  }, [user?.id]);
+  }, []);
 
   // Reject booking with API integration
   const handleRejectBooking = useCallback(async (item: QueueItem) => {
@@ -625,32 +456,41 @@ const ServiceQueueScreen = ({ navigation }) => {
             try {
               setProcessingItems(prev => new Set([...prev, item.id]));
               
-              const response = await queueAPI.rejectBooking(
+              console.log('📋 Cancelling booking:', item.booking_id);
+              const response = await normalizedShopService.updateBookingStatus(
                 item.booking_id, 
-                'Provider declined', 
-                user?.id || 'provider-123'
+                'cancelled', 
+                'Provider declined booking'
               );
               
               if (response.success) {
+                // Update local state immediately
                 setQueueData(prevData =>
                   prevData.map(queueItem =>
                     queueItem.id === item.id
-                      ? { ...queueItem, status: 'rejected' as const }
+                      ? { ...queueItem, status: 'cancelled' as const }
                       : queueItem
                   )
                 );
                 
+                // Update stats
+                setQueueStats(prevStats => ({
+                  ...prevStats,
+                  pendingCount: prevStats.pendingCount - 1,
+                  cancelledCount: prevStats.cancelledCount + 1
+                }));
+                
                 Alert.alert(
-                  'Booking Rejected',
-                  `You've rejected the booking for ${item.client}. They will be notified and can book with another provider.`,
+                  'Booking Cancelled',
+                  `You've cancelled the booking for ${item.client}. They will be notified and can book with another provider.`,
                   [{ text: 'OK' }]
                 );
               } else {
-                throw new Error(response.message);
+                throw new Error(response.error || 'Failed to cancel booking');
               }
             } catch (error) {
-              console.error('Error rejecting booking:', error);
-              Alert.alert('Error', 'Failed to reject booking. Please try again.');
+              console.error('Error cancelling booking:', error);
+              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
             } finally {
               setProcessingItems(prev => {
                 const newSet = new Set(prev);
@@ -677,13 +517,15 @@ const ServiceQueueScreen = ({ navigation }) => {
             try {
               setProcessingItems(prev => new Set([...prev, item.id]));
               
-              const response = await queueAPI.updateBookingStatus(
+              console.log('📋 Completing booking:', item.booking_id);
+              const response = await normalizedShopService.updateBookingStatus(
                 item.booking_id, 
                 'completed', 
-                user?.id || 'provider-123'
+                'Service completed successfully'
               );
               
               if (response.success) {
+                // Update local state immediately
                 setQueueData(prevData =>
                   prevData.map(queueItem =>
                     queueItem.id === item.id
@@ -691,6 +533,15 @@ const ServiceQueueScreen = ({ navigation }) => {
                       : queueItem
                   )
                 );
+                
+                // Update stats
+                setQueueStats(prevStats => ({
+                  ...prevStats,
+                  confirmedCount: prevStats.confirmedCount - 1,
+                  completedCount: prevStats.completedCount + 1,
+                  todayRevenue: prevStats.todayRevenue + item.price,
+                  weeklyRevenue: prevStats.weeklyRevenue + item.price
+                }));
                 
                 Alert.alert(
                   'Service Completed!',
@@ -704,7 +555,7 @@ const ServiceQueueScreen = ({ navigation }) => {
                   ]
                 );
               } else {
-                throw new Error(response.message);
+                throw new Error(response.error || 'Failed to complete booking');
               }
             } catch (error) {
               console.error('Error completing booking:', error);
@@ -745,7 +596,7 @@ const ServiceQueueScreen = ({ navigation }) => {
     if (isInvoiceSent) {
       Alert.alert(
         'Send Invoice Again?',
-        `An invoice has already been sent to ${item.client}. Would you like to send it again?`,
+        `An invoice has already been sent to ${item.client} for booking ${formatBookingId(item.booking_id)}. Would you like to send it again?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -848,16 +699,18 @@ const ServiceQueueScreen = ({ navigation }) => {
   // Get status badge style with honey theme
   const getStatusBadgeStyle = useCallback((status: string) => {
     switch (status) {
-      case 'urgent':
-        return { badge: styles.urgentBadge, text: styles.urgentText };
       case 'pending':
         return { badge: styles.pendingBadge, text: styles.pendingText };
-      case 'accepted':
-        return { badge: styles.acceptedBadge, text: styles.acceptedText };
-      case 'rejected':
-        return { badge: styles.rejectedBadge, text: styles.rejectedText };
+      case 'confirmed':
+        return { badge: styles.confirmedBadge, text: styles.confirmedText };
+      case 'in_progress':
+        return { badge: styles.inProgressBadge, text: styles.inProgressText };
       case 'completed':
         return { badge: styles.completedBadge, text: styles.completedText };
+      case 'cancelled':
+        return { badge: styles.cancelledBadge, text: styles.cancelledText };
+      case 'no_show':
+        return { badge: styles.noShowBadge, text: styles.noShowText };
       default:
         return { badge: styles.pendingBadge, text: styles.pendingText };
     }
@@ -902,28 +755,26 @@ const ServiceQueueScreen = ({ navigation }) => {
 
         {/* Status Actions */}
         <View style={styles.statusActions}>
-          {(item.status === 'pending' || item.status === 'urgent') && (
+          {item.status === 'pending' && (
             <>
               <TouchableOpacity 
                 style={styles.rejectButton}
                 onPress={() => handleRejectBooking(item)}
               >
                 <Ionicons name="close" size={16} color="#EF4444" />
-                <Text style={styles.rejectButtonText}>Reject</Text>
+                <Text style={styles.rejectButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={item.status === 'urgent' ? styles.urgentAcceptButton : styles.acceptButton}
+                style={styles.acceptButton}
                 onPress={() => handleAcceptBooking(item)}
               >
-                <Ionicons name={item.status === 'urgent' ? "flash" : "checkmark"} size={16} color="#FFFFFF" />
-                <Text style={styles.acceptButtonText}>
-                  {item.status === 'urgent' ? 'Accept Urgent' : 'Accept'}
-                </Text>
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                <Text style={styles.acceptButtonText}>Confirm</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {item.status === 'accepted' && (
+          {item.status === 'confirmed' && (
             <TouchableOpacity 
               style={styles.completeButton}
               onPress={() => handleMarkCompleted(item)}
@@ -959,9 +810,11 @@ const ServiceQueueScreen = ({ navigation }) => {
             </View>
           )}
 
-          {item.status === 'rejected' && (
+          {(item.status === 'cancelled' || item.status === 'no_show') && (
             <View style={styles.statusIndicatorButton}>
-              <Text style={styles.statusIndicatorText}>Rejected</Text>
+              <Text style={styles.statusIndicatorText}>
+                {item.status === 'cancelled' ? 'Cancelled' : 'No Show'}
+              </Text>
             </View>
           )}
         </View>
@@ -996,18 +849,50 @@ const ServiceQueueScreen = ({ navigation }) => {
 
         <View style={styles.clientInfo}>
           <Text style={styles.queueClient}>{item.client}</Text>
-          <Text style={styles.bookingId}>#{item.booking_id}</Text>
+          <Text style={styles.bookingId}>{formatBookingId(item.booking_id)}</Text>
         </View>
 
         <View style={styles.queueDetails}>
+          {/* Date Row - Prominently displayed */}
+          <View style={[styles.detailRow, styles.dateRow]}>
+            <Ionicons 
+              name="calendar-outline" 
+              size={16} 
+              color={isUpcoming(item.date) ? "#059669" : "#6B7280"} 
+            />
+            <Text style={[
+              styles.queueDate, 
+              isUpcoming(item.date) && styles.upcomingDate
+            ]}>
+              {formatBookingDate(item.date)}
+            </Text>
+            {isUpcoming(item.date) && (
+              <View style={styles.upcomingBadge}>
+                <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Time Row */}
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={14} color="#F59E0B" />
             <Text style={styles.queueTime}>{item.time}</Text>
             <Text style={styles.duration}>({item.duration})</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={14} color="#4B5563" />
-            <Text style={styles.queueLocation}>{item.location}</Text>
+            <Ionicons 
+              name={item.location_type === 'on_location' ? "car-outline" : "storefront-outline"} 
+              size={14} 
+              color="#4B5563" 
+            />
+            <Text style={styles.queueLocation}>
+              {item.location_type === 'on_location' ? 'Client Location' : 'Shop Location'}
+            </Text>
+            {item.location_type === 'on_location' && (
+              <View style={styles.locationBadge}>
+                <Text style={styles.locationBadgeText}>On-Location</Text>
+              </View>
+            )}
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={14} color="#F59E0B" />
@@ -1391,16 +1276,18 @@ const styles = StyleSheet.create({
   },
   
   // Status Badge Styles with Honey Theme
-  urgentBadge: { backgroundColor: '#FEE2E2' },
-  urgentText: { color: '#DC2626' },
   pendingBadge: { backgroundColor: '#FEF3C7' },
   pendingText: { color: '#92400E' },
-  acceptedBadge: { backgroundColor: '#EFF6FF' },
-  acceptedText: { color: '#2563EB' },
-  rejectedBadge: { backgroundColor: '#FEE2E2' },
-  rejectedText: { color: '#DC2626' },
+  confirmedBadge: { backgroundColor: '#EFF6FF' },
+  confirmedText: { color: '#2563EB' },
+  inProgressBadge: { backgroundColor: '#F3E8FF' },
+  inProgressText: { color: '#7C3AED' },
   completedBadge: { backgroundColor: '#ECFDF5' },
   completedText: { color: '#059669' },
+  cancelledBadge: { backgroundColor: '#FEE2E2' },
+  cancelledText: { color: '#DC2626' },
+  noShowBadge: { backgroundColor: '#F3F4F6' },
+  noShowText: { color: '#4B5563' },
 
   clientInfo: {
     flexDirection: 'row',
@@ -1427,6 +1314,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  dateRow: {
+    marginBottom: 4,
+    justifyContent: 'space-between',
+  },
+  queueDate: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 6,
+  },
+  upcomingDate: {
+    color: '#059669',
+    fontWeight: '700',
+  },
+  upcomingBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#059669',
+  },
+  upcomingBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+    letterSpacing: 0.5,
+  },
   queueTime: {
     fontSize: 14,
     color: '#F59E0B',
@@ -1440,6 +1356,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     flex: 1,
+  },
+  locationBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  locationBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   queuePrice: {
     fontSize: 14,

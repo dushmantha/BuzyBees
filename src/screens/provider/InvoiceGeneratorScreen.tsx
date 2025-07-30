@@ -19,6 +19,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizedShopService } from '../../lib/supabase/normalized';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -301,6 +302,34 @@ Thank you for choosing our services.`,
         }
       }
       
+      // Load shop data from database first
+      let shopData = null;
+      try {
+        const user = await normalizedShopService.getCurrentUser();
+        if (user?.id) {
+          // Get provider's shops
+          const { data: shops } = await normalizedShopService.client
+            .from('provider_businesses')
+            .select('logo_url, name, address, city, state, country, phone, email, website_url')
+            .eq('provider_id', user.id)
+            .limit(1)
+            .single();
+          
+          if (shops) {
+            shopData = {
+              companyLogo: shops.logo_url,
+              companyName: shops.name,
+              companyAddress: `${shops.address}, ${shops.city}, ${shops.state}`,
+              companyPhone: shops.phone,
+              companyEmail: shops.email,
+              companyWebsite: shops.website_url,
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error loading shop data:', error);
+      }
+
       // Load company settings
       const savedSettings = await AsyncStorage.getItem('companySettings');
       if (savedSettings) {
@@ -309,15 +338,35 @@ Thank you for choosing our services.`,
           setInvoiceData(prev => ({
             ...prev,
             ...settings,
+            // Override with fresh shop data if available
+            ...(shopData || {}),
             // Update terms with company name if available
-            termsAndConditions: prev.termsAndConditions.replace('${companyName}', settings.companyName || ''),
+            termsAndConditions: prev.termsAndConditions.replace('${companyName}', shopData?.companyName || settings.companyName || ''),
           }));
         } catch (parseError) {
           console.error('Error parsing company settings:', parseError);
-          setShowCompanySetup(true);
+          // If shop data exists, use it
+          if (shopData) {
+            setInvoiceData(prev => ({
+              ...prev,
+              ...shopData,
+              termsAndConditions: prev.termsAndConditions.replace('${companyName}', shopData.companyName || ''),
+            }));
+          } else {
+            setShowCompanySetup(true);
+          }
         }
       } else {
-        setShowCompanySetup(true);
+        // No saved settings - try to use shop data
+        if (shopData) {
+          setInvoiceData(prev => ({
+            ...prev,
+            ...shopData,
+            termsAndConditions: prev.termsAndConditions.replace('${companyName}', shopData.companyName || ''),
+          }));
+        } else {
+          setShowCompanySetup(true);
+        }
       }
       
     } catch (error) {
@@ -501,6 +550,13 @@ Thank you for choosing our services.`,
             font-size: 28px; 
             font-weight: bold; 
             box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        .company-logo-img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         .company-info { 
             text-align: right; 
@@ -733,20 +789,26 @@ Thank you for choosing our services.`,
     <div class="invoice-container">
         <div class="header">
             <div>
-                <div class="company-logo">${invoiceData.companyName.charAt(0).toUpperCase()}</div>
+                ${invoiceData.companyLogo 
+                    ? `<img src="${invoiceData.companyLogo}" alt="${invoiceData.companyName}" class="company-logo-img" />`
+                    : `<div class="company-logo">${invoiceData.companyName.charAt(0).toUpperCase()}</div>`
+                }
             </div>
             <div class="company-info">
                 <div class="company-name">${invoiceData.companyName}</div>
                 <div class="company-details">
                     ${invoiceData.companyAddress}<br>
-                    ${invoiceData.companyPhone}<br>
-                    ${invoiceData.companyEmail}
-                    ${invoiceData.companyWebsite ? `<br>${invoiceData.companyWebsite}` : ''}
+                    <span style="color: #F59E0B;">📞</span> ${invoiceData.companyPhone}<br>
+                    <span style="color: #F59E0B;">✉️</span> ${invoiceData.companyEmail}
+                    ${invoiceData.companyWebsite ? `<br><span style="color: #F59E0B;">🌐</span> ${invoiceData.companyWebsite}` : ''}
                 </div>
             </div>
         </div>
 
-        <div class="invoice-title">Invoice</div>
+        <div class="invoice-title">
+            <span style="font-size: 48px;">INVOICE</span>
+            <div style="width: 100px; height: 4px; background: #F59E0B; margin: 10px auto 0;"></div>
+        </div>
 
         <div class="invoice-meta">
             <div class="meta-grid">
@@ -789,6 +851,13 @@ Thank you for choosing our services.`,
                     <strong>Business Number:</strong> ${invoiceData.businessNumber}
                 </div>
             </div>
+        </div>
+
+        <div style="margin: 30px 0;">
+            <h2 style="color: #1F2937; font-size: 22px; margin-bottom: 20px; display: flex; align-items: center;">
+                <span style="color: #F59E0B; margin-right: 10px;">▎</span>
+                Services Provided
+            </h2>
         </div>
 
         <table class="services-table">
@@ -855,11 +924,42 @@ Thank you for choosing our services.`,
         </div>
 
         <div class="footer">
-            <div class="footer-message">Thank you for choosing ${invoiceData.companyName}!</div>
-            <p style="font-size: 14px;">Invoice generated on ${formatDate(new Date())}</p>
-            <p style="font-size: 12px; margin-top: 10px; color: #9CA3AF;">
-                This is a computer-generated invoice. For questions, please contact us at ${invoiceData.companyEmail}
-            </p>
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div class="footer-message">Thank you for choosing ${invoiceData.companyName}!</div>
+                <p style="color: #6B7280; margin-top: 10px;">Payment is due within ${invoiceData.paymentTerms}</p>
+            </div>
+            
+            <div style="background: #F9FAFB; border-radius: 12px; padding: 30px; margin: 30px 0;">
+                <table style="width: 100%; color: #6B7280; font-size: 14px;">
+                    <tr>
+                        <td style="text-align: left; vertical-align: top;">
+                            <strong style="color: #1F2937; font-size: 16px;">${invoiceData.companyName}</strong><br>
+                            <div style="margin-top: 5px; line-height: 1.5;">
+                                ${invoiceData.companyAddress}<br>
+                                <span style="color: #F59E0B;">📞</span> ${invoiceData.companyPhone}<br>
+                                <span style="color: #F59E0B;">✉️</span> ${invoiceData.companyEmail}
+                                ${invoiceData.companyWebsite ? `<br><span style="color: #F59E0B;">🌐</span> ${invoiceData.companyWebsite}` : ''}
+                            </div>
+                        </td>
+                        <td style="text-align: right; vertical-align: top;">
+                            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #E5E7EB;">
+                                <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 5px;">INVOICE NUMBER</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #F59E0B;">${invoiceData.invoiceNumber}</div>
+                                <div style="font-size: 12px; color: #6B7280; margin-top: 10px;">Generated on<br>${formatDate(new Date())}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+                <p style="font-size: 12px; color: #9CA3AF; margin-bottom: 10px;">
+                    This is a computer-generated invoice. For questions, please contact us at ${invoiceData.companyEmail}
+                </p>
+                <div style="color: #D1D5DB; font-size: 11px;">
+                    Powered by BuzyBees • Professional Service Management • ${new Date().getFullYear()}
+                </div>
+            </div>
         </div>
     </div>
 </body>

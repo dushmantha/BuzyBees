@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -23,8 +24,21 @@ import ServiceManagementAPI, {
   QuickBooking, 
   ServiceAvailability 
 } from '../../services/ServiceManagementAPI';
+import { useAuth } from '../../navigation/AppNavigator';
 
 const { width } = Dimensions.get('window');
+
+// Safe avatar URL helper function
+const getSafeAvatarUrl = (avatar_url: any): string | undefined => {
+  if (!avatar_url) return undefined;
+  if (typeof avatar_url === 'string') return avatar_url;
+  if (Array.isArray(avatar_url)) {
+    console.warn('🚨 Staff avatar URL is array, using first item:', avatar_url);
+    return avatar_url.length > 0 ? avatar_url[0] : undefined;
+  }
+  console.warn('🚨 Invalid staff avatar URL format:', typeof avatar_url, avatar_url);
+  return undefined;
+};
 
 // Enhanced utility functions with better error handling
 const parseTimeString = (timeString: string): number => {
@@ -157,6 +171,7 @@ const QuickBookingModal = ({
   visible, 
   onClose, 
   selectedService, 
+  selectedShop,
   onBookingComplete 
 }) => {
   const [selectedDate, setSelectedDate] = useState('');
@@ -171,6 +186,9 @@ const QuickBookingModal = ({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [shopStaff, setShopStaff] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
 
   // Memoized date range calculation
   const dateRange = useMemo(() => {
@@ -181,6 +199,29 @@ const QuickBookingModal = ({
       today,
       maxDate: maxDate.toISOString().split('T')[0]
     };
+  }, []);
+
+  // Load service-specific staff
+  const loadServiceStaff = useCallback(async (shopId: string, serviceId: string) => {
+    if (!shopId || !serviceId) return;
+    
+    try {
+      setLoadingStaff(true);
+      const response = await ServiceManagementAPI.getServiceStaff(shopId, serviceId);
+      
+      if (response.success && response.data) {
+        setShopStaff(response.data);
+        console.log('📋 Service staff loaded:', response.data.length, 'staff members assigned to service');
+      } else {
+        console.warn('⚠️ Failed to load service staff:', response.message);
+        setShopStaff([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading service staff:', error);
+      setShopStaff([]);
+    } finally {
+      setLoadingStaff(false);
+    }
   }, []);
 
   // Load service availability with retry logic
@@ -210,12 +251,18 @@ const QuickBookingModal = ({
     }
   }, []);
 
-  // Load availability when service changes
+  // Load availability and staff when service/shop changes
   useEffect(() => {
     if (selectedService?.id && visible) {
       loadServiceAvailability(selectedService.id);
     }
   }, [selectedService?.id, visible, loadServiceAvailability]);
+
+  useEffect(() => {
+    if (selectedShop?.id && selectedService?.id && visible) {
+      loadServiceStaff(selectedShop.id, selectedService.id);
+    }
+  }, [selectedShop?.id, selectedService?.id, visible, loadServiceStaff]);
 
   // Memoized calendar marked dates calculation
   const calculatedMarkedDates = useMemo(() => {
@@ -359,10 +406,14 @@ const QuickBookingModal = ({
         time: selectedTime,
         duration: selectedService.duration_minutes,
         price: selectedService.price,
-        notes: notes.trim() || undefined
+        notes: notes.trim() || undefined,
+        assigned_staff_id: selectedStaffId || undefined
       };
 
-      const response = await ServiceManagementAPI.createQuickBooking(bookingData);
+      const response = await ServiceManagementAPI.createQuickBooking({
+        ...bookingData,
+        shop_id: selectedShop.id
+      });
       
       if (response.success) {
         onBookingComplete(response.data);
@@ -385,9 +436,11 @@ const QuickBookingModal = ({
     setCustomerPhone('');
     setCustomerEmail('');
     setNotes('');
+    setSelectedStaffId('');
     setShowCalendar(true);
     setServiceAvailability(null);
     setAvailableSlots([]);
+    setShopStaff([]);
   }, []);
 
   const formatDisplayDate = useCallback((dateStr) => {
@@ -537,6 +590,114 @@ const QuickBookingModal = ({
             />
           </View>
 
+          {/* Staff Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Assign Staff Member</Text>
+            <Text style={styles.inputSubLabel}>Only staff assigned to this service are shown</Text>
+            {loadingStaff ? (
+              <View style={styles.staffLoadingContainer}>
+                <ActivityIndicator size="small" color="#F59E0B" />
+                <Text style={styles.staffLoadingText}>Loading assigned staff...</Text>
+              </View>
+            ) : shopStaff.length > 0 ? (
+              <View style={styles.staffSelection}>
+                <TouchableOpacity
+                  style={[
+                    styles.staffOption,
+                    !selectedStaffId && styles.selectedStaffOption
+                  ]}
+                  onPress={() => setSelectedStaffId('')}
+                >
+                  {/* Generic Staff Avatar */}
+                  <View style={styles.staffAvatarContainer}>
+                    <View style={styles.genericStaffAvatarPlaceholder}>
+                      <Ionicons name="people-outline" size={20} color="#FFFFFF" />
+                    </View>
+                  </View>
+
+                  {/* Staff Info */}
+                  <View style={styles.staffInfo}>
+                    <Text style={[
+                      styles.staffOptionText,
+                      !selectedStaffId && styles.selectedStaffOptionText
+                    ]}>
+                      Any available staff
+                    </Text>
+                    <Text style={styles.staffSpecialties}>
+                      System will assign automatically
+                    </Text>
+                  </View>
+
+                  {/* Selection Checkmark */}
+                  {!selectedStaffId && (
+                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  )}
+                </TouchableOpacity>
+                
+                {shopStaff.map((staff) => {
+                  const avatarUrl = getSafeAvatarUrl(staff.avatar_url);
+                  return (
+                    <TouchableOpacity
+                      key={staff.id}
+                      style={[
+                        styles.staffOption,
+                        selectedStaffId === staff.id && styles.selectedStaffOption
+                      ]}
+                      onPress={() => setSelectedStaffId(staff.id)}
+                    >
+                      {/* Staff Avatar */}
+                      <View style={styles.staffAvatarContainer}>
+                        {avatarUrl ? (
+                          <Image
+                            source={{ uri: avatarUrl }}
+                            style={styles.staffAvatar}
+                            onError={() => console.warn('Failed to load staff avatar:', avatarUrl)}
+                          />
+                        ) : (
+                          <View style={styles.staffAvatarPlaceholder}>
+                            <Text style={styles.staffAvatarInitials}>
+                              {staff.name ? staff.name.charAt(0).toUpperCase() : '?'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Staff Info */}
+                      <View style={styles.staffInfo}>
+                        <Text style={[
+                          styles.staffOptionText,
+                          selectedStaffId === staff.id && styles.selectedStaffOptionText
+                        ]}>
+                          {staff.name}
+                        </Text>
+                        {staff.specialties && staff.specialties.length > 0 && (
+                          <Text style={styles.staffSpecialties}>
+                            {staff.specialties.join(', ')}
+                          </Text>
+                        )}
+                        {staff.experience_years && (
+                          <Text style={styles.staffExperience}>
+                            {staff.experience_years} years experience
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Selection Checkmark */}
+                      {selectedStaffId === staff.id && (
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.noStaffContainer}>
+                <Text style={styles.noStaffText}>No staff assigned to this service</Text>
+                <Text style={styles.noStaffSubtext}>Booking will be assigned to any available staff</Text>
+              </View>
+            )}
+          </View>
+
           {/* Date Selection */}
           <View style={styles.dateTimeSection}>
             <View style={styles.sectionHeader}>
@@ -678,6 +839,7 @@ const QuickBookingModal = ({
 };
 
 const ServiceManagementScreen = ({ navigation }) => {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -689,36 +851,70 @@ const ServiceManagementScreen = ({ navigation }) => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug authentication state
+  useEffect(() => {
+    console.log('🔐 ServiceManagement Auth State:', {
+      user: user ? { id: user.id, email: user.email } : null,
+      authLoading,
+      isAuthenticated,
+      renderCondition: !authLoading && (!isAuthenticated || !user) ? 'SHOW_NOT_AUTHENTICATED' : 
+                     authLoading ? 'SHOW_INITIALIZING' : 
+                     isLoading ? 'SHOW_LOADING' : 'SHOW_MAIN'
+    });
+  }, [user, authLoading, isAuthenticated, isLoading]);
+
   // Load initial data
   useEffect(() => {
-    loadShops();
-  }, []);
+    if (user?.id) {
+      console.log('🚀 Starting to load shops for user:', user.id);
+      loadShops();
+    } else {
+      console.log('🚫 Cannot load shops - no user ID');
+    }
+  }, [user?.id]);
 
   const loadShops = useCallback(async () => {
+    if (!user?.id) {
+      console.log('🚫 No user ID, skipping shop load');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      console.log('🏪 Loading shops for user:', user.id);
       setIsLoading(true);
       setError(null);
-      const response = await ServiceManagementAPI.getShops('provider-123');
+      const response = await ServiceManagementAPI.getShops(user.id);
       
-      if (response.success && response.data) {
-        setShops(response.data);
+      console.log('🏪 Shop load response:', response);
+      
+      if (response.success) {
+        console.log('✅ Shops loaded successfully:', response.data?.length || 0, 'shops');
+        setShops(response.data || []);
         
-        const firstActiveShop = response.data.find(shop => shop.is_active);
-        if (firstActiveShop) {
-          setSelectedShop(firstActiveShop);
-          await loadServices(firstActiveShop.id);
+        if (response.data && response.data.length > 0) {
+          const firstActiveShop = response.data.find(shop => shop.is_active);
+          if (firstActiveShop) {
+            console.log('🎯 Selected first active shop:', firstActiveShop.name);
+            setSelectedShop(firstActiveShop);
+            await loadServices(firstActiveShop.id);
+          } else {
+            console.log('📋 No active shops found');
+          }
+        } else {
+          console.log('📋 No shops found for user');
         }
       } else {
         throw new Error(response.message || 'Failed to load shops');
       }
     } catch (error) {
-      console.error('Error loading shops:', error);
+      console.error('❌ Error loading shops:', error);
       setError('Failed to load shops');
       Alert.alert('Error', 'Failed to load shops. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const loadServices = useCallback(async (shopId: string) => {
     try {
@@ -807,8 +1003,8 @@ const ServiceManagementScreen = ({ navigation }) => {
 
   const handleQuickBookingComplete = useCallback(async (bookingData: any) => {
     Alert.alert(
-      'Booking Created!',
-      `Successfully created booking for ${bookingData.customer_name} on ${bookingData.date} at ${bookingData.time}`,
+      'Booking Confirmed!',
+      `Successfully booked ${bookingData.customer_name} on ${bookingData.date} at ${bookingData.time}.\n\nStatus: Confirmed & Ready for Service`,
       [{ text: 'OK' }]
     );
     setShowQuickBooking(false);
@@ -1031,6 +1227,59 @@ const ServiceManagementScreen = ({ navigation }) => {
     </View>
   ), [selectedShop, error, handleRefresh]);
 
+  // Show loading while initializing authentication
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Initializing...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show not authenticated if user is not logged in
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="person-outline" size={64} color="#FCD34D" />
+          <Text style={styles.emptyTitle}>Not Authenticated</Text>
+          <Text style={styles.emptyDescription}>
+            Please login to manage services{'\n'}
+            Debug: isAuthenticated={isAuthenticated ? 'true' : 'false'}, user={user ? 'exists' : 'null'}{'\n'}
+            authLoading: {authLoading ? 'true' : 'false'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => {
+              console.log('🔄 Manual retry pressed');
+              if (user?.id) loadShops();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Check Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show access denied if user is not a provider (temporarily commented out)
+  // The Supabase User type might not have account_type property
+  // if (user.account_type !== 'provider') {
+  //   return (
+  //     <SafeAreaView style={styles.container}>
+  //       <View style={styles.loadingContainer}>
+  //         <Ionicons name="business-outline" size={64} color="#FCD34D" />
+  //         <Text style={styles.emptyTitle}>Provider Access Required</Text>
+  //         <Text style={styles.emptyDescription}>Only providers can manage services. Current account: {user.account_type}</Text>
+  //       </View>
+  //     </SafeAreaView>
+  //   );
+  // }
+
+  // Show loading while fetching data
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -1106,6 +1355,7 @@ const ServiceManagementScreen = ({ navigation }) => {
         visible={showQuickBooking}
         onClose={() => setShowQuickBooking(false)}
         selectedService={selectedService}
+        selectedShop={selectedShop}
         onBookingComplete={handleQuickBookingComplete}
       />
     </SafeAreaView>
@@ -1533,6 +1783,12 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 6,
   },
+  inputSubLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
   textInput: {
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -1714,6 +1970,102 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Staff Selection Styles
+  staffLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  staffLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  staffSelection: {
+    gap: 8,
+  },
+  staffOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FEFCE8',
+  },
+  selectedStaffOption: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  staffInfo: {
+    flex: 1,
+  },
+  staffOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  selectedStaffOptionText: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  staffSpecialties: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginTop: 2,
+  },
+  staffExperience: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 1,
+    fontStyle: 'italic',
+  },
+  staffAvatarContainer: {
+    marginRight: 12,
+  },
+  staffAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+  },
+  staffAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  staffAvatarInitials: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  genericStaffAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#6B7280',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noStaffContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  noStaffText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  noStaffSubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
 });
 

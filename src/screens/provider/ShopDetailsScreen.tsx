@@ -74,6 +74,7 @@ export interface Service {
   price: number;
   duration: number;
   category: string;
+  location_type: 'in_house' | 'on_location';
   image?: string;
   discount?: Discount;
   assigned_staff?: string[];
@@ -102,10 +103,13 @@ export interface BusinessHours {
   openTime: string;
   closeTime: string;
   isAlwaysOpen?: boolean;
+  timezone?: string;
+  priority?: number;
+  description?: string;
 }
 
 export interface SpecialDay {
-  id: string;
+  id?: string;
   date: string;
   name: string;
   type: 'holiday' | 'special_hours' | 'closed' | 'event';
@@ -114,6 +118,10 @@ export interface SpecialDay {
   closeTime?: string;
   description?: string;
   recurring?: 'none' | 'weekly' | 'monthly' | 'yearly';
+  recurring_until?: string;
+  color?: string;
+  priority?: number;
+  is_active?: boolean;
 }
 
 export interface Shop {
@@ -292,12 +300,11 @@ const ShopDetailsScreen: React.FC = () => {
               .eq('is_active', true)
               .order('created_at', { ascending: false });
 
-            // Load services data
+            // Load services data (show ALL services - active and inactive)
             const { data: servicesData, error: servicesError } = await supabase
               .from('shop_services')
               .select('*')
               .eq('shop_id', existingShop.id)
-              .eq('is_active', true)
               .order('created_at', { ascending: false });
 
             // Load discounts data
@@ -389,7 +396,7 @@ const ShopDetailsScreen: React.FC = () => {
         // Method 2: Direct table queries as fallback
         const [staffRes, servicesRes, discountsRes] = await Promise.all([
           supabase.from('shop_staff').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false }),
-          supabase.from('shop_services').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false }),
+          supabase.from('shop_services').select('*').eq('shop_id', existingShop.id).order('created_at', { ascending: false }), // Show ALL services
           supabase.from('shop_discounts').select('*').eq('shop_id', existingShop.id).eq('is_active', true).order('created_at', { ascending: false })
         ]);
         // Update state with whatever data we got (deduplicated)
@@ -542,7 +549,7 @@ const ShopDetailsScreen: React.FC = () => {
 
   // Service form state
   const [serviceForm, setServiceForm] = useState<Partial<Service>>({
-    name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], is_active: true
+    name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], location_type: 'in_house', is_active: true
   });
 
   // Staff form state
@@ -577,6 +584,17 @@ const ShopDetailsScreen: React.FC = () => {
     description: '', recurring: 'none'
   });
 
+  // Helper function to safely get avatar URL (handles array corruption)
+  const getSafeAvatarUrl = (avatar_url: any): string | undefined => {
+    if (!avatar_url) return undefined;
+    if (typeof avatar_url === 'string') return avatar_url;
+    if (Array.isArray(avatar_url)) {
+      console.warn('🚨 Avatar URL is array, using first item:', avatar_url);
+      return avatar_url.length > 0 ? avatar_url[0] : undefined;
+    }
+    return undefined;
+  };
+
   // Load complete shop data if editing
   useEffect(() => {
     const loadCompleteShopData = async () => {
@@ -585,10 +603,17 @@ const ShopDetailsScreen: React.FC = () => {
         setIsLoading(true);
         
         try {
-          // Try to fetch complete shop data from database
-          const response = await authService.getProviderBusinesses();
+          // Try to fetch complete shop data from database using normalized service
+          console.log('🚨 FETCHING: Getting shop data for ID:', existingShop.id);
+          const response = await normalizedShopService.getShopById(existingShop.id);
+          console.log('🚨 FETCHED: Response:', response);
+          
           if (response.success && response.data) {
-            const completeShop = response.data.find((shop: any) => shop.id === existingShop.id);
+            const completeShop = response.data;
+            console.log('🚨 FETCHED: Complete shop data:', completeShop);
+            console.log('🚨 FETCHED: Business hours from DB:', completeShop.business_hours);
+            
+            
             if (completeShop) {
               // Map the complete shop data to our expected format
               const mappedShop = {
@@ -597,7 +622,49 @@ const ShopDetailsScreen: React.FC = () => {
                 images: completeShop.images || [],
                 services: completeShop.services || [],
                 staff: completeShop.staff || [],
-                business_hours: completeShop.business_hours || existingShop.business_hours || createDefaultBusinessHours(),
+                business_hours: (() => {
+                  console.log('🚨 LOADING: completeShop.business_hours:', completeShop.business_hours);
+                  console.log('🚨 LOADING: existingShop.business_hours:', existingShop.business_hours);
+                  
+                  const dbBusinessHours = completeShop.business_hours || existingShop.business_hours;
+                  
+                  // Convert database format to frontend format if we have database data
+                  let businessHours;
+                  if (dbBusinessHours && dbBusinessHours.length > 0) {
+                    // Check if it's already in frontend format (has isOpen field) or database format (has is_open field)
+                    const firstEntry = dbBusinessHours[0];
+                    if (firstEntry.hasOwnProperty('is_open')) {
+                      // Database format - convert to frontend format
+                      businessHours = dbBusinessHours.map((hour: any) => ({
+                        day: hour.day,
+                        isOpen: hour.is_open ?? true,
+                        openTime: hour.open_time || '09:00',
+                        closeTime: hour.close_time || '17:00',
+                        isAlwaysOpen: hour.is_always_open || false
+                      }));
+                      console.log('🚨 CONVERTED: Database format to frontend format');
+                    } else {
+                      // Already in frontend format
+                      businessHours = dbBusinessHours;
+                      console.log('🚨 LOADED: Already in frontend format');
+                    }
+                  } else {
+                    // No database data - use defaults
+                    businessHours = createDefaultBusinessHours();
+                    console.log('🚨 CREATED: Default business hours');
+                  }
+                  
+                  // Deduplicate business hours by day (keep the first occurrence of each day)
+                  const deduplicatedBusinessHours = businessHours.filter((hour: any, index: number, self: any[]) => 
+                    index === self.findIndex((h: any) => h.day === hour.day)
+                  );
+                  
+                  console.log('🚨 LOADING: Final business_hours:', deduplicatedBusinessHours);
+                  console.log('🚨 DEDUPLICATION: Original count:', businessHours.length, 'Final count:', deduplicatedBusinessHours.length);
+                  
+                  
+                  return deduplicatedBusinessHours;
+                })(),
                 special_days: completeShop.special_days || [],
                 discounts: completeShop.discounts || [],
                 logo_url: completeShop.logo_url || existingShop.logo_url || '',
@@ -1052,8 +1119,8 @@ const ShopDetailsScreen: React.FC = () => {
         // Enhanced data fields
         logo_url: validLogoUrl,
         images: validAllImages, // Send as array, will be handled properly by auth service
-        business_hours: shop.business_hours || [],
-        special_days: shop.special_days || [],
+        business_hours: currentShop.business_hours || [],
+        special_days: currentShop.special_days || [],
         services: shop.services || [],
         staff: shop.staff || [],
         discounts: shop.discounts || [],
@@ -1063,6 +1130,12 @@ const ShopDetailsScreen: React.FC = () => {
         buffer_time: currentShop.buffer_time || 15,
         auto_approval: currentShop.auto_approval ?? true
       };
+      // CRITICAL DEBUG: Show what business hours data we're sending
+      console.log('🚨 FRONTEND: About to call updateShop');
+      console.log('🚨 FRONTEND: currentShop.business_hours:', JSON.stringify(currentShop.business_hours, null, 2));
+      console.log('🚨 FRONTEND: shopData.business_hours:', JSON.stringify(shopData.business_hours, null, 2));
+      
+
       let result;
       if (isEditing && shop.id) {
         
@@ -1160,15 +1233,15 @@ const ShopDetailsScreen: React.FC = () => {
           const hasAnyImages = hasValidImages || hasValidLogo;
           
           if (totalFinalImages === 0 && !hasAnyImages) {
-            imageStatusMessage = 'ℹ️ Your shop has no images.';
+            imageStatusMessage = '';
           } else if (totalFinalImages === 0 && hasAnyImages) {
             // Images exist but are already uploaded (HTTP URLs, not file:// URIs)
             const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `✅ Shop updated! Your shop has ${validImageCount} existing image(s) (already uploaded).`;
+            imageStatusMessage = '';
           } else if (totalNewImages > 0) {
-            imageStatusMessage = `✅ Shop updated! Total images: ${totalFinalImages} (${totalNewImages} new image(s) added this session)`;
+            imageStatusMessage = '';
           } else {
-            imageStatusMessage = `✅ Shop updated! Your shop has ${totalFinalImages} image(s).`;
+            imageStatusMessage = '';
           }
         } else {
           // For creating new shops
@@ -1178,13 +1251,13 @@ const ShopDetailsScreen: React.FC = () => {
           const hasAnyImages = hasValidImages || hasValidLogo;
           
           if (totalNewImages === 0 && !hasAnyImages) {
-            imageStatusMessage = 'ℹ️ No images were added to your shop.';
+            imageStatusMessage = '';
           } else if (totalNewImages === 0 && hasAnyImages) {
             // Images exist but are already uploaded (HTTP URLs, not new file:// URIs)
             const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `✅ Shop created! ${validImageCount} existing image(s) (already uploaded).`;
+            imageStatusMessage = '';
           } else {
-            imageStatusMessage = `✅ Shop created with ${totalNewImages} image(s) uploaded successfully!`;
+            imageStatusMessage = '';
           }
         }
         
@@ -1193,15 +1266,8 @@ const ShopDetailsScreen: React.FC = () => {
         const localLogo = shop.logo_url && shop.logo_url.startsWith('file://') ? 1 : 0;
         const totalLocalImages = localImages.length + localLogo;
         
-        if (totalLocalImages > 0 && totalNewImages < totalLocalImages) {
-          if (!storageAvailable) {
-            imageStatusMessage += '💡 Some images could not be uploaded - storage is not properly configured.';
-          } else {
-            imageStatusMessage += '💡 Some images failed to upload - check your internet connection.';
-          }
-        }
         
-        const fullMessage = successMessage + imageStatusMessage;
+        const fullMessage = successMessage;
         
         Alert.alert(
           'Success',
@@ -1476,12 +1542,25 @@ const ShopDetailsScreen: React.FC = () => {
 
   // Business hours management
   const updateBusinessHours = (day: string, field: keyof BusinessHours, value: any) => {
-    setShop(prev => ({
-      ...prev,
-      business_hours: prev.business_hours.map(hour =>
+    console.log('🚨 updateBusinessHours called:', { day, field, value });
+    
+    
+    setShop(prev => {
+      const oldHour = prev.business_hours.find(h => h.day === day);
+      console.log('🚨 Old business hour for', day, ':', oldHour);
+      
+      const updatedHours = prev.business_hours.map(hour =>
         hour.day === day ? { ...hour, [field]: value } : hour
-      )
-    }));
+      );
+      
+      const newHour = updatedHours.find(h => h.day === day);
+      console.log('🚨 New business hour for', day, ':', newHour);
+      
+      return {
+        ...prev,
+        business_hours: updatedHours
+      };
+    });
   };
 
   const openTimePicker = (day: string, type: 'open' | 'close') => {
@@ -1612,7 +1691,7 @@ const ShopDetailsScreen: React.FC = () => {
       setEditingService(null);
       setServiceForm({
         name: '', description: '', price: 0, duration: 60,
-        category: shop.category, is_active: true
+        category: shop.category, location_type: 'in_house', is_active: true
       });
     }
     setShowServiceModal(true);
@@ -1635,6 +1714,7 @@ const ShopDetailsScreen: React.FC = () => {
       duration: serviceForm.duration || 60,
       category: serviceForm.category || shop.category,
       assigned_staff: serviceForm.assigned_staff || [],
+      location_type: serviceForm.location_type || 'in_house',
       is_active: serviceForm.is_active ?? true
     };
 
@@ -1898,7 +1978,18 @@ const ShopDetailsScreen: React.FC = () => {
   const openStaffModal = (staff?: Staff) => {
     if (staff) {
       setEditingStaff(staff);
-      setStaffForm(staff);
+      
+      // Fix avatar_url if it's an array (data corruption fix)
+      let avatar_url = staff.avatar_url;
+      if (Array.isArray(avatar_url)) {
+        console.warn('🚨 Staff avatar_url is an array, fixing:', avatar_url);
+        avatar_url = avatar_url.length > 0 ? avatar_url[0] : undefined;
+      }
+      
+      setStaffForm({
+        ...staff,
+        avatar_url: avatar_url
+      });
     } else {
       setEditingStaff(null);
       setStaffForm({
@@ -1927,13 +2018,20 @@ const ShopDetailsScreen: React.FC = () => {
       return;
     }
 
+    // Ensure avatar_url is a single string, not an array
+    let avatar_url = staffForm.avatar_url;
+    if (Array.isArray(avatar_url)) {
+      console.warn('🚨 Fixing avatar_url array before save:', avatar_url);
+      avatar_url = avatar_url.length > 0 ? avatar_url[0] : undefined;
+    }
+
     const staffData = {
       name: staffForm.name!.trim(),
       email: staffForm.email!.trim(),
       phone: staffForm.phone || '',
       role: staffForm.role || '',
       specialties: (staffForm.specialties || []).filter(s => s && s.trim()),
-      avatar_url: staffForm.avatar_url,
+      avatar_url: avatar_url,
       bio: staffForm.bio?.trim() || '',
       experience_years: staffForm.experience_years || 0,
       is_active: staffForm.is_active ?? true
@@ -2341,8 +2439,13 @@ const ShopDetailsScreen: React.FC = () => {
       <View style={styles.formSection}>
         <Text style={styles.sectionTitle}>Regular Business Hours</Text>
         
-        {(shop.business_hours || []).map((hours) => (
-          <View key={hours.day} style={styles.dayRow}>
+        {(shop.business_hours || [])
+          .filter((hours, index, self) => 
+            // Remove duplicates by keeping only the first occurrence of each day
+            index === self.findIndex(h => h.day === hours.day)
+          )
+          .map((hours, index) => (
+          <View key={`business-hour-${hours.day}-${index}`} style={styles.dayRow}>
             <View style={styles.dayInfo}>
               <Text style={styles.dayName}>{hours.day}</Text>
               <Switch
@@ -2614,8 +2717,8 @@ const ShopDetailsScreen: React.FC = () => {
             <View style={styles.staffCard}>
               <View style={styles.staffHeader}>
                 <View style={styles.staffAvatar}>
-                  {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+                  {getSafeAvatarUrl(item.avatar_url) ? (
+                    <Image source={{ uri: getSafeAvatarUrl(item.avatar_url)! }} style={styles.avatarImage} />
                   ) : (
                     <Ionicons name="person" size={24} color="#6B7280" />
                   )}
@@ -3255,6 +3358,57 @@ const ShopDetailsScreen: React.FC = () => {
               </View>
 
               <View style={styles.inputGroup}>
+                <Text style={styles.label}>Service Location</Text>
+                <View style={styles.locationTypeContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.locationTypeOption,
+                      serviceForm.location_type === 'in_house' && styles.selectedLocationOption
+                    ]}
+                    onPress={() => setServiceForm(prev => ({ ...prev, location_type: 'in_house' }))}
+                  >
+                    <Ionicons 
+                      name="storefront-outline" 
+                      size={20} 
+                      color={serviceForm.location_type === 'in_house' ? '#10B981' : '#6B7280'} 
+                    />
+                    <Text style={[
+                      styles.locationTypeText,
+                      serviceForm.location_type === 'in_house' && styles.selectedLocationText
+                    ]}>
+                      In-House
+                    </Text>
+                    <Text style={styles.locationTypeDescription}>
+                      Client comes to shop
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.locationTypeOption,
+                      serviceForm.location_type === 'on_location' && styles.selectedLocationOption
+                    ]}
+                    onPress={() => setServiceForm(prev => ({ ...prev, location_type: 'on_location' }))}
+                  >
+                    <Ionicons 
+                      name="car-outline" 
+                      size={20} 
+                      color={serviceForm.location_type === 'on_location' ? '#10B981' : '#6B7280'} 
+                    />
+                    <Text style={[
+                      styles.locationTypeText,
+                      serviceForm.location_type === 'on_location' && styles.selectedLocationText
+                    ]}>
+                      On-Location
+                    </Text>
+                    <Text style={styles.locationTypeDescription}>
+                      You go to client
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
                 <Text style={styles.label}>Assign Staff</Text>
                 <View style={styles.staffSelection}>
                   {shop.staff && shop.staff.length > 0 ? (
@@ -3526,8 +3680,8 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.avatarUpload}
                     onPress={pickStaffAvatar}
                   >
-                    {staffForm.avatar_url ? (
-                      <Image source={{ uri: staffForm.avatar_url }} style={styles.avatarPreview} />
+                    {getSafeAvatarUrl(staffForm.avatar_url) ? (
+                      <Image source={{ uri: getSafeAvatarUrl(staffForm.avatar_url)! }} style={styles.avatarPreview} />
                     ) : (
                       <View style={styles.avatarPlaceholder}>
                         <Ionicons name="camera-outline" size={32} color="#9CA3AF" />
@@ -5016,6 +5170,43 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginTop: 4,
+  },
+
+  // Location Type Styles
+  locationTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  locationTypeOption: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FEFCE8',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectedLocationType: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+  },
+  locationTypeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  selectedLocationTypeTitle: {
+    color: '#92400E',
+  },
+  locationTypeDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  selectedLocationTypeDesc: {
+    color: '#92400E',
   },
 });
 

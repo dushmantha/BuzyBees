@@ -1,4 +1,6 @@
 // services/ServiceManagementAPI.ts
+import { normalizedShopService, CompleteShopData, ShopService } from '../lib/supabase/normalized';
+
 export interface Shop {
     id: string;
     name: string;
@@ -19,6 +21,7 @@ export interface Shop {
     price: number;
     duration_minutes: number;
     category: string;
+    location_type: 'in_house' | 'on_location';
     is_active: boolean;
     available_dates: string[];
     unavailable_dates: string[];
@@ -43,6 +46,7 @@ export interface Shop {
     duration: number;
     price: number;
     notes?: string;
+    assigned_staff_id?: string;
   }
   
   export interface ServiceAvailability {
@@ -64,223 +68,65 @@ export interface Shop {
     error?: string;
     errors?: { [key: string]: string[] };
   }
+
+  // Transform CompleteShopData to Shop interface for compatibility
+  const transformShopData = (shopData: CompleteShopData): Shop => ({
+    id: shopData.id,
+    name: shopData.name,
+    location: `${shopData.address || ''}, ${shopData.city || ''}`.trim(),
+    category: shopData.category || 'General',
+    is_active: shopData.is_active ?? true,
+    image: shopData.image_url,
+    description: shopData.description,
+    created_at: shopData.created_at,
+    updated_at: shopData.updated_at
+  });
+
+  // Transform ShopService to Service interface for compatibility
+  const transformServiceData = (serviceData: ShopService): Service => ({
+    id: serviceData.id,
+    shop_id: serviceData.shop_id,
+    name: serviceData.name,
+    description: serviceData.description || '',
+    price: serviceData.price,
+    duration_minutes: serviceData.duration || 60,
+    category: serviceData.category || 'General',
+    location_type: serviceData.location_type || 'in_house',
+    is_active: serviceData.is_active ?? true,
+    available_dates: [], // We'll populate this based on business hours
+    unavailable_dates: [], // We'll populate this based on special days
+    booking_slots: [],
+    created_at: serviceData.created_at,
+    updated_at: serviceData.updated_at
+  });
   
   class ServiceManagementAPI {
-    private baseUrl = process.env.API_BASE_URL || 'https://api.yourapp.com';
-    private authToken: string | null = null;
-  
-    constructor() {
-      // Initialize with stored auth token
-      this.loadAuthToken();
-    }
-  
-    private async loadAuthToken(): Promise<void> {
-      try {
-        // In React Native, you'd use AsyncStorage here
-        // this.authToken = await AsyncStorage.getItem('auth_token');
-        this.authToken = 'mock_token_123'; // Mock for now
-      } catch (error) {
-        console.error('Failed to load auth token:', error);
-      }
-    }
-  
-    private getHeaders(): HeadersInit {
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`,
-        'Accept': 'application/json',
-      };
-    }
-  
-    private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-      try {
-        const data = await response.json();
-        
-        if (!response.ok) {
-          return {
-            success: false,
-            message: data.message || 'Request failed',
-            error: data.error,
-            errors: data.errors,
-          };
-        }
-  
-        return {
-          success: true,
-          data: data.data || data,
-          message: data.message || 'Success',
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: 'Network error occurred',
-          error: error.message,
-        };
-      }
-    }
-  
-    // Mock data for development
-    private getMockShops(): Shop[] {
-      return [
-        {
-          id: '1',
-          name: 'Beauty and Me',
-          location: 'Lützengatan 1, Stockholm',
-          category: 'Nails & Beauty',
-          is_active: true,
-          image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9',
-          description: 'Premium nail care and beauty treatments',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-15T00:00:00Z',
-        },
-        {
-          id: '2',
-          name: 'Elite Hair Studio',
-          location: 'Götgatan 15, Stockholm',
-          category: 'Hair Salon',
-          is_active: true,
-          image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df',
-          description: 'Professional hair styling and treatments',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-20T00:00:00Z',
-        },
-        {
-          id: '3',
-          name: 'Wellness Spa Center',
-          location: 'Södermalm, Stockholm',
-          category: 'Spa & Wellness',
-          is_active: false,
-          image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874',
-          description: 'Luxury spa and wellness treatments',
-          created_at: '2024-02-01T00:00:00Z',
-          updated_at: '2024-02-10T00:00:00Z',
-        },
-      ];
-    }
-  
-    private getMockServices(shopId: string): Service[] {
-      const servicesByShop: { [key: string]: Service[] } = {
-        '1': [
-          {
-            id: 's1_1',
-            shop_id: '1',
-            name: 'Classic Manicure',
-            description: 'Basic nail care with polish application and cuticle treatment',
-            price: 450,
-            duration_minutes: 45,
-            category: 'Nail Care',
-            is_active: true,
-            available_dates: ['2025-07-16', '2025-07-17', '2025-07-18', '2025-07-21'],
-            unavailable_dates: ['2025-07-19', '2025-07-20'],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-15T00:00:00Z',
-          },
-          {
-            id: 's1_2',
-            shop_id: '1',
-            name: 'Gel Manicure',
-            description: 'Long-lasting gel polish application with base and top coat',
-            price: 550,
-            duration_minutes: 60,
-            category: 'Nail Care',
-            is_active: true,
-            available_dates: ['2025-07-16', '2025-07-17', '2025-07-18'],
-            unavailable_dates: ['2025-07-19'],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-10T00:00:00Z',
-          },
-          {
-            id: 's1_3',
-            shop_id: '1',
-            name: 'Nail Art Design',
-            description: 'Custom nail art with detailed designs and embellishments',
-            price: 650,
-            duration_minutes: 75,
-            category: 'Nail Art',
-            is_active: false,
-            available_dates: ['2025-07-17', '2025-07-18'],
-            unavailable_dates: [],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-12T00:00:00Z',
-          },
-        ],
-        '2': [
-          {
-            id: 's2_1',
-            shop_id: '2',
-            name: 'Haircut & Style',
-            description: 'Professional haircut with wash, style, and finishing',
-            price: 500,
-            duration_minutes: 60,
-            category: 'Hair Styling',
-            is_active: true,
-            available_dates: ['2025-07-16', '2025-07-17', '2025-07-18', '2025-07-21'],
-            unavailable_dates: [],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-14T00:00:00Z',
-          },
-          {
-            id: 's2_2',
-            shop_id: '2',
-            name: 'Cut, Color & Style',
-            description: 'Complete hair transformation with professional coloring',
-            price: 850,
-            duration_minutes: 120,
-            category: 'Hair Coloring',
-            is_active: true,
-            available_dates: ['2025-07-17', '2025-07-18', '2025-07-21'],
-            unavailable_dates: ['2025-07-19', '2025-07-20'],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-13T00:00:00Z',
-          },
-        ],
-        '3': [
-          {
-            id: 's3_1',
-            shop_id: '3',
-            name: 'Swedish Massage',
-            description: 'Classic relaxing Swedish massage for stress relief',
-            price: 750,
-            duration_minutes: 60,
-            category: 'Massage',
-            is_active: true,
-            available_dates: ['2025-07-16', '2025-07-17'],
-            unavailable_dates: ['2025-07-18', '2025-07-19'],
-            booking_slots: [],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-11T00:00:00Z',
-          },
-        ],
-      };
-  
-      return servicesByShop[shopId] || [];
-    }
-  
-    // API Methods
+    // Get all shops for a provider
     async getShops(providerId: string): Promise<ApiResponse<Shop[]>> {
       try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        console.log('🛒 ServiceManagementAPI.getShops called with providerId:', providerId);
+        const response = await normalizedShopService.getShops(providerId);
         
-        // In production, use:
-        // const response = await fetch(`${this.baseUrl}/providers/${providerId}/shops`, {
-        //   method: 'GET',
-        //   headers: this.getHeaders(),
-        // });
-        // return this.handleResponse<Shop[]>(response);
+        console.log('🛒 normalizedShopService.getShops response:', response);
         
-        // Mock response
-        return {
-          success: true,
-          data: this.getMockShops(),
-          message: 'Shops loaded successfully',
-        };
+        if (response.success && response.data) {
+          const shops = response.data.map(transformShopData);
+          console.log('🛒 Transformed shops:', shops);
+          return {
+            success: true,
+            data: shops,
+            message: 'Shops loaded successfully',
+          };
+        } else {
+          console.error('🛒 Failed to get shops:', response.error);
+          return {
+            success: false,
+            message: response.error || 'Failed to load shops',
+            error: response.error
+          };
+        }
       } catch (error) {
+        console.error('🛒 Error in getShops:', error);
         return {
           success: false,
           message: 'Failed to load shops',
@@ -288,23 +134,26 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Get services for a specific shop
     async getServicesByShop(shopId: string): Promise<ApiResponse<Service[]>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
+        const response = await normalizedShopService.getShopById(shopId);
         
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/shops/${shopId}/services`, {
-        //   method: 'GET',
-        //   headers: this.getHeaders(),
-        // });
-        // return this.handleResponse<Service[]>(response);
-        
-        return {
-          success: true,
-          data: this.getMockServices(shopId),
-          message: 'Services loaded successfully',
-        };
+        if (response.success && response.data) {
+          const services = (response.data.services || []).map(transformServiceData);
+          return {
+            success: true,
+            data: services,
+            message: 'Services loaded successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to load services',
+            error: response.error
+          };
+        }
       } catch (error) {
         return {
           success: false,
@@ -313,40 +162,41 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Create a new service
     async createService(shopId: string, serviceData: Partial<Service>): Promise<ApiResponse<Service>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/shops/${shopId}/services`, {
-        //   method: 'POST',
-        //   headers: this.getHeaders(),
-        //   body: JSON.stringify(serviceData),
-        // });
-        // return this.handleResponse<Service>(response);
-        
-        const newService: Service = {
-          id: `s_${Date.now()}`,
+        const shopServiceData: ShopService = {
+          id: '', // Will be generated by database
           shop_id: shopId,
           name: serviceData.name || '',
           description: serviceData.description || '',
           price: serviceData.price || 0,
-          duration_minutes: serviceData.duration_minutes || 30,
+          duration: serviceData.duration_minutes || 60,
           category: serviceData.category || 'General',
+          assigned_staff: [],
+          location_type: serviceData.location_type || 'in_house',
           is_active: serviceData.is_active ?? true,
-          available_dates: serviceData.available_dates || [],
-          unavailable_dates: serviceData.unavailable_dates || [],
-          booking_slots: [],
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
-  
-        return {
-          success: true,
-          data: newService,
-          message: 'Service created successfully',
-        };
+
+        const response = await normalizedShopService.createService(shopId, shopServiceData);
+        
+        if (response.success && response.data) {
+          const service = transformServiceData(response.data);
+          return {
+            success: true,
+            data: service,
+            message: 'Service created successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to create service',
+            error: response.error
+          };
+        }
       } catch (error) {
         return {
           success: false,
@@ -355,23 +205,37 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Update an existing service
     async updateService(serviceId: string, serviceData: Partial<Service>): Promise<ApiResponse<Service>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/services/${serviceId}`, {
-        //   method: 'PUT',
-        //   headers: this.getHeaders(),
-        //   body: JSON.stringify(serviceData),
-        // });
-        // return this.handleResponse<Service>(response);
-        
-        return {
-          success: true,
-          message: 'Service updated successfully',
+        const updateData: Partial<ShopService> = {
+          name: serviceData.name,
+          description: serviceData.description,
+          price: serviceData.price,
+          duration: serviceData.duration_minutes,
+          category: serviceData.category,
+          location_type: serviceData.location_type,
+          is_active: serviceData.is_active,
+          updated_at: new Date().toISOString()
         };
+
+        const response = await normalizedShopService.updateService(serviceId, updateData);
+        
+        if (response.success && response.data) {
+          const service = transformServiceData(response.data);
+          return {
+            success: true,
+            data: service,
+            message: 'Service updated successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to update service',
+            error: response.error
+          };
+        }
       } catch (error) {
         return {
           success: false,
@@ -380,24 +244,28 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Toggle service status (active/inactive)
     async toggleServiceStatus(serviceId: string, isActive: boolean): Promise<ApiResponse<boolean>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        const response = await normalizedShopService.updateService(serviceId, { 
+          is_active: isActive,
+          updated_at: new Date().toISOString()
+        });
         
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/services/${serviceId}/toggle-status`, {
-        //   method: 'PATCH',
-        //   headers: this.getHeaders(),
-        //   body: JSON.stringify({ is_active: isActive }),
-        // });
-        // return this.handleResponse<boolean>(response);
-        
-        return {
-          success: true,
-          data: true,
-          message: `Service ${isActive ? 'activated' : 'deactivated'} successfully`,
-        };
+        if (response.success) {
+          return {
+            success: true,
+            data: true,
+            message: `Service ${isActive ? 'activated' : 'deactivated'} successfully`,
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to update service status',
+            error: response.error
+          };
+        }
       } catch (error) {
         return {
           success: false,
@@ -406,23 +274,25 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Delete a service
     async deleteService(serviceId: string): Promise<ApiResponse<boolean>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 400));
+        const response = await normalizedShopService.deleteService(serviceId);
         
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/services/${serviceId}`, {
-        //   method: 'DELETE',
-        //   headers: this.getHeaders(),
-        // });
-        // return this.handleResponse<boolean>(response);
-        
-        return {
-          success: true,
-          data: true,
-          message: 'Service deleted successfully',
-        };
+        if (response.success) {
+          return {
+            success: true,
+            data: true,
+            message: 'Service deleted successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to delete service',
+            error: response.error
+          };
+        }
       } catch (error) {
         return {
           success: false,
@@ -431,23 +301,16 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Update service availability (placeholder - would need booking system integration)
     async updateServiceAvailability(
       serviceId: string, 
       availableDates: string[], 
       unavailableDates: string[]
     ): Promise<ApiResponse<boolean>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/services/${serviceId}/availability`, {
-        //   method: 'PUT',
-        //   headers: this.getHeaders(),
-        //   body: JSON.stringify({ available_dates: availableDates, unavailable_dates: unavailableDates }),
-        // });
-        // return this.handleResponse<boolean>(response);
-        
+        // This would need integration with a booking/calendar system
+        // For now, return success as a placeholder
         return {
           success: true,
           data: true,
@@ -461,10 +324,14 @@ export interface Shop {
         };
       }
     }
-  
-    async createQuickBooking(bookingData: QuickBooking): Promise<ApiResponse<any>> {
+
+    // Create a quick booking
+    async createQuickBooking(bookingData: QuickBooking & { 
+      shop_id: string, 
+      assigned_staff_id?: string 
+    }): Promise<ApiResponse<any>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 800));
+        console.log('📅 ServiceManagementAPI.createQuickBooking called with:', bookingData);
         
         // Validate required fields
         if (!bookingData.customer_name || !bookingData.customer_phone || !bookingData.date || !bookingData.time) {
@@ -479,28 +346,48 @@ export interface Shop {
             },
           };
         }
-        
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/bookings/quick`, {
-        //   method: 'POST',
-        //   headers: this.getHeaders(),
-        //   body: JSON.stringify(bookingData),
-        // });
-        // return this.handleResponse<any>(response);
-        
-        const booking = {
-          id: `booking_${Date.now()}`,
-          ...bookingData,
-          status: 'confirmed',
-          created_at: new Date().toISOString(),
-        };
-  
-        return {
-          success: true,
-          data: booking,
-          message: 'Quick booking created successfully',
-        };
+
+        // Calculate end time based on duration
+        const startTime = bookingData.time;
+        const duration = bookingData.duration || 60;
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + duration;
+        const endHours = Math.floor(endMinutes / 60);
+        const endMins = endMinutes % 60;
+        const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+
+        const response = await normalizedShopService.createBooking({
+          shop_id: bookingData.shop_id,
+          service_id: bookingData.service_id,
+          assigned_staff_id: bookingData.assigned_staff_id,
+          customer_name: bookingData.customer_name,
+          customer_phone: bookingData.customer_phone,
+          customer_email: bookingData.customer_email,
+          booking_date: bookingData.date,
+          start_time: startTime,
+          end_time: endTime,
+          duration_minutes: duration,
+          service_price: bookingData.price,
+          total_amount: bookingData.price,
+          notes: bookingData.notes
+        });
+
+        if (response.success) {
+          return {
+            success: true,
+            data: response.data,
+            message: 'Quick booking created successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to create booking',
+            error: response.error
+          };
+        }
       } catch (error) {
+        console.error('🛒 Error in createQuickBooking:', error);
         return {
           success: false,
           message: 'Failed to create quick booking',
@@ -508,36 +395,19 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Get service availability (placeholder - would get from business hours and bookings)
     async getServiceAvailability(serviceId: string): Promise<ApiResponse<ServiceAvailability>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        
-        // In production:
-        // const response = await fetch(`${this.baseUrl}/services/${serviceId}/availability`, {
-        //   method: 'GET',
-        //   headers: this.getHeaders(),
-        // });
-        // return this.handleResponse<ServiceAvailability>(response);
-        
-        // Mock availability data
+        // This would need to integrate with business hours and booking data
+        // For now, return mock availability based on general business hours
         const mockAvailability: ServiceAvailability = {
           business_hours: { start: "09:00", end: "18:00" },
           closed_days: [0], // Sunday
-          special_closures: ["2025-07-19", "2025-07-26"],
-          booked_slots: {
-            "2025-07-15": [
-              { "start": "09:00", "end": "09:45" },
-              { "start": "10:30", "end": "11:15" },
-              { "start": "13:00", "end": "13:45" },
-            ],
-            "2025-07-16": [
-              { "start": "09:00", "end": "09:45" },
-              { "start": "14:30", "end": "15:15" },
-            ],
-          }
+          special_closures: [],
+          booked_slots: {}
         };
-  
+
         return {
           success: true,
           data: mockAvailability,
@@ -551,32 +421,251 @@ export interface Shop {
         };
       }
     }
-  
+
+    // Get staff members assigned to a specific service
+    async getServiceStaff(shopId: string, serviceId: string): Promise<ApiResponse<any[]>> {
+      try {
+        console.log('📋 Getting staff for service:', serviceId, 'in shop:', shopId);
+        
+        // Get shop data which includes services and staff
+        const shopResponse = await normalizedShopService.getShopById(shopId);
+        if (!shopResponse.success || !shopResponse.data) {
+          return {
+            success: false,
+            data: [],
+            message: shopResponse.error || 'Failed to load shop data',
+            error: shopResponse.error
+          };
+        }
+
+        const shopData = shopResponse.data;
+        const allServices = shopData.services || [];
+        const allStaff = shopData.staff || [];
+        
+        console.log('👨‍💼 All shop staff:', allStaff.length);
+        console.log('🛠️ All shop services:', allServices.length);
+
+        // Find the specific service
+        const targetService = allServices.find(service => service.id === serviceId);
+        if (!targetService) {
+          console.error('❌ Service not found:', serviceId);
+          return {
+            success: false,
+            data: [],
+            message: 'Service not found',
+            error: 'Service not found'
+          };
+        }
+
+        const assignedStaffIds = targetService.assigned_staff || [];
+        console.log('👥 Service assigned staff IDs:', assignedStaffIds);
+
+        // If no staff assigned to this service, return empty array
+        if (assignedStaffIds.length === 0) {
+          console.log('⚠️ No staff assigned to this service');
+          return {
+            success: true,
+            data: [],
+            message: 'No staff assigned to this service',
+          };
+        }
+
+        // Filter staff to only those assigned to this service
+        const assignedStaff = allStaff.filter(staff => 
+          assignedStaffIds.includes(staff.id) && staff.is_active !== false
+        );
+
+        console.log('✅ Filtered assigned staff:', assignedStaff.length);
+
+        return {
+          success: true,
+          data: assignedStaff,
+          message: 'Service staff loaded successfully',
+        };
+      } catch (error) {
+        console.error('❌ Error getting service staff:', error);
+        return {
+          success: false,
+          data: [],
+          message: 'Failed to load service staff',
+          error: error.message,
+        };
+      }
+    }
+
+    // Get all staff members for a shop (legacy function, kept for compatibility)
+    async getShopStaff(shopId: string): Promise<ApiResponse<any[]>> {
+      try {
+        const response = await normalizedShopService.getShopById(shopId);
+        
+        if (response.success && response.data) {
+          const staff = response.data.staff || [];
+          return {
+            success: true,
+            data: staff,
+            message: 'Shop staff loaded successfully',
+          };
+        } else {
+          return {
+            success: false,
+            data: [],
+            message: response.error || 'Failed to load shop staff',
+            error: response.error
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          data: [],
+          message: 'Failed to load shop staff',
+          error: error.message,
+        };
+      }
+    }
+
+    // Update booking status (approve, complete, etc.)
+    async updateBookingStatus(
+      bookingId: string, 
+      status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show',
+      notes?: string
+    ): Promise<ApiResponse<any>> {
+      try {
+        console.log('📅 ServiceManagementAPI.updateBookingStatus called:', bookingId, status);
+        
+        const response = await normalizedShopService.updateBookingStatus(bookingId, status, notes);
+        
+        if (response.success) {
+          return {
+            success: true,
+            data: response.data,
+            message: response.message || `Booking ${status} successfully`,
+          };
+        } else {
+          return {
+            success: false,
+            message: response.error || 'Failed to update booking status',
+            error: response.error
+          };
+        }
+      } catch (error) {
+        console.error('🛒 Error in updateBookingStatus:', error);
+        return {
+          success: false,
+          message: 'Failed to update booking status',
+          error: error.message,
+        };
+      }
+    }
+
+    // Get booking status counts for dashboard
+    async getBookingStatusCounts(shopId: string, dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
+      try {
+        const response = await normalizedShopService.getBookingStatusCounts(shopId, dateFrom, dateTo);
+        
+        if (response.success) {
+          return {
+            success: true,
+            data: response.data,
+            message: 'Booking status counts loaded successfully',
+          };
+        } else {
+          return {
+            success: false,
+            data: {},
+            message: response.error || 'Failed to load booking status counts',
+            error: response.error
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          data: {},
+          message: 'Failed to load booking status counts',
+          error: error.message,
+        };
+      }
+    }
+
+    // Get bookings queue for provider
+    async getBookingQueue(providerId: string, filters?: { 
+      status?: string; 
+      date?: string; 
+      shopId?: string;
+    }): Promise<ApiResponse<any[]>> {
+      try {
+        console.log('📋 ServiceManagementAPI.getBookingQueue called for provider:', providerId);
+        
+        const response = await normalizedShopService.getBookings(providerId, filters);
+        
+        if (response.success && response.data) {
+          // Transform bookings to queue items
+          const queueItems = response.data.map(booking => ({
+            id: booking.id,
+            booking_id: booking.id,
+            title: booking.service_name || 'Service',
+            service_type: booking.service_name,
+            client: booking.customer_name,
+            client_phone: booking.customer_phone,
+            client_email: booking.customer_email || '',
+            date: booking.booking_date,
+            time: booking.start_time,
+            scheduled_time: `${booking.booking_date} ${booking.start_time}`,
+            duration: `${booking.duration_minutes} min`,
+            price: booking.total_amount,
+            status: booking.status,
+            priority: booking.status === 'confirmed' ? 'high' : 'medium',
+            notes: booking.notes || '',
+            location_type: booking.service_location_type || 'in_house',
+            location: booking.service_location_type === 'on_location' 
+              ? 'Client Location' 
+              : 'Shop Location',
+            staff_name: booking.staff?.name || 'Any Staff',
+            created_at: booking.created_at,
+            invoice_sent: false // Will be added later
+          }));
+
+          console.log('✅ Transformed', queueItems.length, 'bookings to queue items');
+          
+          return {
+            success: true,
+            data: queueItems,
+            message: 'Booking queue loaded successfully',
+          };
+        } else {
+          return {
+            success: false,
+            data: [],
+            message: response.error || 'Failed to load booking queue',
+            error: response.error
+          };
+        }
+      } catch (error) {
+        console.error('🛒 Error in getBookingQueue:', error);
+        return {
+          success: false,
+          data: [],
+          message: 'Failed to load booking queue',
+          error: error.message,
+        };
+      }
+    }
+
+    // Get service statistics (placeholder)
     async getServiceStatistics(shopId?: string): Promise<ApiResponse<any>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        
-        // In production:
-        // const url = shopId 
-        //   ? `${this.baseUrl}/shops/${shopId}/statistics`
-        //   : `${this.baseUrl}/services/statistics`;
-        // const response = await fetch(url, {
-        //   method: 'GET',
-        //   headers: this.getHeaders(),
-        // });
-        // return this.handleResponse<any>(response);
-        
+        // This would calculate real statistics from the database
+        // For now, return placeholder stats
         const mockStats = {
-          total_services: 8,
-          active_services: 6,
-          average_price: 587,
-          average_duration: 65,
-          total_bookings_this_month: 45,
-          revenue_this_month: 26415,
-          most_popular_service: 'Classic Manicure',
-          busiest_day: 'Friday',
+          total_services: 0,
+          active_services: 0,
+          average_price: 0,
+          average_duration: 0,
+          total_bookings_this_month: 0,
+          revenue_this_month: 0,
+          most_popular_service: '',
+          busiest_day: '',
         };
-  
+
         return {
           success: true,
           data: mockStats,
