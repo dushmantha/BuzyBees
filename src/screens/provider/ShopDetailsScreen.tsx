@@ -1160,15 +1160,15 @@ const ShopDetailsScreen: React.FC = () => {
           const hasAnyImages = hasValidImages || hasValidLogo;
           
           if (totalFinalImages === 0 && !hasAnyImages) {
-            imageStatusMessage = '\n\nℹ️ Your shop has no images.';
+            imageStatusMessage = 'ℹ️ Your shop has no images.';
           } else if (totalFinalImages === 0 && hasAnyImages) {
             // Images exist but are already uploaded (HTTP URLs, not file:// URIs)
             const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `\n\n✅ Shop updated! Your shop has ${validImageCount} existing image(s) (already uploaded).`;
+            imageStatusMessage = `✅ Shop updated! Your shop has ${validImageCount} existing image(s) (already uploaded).`;
           } else if (totalNewImages > 0) {
-            imageStatusMessage = `\n\n✅ Shop updated! Total images: ${totalFinalImages} (${totalNewImages} new image(s) added this session)`;
+            imageStatusMessage = `✅ Shop updated! Total images: ${totalFinalImages} (${totalNewImages} new image(s) added this session)`;
           } else {
-            imageStatusMessage = `\n\n✅ Shop updated! Your shop has ${totalFinalImages} image(s).`;
+            imageStatusMessage = `✅ Shop updated! Your shop has ${totalFinalImages} image(s).`;
           }
         } else {
           // For creating new shops
@@ -1178,13 +1178,13 @@ const ShopDetailsScreen: React.FC = () => {
           const hasAnyImages = hasValidImages || hasValidLogo;
           
           if (totalNewImages === 0 && !hasAnyImages) {
-            imageStatusMessage = '\n\nℹ️ No images were added to your shop.';
+            imageStatusMessage = 'ℹ️ No images were added to your shop.';
           } else if (totalNewImages === 0 && hasAnyImages) {
             // Images exist but are already uploaded (HTTP URLs, not new file:// URIs)
             const validImageCount = (shop.images?.filter(img => isValidImageUrl(img)).length || 0) + (hasValidLogo ? 1 : 0);
-            imageStatusMessage = `\n\n✅ Shop created! ${validImageCount} existing image(s) (already uploaded).`;
+            imageStatusMessage = `✅ Shop created! ${validImageCount} existing image(s) (already uploaded).`;
           } else {
-            imageStatusMessage = `\n\n✅ Shop created with ${totalNewImages} image(s) uploaded successfully!`;
+            imageStatusMessage = `✅ Shop created with ${totalNewImages} image(s) uploaded successfully!`;
           }
         }
         
@@ -1195,9 +1195,9 @@ const ShopDetailsScreen: React.FC = () => {
         
         if (totalLocalImages > 0 && totalNewImages < totalLocalImages) {
           if (!storageAvailable) {
-            imageStatusMessage += '\n\n💡 Some images could not be uploaded - storage is not properly configured.';
+            imageStatusMessage += '💡 Some images could not be uploaded - storage is not properly configured.';
           } else {
-            imageStatusMessage += '\n\n💡 Some images failed to upload - check your internet connection.';
+            imageStatusMessage += '💡 Some images failed to upload - check your internet connection.';
           }
         }
         
@@ -2129,175 +2129,6 @@ const ShopDetailsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Debug Info */}
-        <View style={{ padding: 10, backgroundColor: '#f0f0f0', marginVertical: 10 }}>
-          <Text style={{ fontSize: 12, color: '#666', fontWeight: 'bold' }}>
-            🔍 Image Debug Info:
-          </Text>
-          <Text style={{ fontSize: 12, color: '#666' }}>
-            Images array length: {(shop.images || []).length}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#666' }}>
-            Logo: {shop.logo_url ? '✅ Set' : '❌ None'}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#666' }}>
-            Compression: ✅ Built-in (80-90% quality, optimized dimensions)
-          </Text>
-          {(shop.images || []).filter(img => img && img.trim() !== '').length > 0 && (
-            <Text style={{ fontSize: 12, color: '#666' }}>
-              Shop images: {(shop.images || []).filter(img => img && img.trim() !== '').length} selected
-            </Text>
-          )}
-          
-          {/* Test Buttons */}
-          <View style={{ flexDirection: 'row', gap: 5 }}>
-            <TouchableOpacity 
-              style={{
-                backgroundColor: '#10B981',
-                padding: 8,
-                borderRadius: 4,
-                marginTop: 10,
-                alignItems: 'center',
-                flex: 1
-              }}
-              onPress={() => {
-                
-                setShop(prev => ({
-                  ...prev,
-                  logo_url: 'https://fezdmxvqurczeqmqvgzm.supabase.co/storage/v1/object/public/user-avatars//WhatsApp%20Image%202024-08-05%20at%2013.01.37.jpeg',
-                  images: ['https://fezdmxvqurczeqmqvgzm.supabase.co/storage/v1/object/public/shop-images//Simulator%20Screenshot%20-%20iPhone%2015%20-%202025-07-27%20at%2000.08.21.png']
-                }));
-                
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                🧪 Set Test URLs
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={{
-                backgroundColor: '#3B82F6',
-                padding: 8,
-                borderRadius: 4,
-                marginTop: 10,
-                alignItems: 'center',
-                flex: 1
-              }}
-              onPress={async () => {
-                // Test 1: Authentication
-                
-                const currentUser = await authService.getCurrentUser();
-                // Test 2: Storage
-                
-                const storageTest = await integratedShopService.setupStorage();
-                // Test 3: Upload a test image
-                if (shop.logo_url && shop.logo_url.startsWith('file://')) {
-                  
-                  const uploadResult = await integratedShopService.uploadImage(shop.logo_url, 'shops/test');
-                  
-                }
-                
-                // Test 4: Create a minimal shop
-                
-                const testShopData = {
-                  name: 'Test Shop ' + Date.now(),
-                  description: 'Test Description',
-                  category: 'Beauty & Wellness',
-                  address: 'Test Address',
-                  city: 'Test City',
-                  state: 'Test State',
-                  country: 'Sweden',
-                  phone: '1234567890',
-                  email: 'test@test.com',
-                  logo_url: validAllImages[0] || '',
-                  images: validAllImages,
-                  image_url: validAllImages[0] || '',
-                  business_hours: shop.business_hours || [],
-                  services: shop.services || [],
-                  staff: shop.staff || [],
-                  discounts: shop.discounts || [],
-                  special_days: shop.special_days || []
-                };
-                const createResult = await authService.createProviderBusiness(testShopData);
-                if (createResult.success) {
-                  // Test shop created successfully
-                } else {
-                  // Shop creation failed
-                }
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                🧪 Full Test
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: 'orange',
-                padding: 5,
-                borderRadius: 3,
-                margin: 2,
-              }}
-              onPress={() => {
-                // Debug test button - no action needed
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                🔍 Debug Test
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: 'purple',
-                padding: 5,
-                borderRadius: 3,
-                margin: 2,
-              }}
-              onPress={async () => {
-                const verifyResult = await integratedShopService.verifySetup();
-                if (verifyResult.success) {
-                  // Integrated setup is working correctly
-                } else {
-                  // Integrated setup has issues
-                }
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                🔍 Verify DB
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: 'orange',
-                padding: 5,
-                borderRadius: 3,
-                margin: 2,
-              }}
-              onPress={async () => {
-                Alert.alert(
-                  'Storage Setup Required', 
-                  'Automatic bucket creation is disabled due to RLS policy conflicts.\n\nTo fix storage:\n1. Go to Supabase SQL Editor\n2. Run: fix_storage_rls_complete.sql\n3. This will create buckets and fix policies',
-                  [
-                    { text: 'OK', style: 'default' },
-                    { 
-                      text: 'Show Console', 
-                      onPress: () => {
-                        
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                ⚠️ Fix Storage
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Shop Photos Grid */}
         <View style={styles.photosSection}>
