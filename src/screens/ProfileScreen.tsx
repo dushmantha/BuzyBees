@@ -22,6 +22,7 @@ import useImagePicker from '../hooks/useImagePicker';
 import mockService from '../services/api/mock/index';
 import UpgradeModal from '../components/UpgradeModal';
 import { authService } from '../lib/supabase/index';
+import { normalizedShopService } from '../lib/supabase/normalized';
 
 interface ProfileData {
   id: string;
@@ -136,7 +137,7 @@ interface ApiResponse<T> {
 }
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'invoices'>('profile');
+  // Removed tab functionality - ProfileScreen now only shows profile content
   
   // Use the global account context and notifications
   const { accountType, setAccountType, isLoading: accountSwitchLoading } = useAccount();
@@ -147,21 +148,15 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [tempProfile, setTempProfile] = useState<ProfileData | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showAccountSwitchModal, setShowAccountSwitchModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [totalInvoiceCount, setTotalInvoiceCount] = useState(0);
-  const [hasMoreInvoices, setHasMoreInvoices] = useState(false);
+  
   
   const { signOut } = useAuth();
   const { showImagePickerOptions, isLoading: isImageLoading } = useImagePicker();
 
   const userId = '1';
-  const FREE_PAYMENT_LIMIT = 3;
+
 
   // Default mock profile data for fallback scenarios
   const mockProfileData = {
@@ -308,7 +303,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         const allInvoices = accountType === 'provider' ? providerPayments : consumerInvoices;
         // Use actual profile data if available, otherwise fall back to mock data
         const profileToUse = profile || mockProfileData;
-        const limit = accountType === 'provider' && !profileToUse.is_premium ? FREE_PAYMENT_LIMIT : undefined;
         const limitedInvoices = limit ? allInvoices.slice(0, limit) : allInvoices;
         
         return {
@@ -479,6 +473,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           setUnreadCount(newInvoicesCount);
         }
         
+        
       } catch (error) {
         console.error('Error fetching profile data:', error);
         // Instead of showing alert, fall back to default data
@@ -506,29 +501,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     fetchUserProfile();
   }, [accountType]);
 
-  // Refresh invoices only when tab changes or account switches
-  const refreshInvoicesData = useCallback(async () => {
-    if (activeTab === 'invoices') {
-      try {
-        setIsLoadingInvoices(true);
-        const response = await apiService.getProfileManagementData(userId);
-        
-        if (response.success) {
-          setInvoices(response.data.invoices);
-          setTotalInvoiceCount(response.data.total_count);
-          setHasMoreInvoices(response.data.has_more);
-          
-          const newInvoicesCount = response.data.invoices.filter(invoice => invoice.is_new).length;
-          setUnreadCount(newInvoicesCount);
-        }
-      } catch (error) {
-        console.error('Error refreshing invoices:', error);
-        Alert.alert('Error', `Failed to refresh ${accountType === 'provider' ? 'payments' : 'invoices'}`);
-      } finally {
-        setIsLoadingInvoices(false);
-      }
-    }
-  }, [userId, accountType, activeTab]);
 
   // Handle upgrade to premium
   const handleUpgrade = async () => {
@@ -543,8 +515,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         setProfile(response.data);
         Alert.alert('Success!', 'Your account has been upgraded to Pro. You now have unlimited access to all payments and premium features.');
         
-        // Refresh data to show all payments
-        refreshInvoicesData();
       } else {
         throw new Error('Upgrade failed');
       }
@@ -582,11 +552,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       setInvoices([]);
       setUnreadCount(0);
       
-      if (activeTab === 'invoices') {
-        setTimeout(() => {
-          refreshInvoicesData();
-        }, 500);
-      }
 
     } catch (error) {
       console.error('Error switching account:', error);
@@ -1005,6 +970,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     </View>
   );
 
+
   const renderUpgradePrompt = () => {
     if (accountType !== 'provider' || profile?.is_premium || !hasMoreInvoices) return null;
 
@@ -1314,52 +1280,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         </View>
       </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
-          onPress={() => setActiveTab('profile')}
-        >
-          <Ionicons 
-            name={activeTab === 'profile' ? 'person' : 'person-outline'} 
-            size={20} 
-            color={activeTab === 'profile' ? '#F59E0B' : '#4B5563'} 
-          />
-          <Text style={[
-            styles.tabText, 
-            activeTab === 'profile' && styles.activeTabText
-          ]}>
-            Profile
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'invoices' && styles.activeTab]}
-          onPress={() => setActiveTab('invoices')}>
-          <View style={styles.tabIconContainer}>
-            <Ionicons 
-              name={activeTab === 'invoices' ? 'receipt' : 'receipt-outline'} 
-              size={20} 
-              color={activeTab === 'invoices' ? '#F59E0B' : '#4B5563'} 
-            />
-            {unreadCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[
-            styles.tabText, 
-            activeTab === 'invoices' && styles.activeTabText
-          ]}>
-            {accountType === 'provider' ? 'Payments' : 'Invoices'}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Content */}
-      {activeTab === 'profile' ? (
-        <ScrollView style={styles.content}>
+      <ScrollView style={styles.content}>
           <View style={styles.avatarContainer}>
             <View style={[styles.avatar, { backgroundColor: '#F59E0B', justifyContent: 'center', alignItems: 'center' }]}>
               {currentProfile?.avatar_url ? (
@@ -1574,37 +1497,8 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </ScrollView>
-      ) : (
-        <View style={styles.invoicesContainer}>
-          {isLoadingInvoices ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#F59E0B" />
-              <Text style={styles.loadingText}>
-                Loading {accountType === 'provider' ? 'payments' : 'invoices'}...
-              </Text>
-            </View>
-          ) : invoices.length > 0 ? (
-            <View style={styles.invoicesContent}>
-              <FlatList
-                data={invoices}
-                renderItem={renderInvoiceItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.invoicesList}
-                showsVerticalScrollIndicator={false}
-                refreshing={isLoadingInvoices}
-                onRefresh={refreshInvoicesData}
-              />
-              {renderUpgradePrompt()}
-            </View>
-          ) : (
-            renderEmptyInvoices()
-          )}
-        </View>
-      )}
 
       {/* Bottom Action Buttons */}
-      {activeTab === 'profile' && (
-        <>
           {isEditing ? (
             <View style={styles.buttonContainer}>
               <TouchableOpacity 
@@ -1640,10 +1534,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Text style={styles.editButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           )}
-        </>
-      )}
 
-      {renderInvoiceModal()}
       {renderAccountSwitchModal()}
       
       {/* Upgrade Modal */}

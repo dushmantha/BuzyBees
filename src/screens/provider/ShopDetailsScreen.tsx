@@ -1790,6 +1790,23 @@ const ShopDetailsScreen: React.FC = () => {
     setEditingService(null);
   };
 
+  const toggleServiceStatus = async (service: Service, value: boolean) => {
+    try {
+      const result = await normalizedShopService.updateService(service.id, { is_active: value });
+      if (result.success) {
+        // Update local state
+        setShop(prev => ({
+          ...prev,
+          services: prev.services.map(s => s.id === service.id ? { ...s, is_active: value } : s)
+        }));
+      } else {
+        Alert.alert('Error', 'Failed to update service status');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred while updating service status');
+    }
+  };
+
   const deleteService = (serviceId: string) => {
     Alert.alert(
       'Delete Service',
@@ -2614,13 +2631,31 @@ const ShopDetailsScreen: React.FC = () => {
           data={shop.services}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.serviceCard}>
+            <View style={[styles.serviceCard, !item.is_active && styles.inactiveServiceCard]}>
               <View style={styles.serviceHeader}>
                 <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{item.name}</Text>
-                  <Text style={styles.serviceCategory}>{item.category}</Text>
+                  <View style={styles.serviceNameRow}>
+                    <Text style={[styles.serviceName, !item.is_active && styles.inactiveServiceName]}>
+                      {item.name}
+                    </Text>
+                    {!item.is_active && (
+                      <View style={styles.inactiveBadge}>
+                        <Text style={styles.inactiveBadgeText}>INACTIVE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.serviceCategory, !item.is_active && styles.inactiveServiceCategory]}>
+                    {item.category}
+                  </Text>
                 </View>
                 <View style={styles.serviceActions}>
+                  <Switch
+                    value={item.is_active}
+                    onValueChange={(value) => toggleServiceStatus(item, value)}
+                    trackColor={{ false: '#E5E7EB', true: '#D1FAE5' }}
+                    thumbColor={item.is_active ? '#10B981' : '#9CA3AF'}
+                    style={styles.serviceSwitch}
+                  />
                   <TouchableOpacity
                     style={styles.actionButton}
                     onPress={() => openServiceModal(item)}
@@ -5207,6 +5242,35 @@ const styles = StyleSheet.create({
   },
   selectedLocationTypeDesc: {
     color: '#92400E',
+  },
+
+  // Inactive service styles
+  inactiveServiceCard: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    opacity: 0.9,
+  },
+  serviceNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inactiveServiceName: {
+    color: '#6B7280',
+  },
+  inactiveServiceCategory: {
+    color: '#9CA3AF',
+  },
+  inactiveBadge: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inactiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
 

@@ -40,6 +40,34 @@ export interface ShopStaff {
   updated_at?: string;
 }
 
+export interface Payment {
+  id?: string;
+  booking_id: string;
+  provider_id: string;
+  shop_id?: string;
+  client_name: string;
+  client_email?: string;
+  client_phone?: string;
+  service_title: string;
+  service_type?: string;
+  service_date: string;
+  service_time?: string;
+  duration?: string;
+  amount: number;
+  currency?: string;
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  location_type?: 'in_house' | 'on_location';
+  location?: string;
+  invoice_sent?: boolean;
+  invoice_number?: string;
+  created_at?: string;
+  updated_at?: string;
+  paid_at?: string;
+}
+
 export interface ShopService {
   id?: string;
   shop_id?: string;
@@ -1822,13 +1850,41 @@ class NormalizedShopService {
     try {
       console.log('📅 Updating booking status:', bookingId, 'to', status);
 
-      // Use the database function for proper validation
+      // First try direct update to avoid function ambiguity issues
+      const { data: bookingData, error: fetchError } = await this.client
+        .from('shop_bookings')
+        .select('provider_id')
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchError || !bookingData) {
+        console.error('❌ Booking not found:', fetchError);
+        return {
+          success: false,
+          error: 'Booking not found'
+        };
+      }
+
+      // Verify the user owns this booking
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser || bookingData.provider_id !== currentUser.id) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
+
+      // Update the booking directly
       const { data, error } = await this.client
-        .rpc('update_booking_status', {
-          p_booking_id: bookingId,
-          p_new_status: status,
-          p_internal_notes: internalNotes || null
-        });
+        .from('shop_bookings')
+        .update({
+          status: status,
+          internal_notes: internalNotes || undefined,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+        .select()
+        .single();
 
       if (error) {
         console.error('❌ Update booking status error:', error);
@@ -1841,7 +1897,7 @@ class NormalizedShopService {
       if (!data) {
         return {
           success: false,
-          error: 'Booking not found or access denied'
+          error: 'Failed to update booking status'
         };
       }
 
@@ -2144,6 +2200,210 @@ class NormalizedShopService {
 
     } catch (error) {
       console.error('❌ Get shops error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // PAYMENT METHODS
+  // ==============================================
+
+  // Create payment record when booking is completed
+  async createPaymentRecord(bookingData: {
+    booking_id: string;
+    shop_id?: string;
+    client_name: string;
+    client_email?: string;
+    client_phone?: string;
+    service_title: string;
+    service_type?: string;
+    service_date: string;
+    service_time?: string;
+    duration?: string;
+    amount: number;
+    notes?: string;
+    location_type?: 'in_house' | 'on_location';
+    location?: string;
+    invoice_number?: string;
+  }): Promise<ServiceResponse<Payment>> {
+    try {
+      console.log('💰 Creating payment record for booking:', bookingData.booking_id);
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const { data, error } = await this.client
+        .from('payments')
+        .insert({
+          booking_id: bookingData.booking_id,
+          provider_id: user.id,
+          shop_id: bookingData.shop_id,
+          client_name: bookingData.client_name,
+          client_email: bookingData.client_email,
+          client_phone: bookingData.client_phone,
+          service_title: bookingData.service_title,
+          service_type: bookingData.service_type,
+          service_date: bookingData.service_date,
+          service_time: bookingData.service_time,
+          duration: bookingData.duration,
+          amount: bookingData.amount,
+          currency: 'NZD',
+          payment_status: 'pending',
+          notes: bookingData.notes,
+          location_type: bookingData.location_type,
+          location: bookingData.location,
+          invoice_number: bookingData.invoice_number,
+          invoice_sent: false
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Payment creation error:', error);
+        return {
+          success: false,
+          error: `Failed to create payment record: ${error.message}`
+        };
+      }
+
+      console.log('✅ Payment record created successfully');
+      return {
+        success: true,
+        data: data as Payment,
+        message: 'Payment record created successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected payment creation error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Update payment status
+  async updatePaymentStatus(
+    paymentId: string,
+    status: 'pending' | 'paid' | 'failed' | 'refunded',
+    paymentMethod?: string,
+    paymentReference?: string
+  ): Promise<ServiceResponse<Payment>> {
+    try {
+      console.log('💰 Updating payment status:', paymentId, 'to', status);
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const updateData: any = {
+        payment_status: status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (paymentMethod) updateData.payment_method = paymentMethod;
+      if (paymentReference) updateData.payment_reference = paymentReference;
+
+      const { data, error } = await this.client
+        .from('payments')
+        .update(updateData)
+        .eq('id', paymentId)
+        .eq('provider_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Payment status update error:', error);
+        return {
+          success: false,
+          error: `Failed to update payment status: ${error.message}`
+        };
+      }
+
+      console.log('✅ Payment status updated successfully');
+      return {
+        success: true,
+        data: data as Payment,
+        message: `Payment status updated to ${status}`
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected payment update error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get payments for provider
+  async getPayments(
+    shopId?: string,
+    status?: 'pending' | 'paid' | 'failed' | 'refunded',
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<ServiceResponse<Payment[]>> {
+    try {
+      console.log('💰 Fetching payments for provider');
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      let query = this.client
+        .from('payments')
+        .select('*')
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (shopId) {
+        query = query.eq('shop_id', shopId);
+      }
+      if (status) {
+        query = query.eq('payment_status', status);
+      }
+      if (dateFrom) {
+        query = query.gte('service_date', dateFrom);
+      }
+      if (dateTo) {
+        query = query.lte('service_date', dateTo);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('❌ Get payments error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ Successfully fetched', data?.length || 0, 'payments');
+      return {
+        success: true,
+        data: data as Payment[] || [],
+        message: 'Payments retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get payments error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

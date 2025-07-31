@@ -20,6 +20,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizedShopService } from '../../lib/supabase/normalized';
+import { InvoiceGenerator } from '../../services/InvoiceGenerator';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -1007,41 +1008,41 @@ Thank you for choosing our services.`,
         return;
       }
 
-      // Generate invoice HTML for sharing
-      const invoiceHTML = generateInvoiceHTML();
+      // Calculate totals
       const totals = calculateTotals();
-
+      
+      let customerViewUrl: string | undefined;
+      
       try {
-        // Try to send to API first
-        const customerViewUrl = await sendInvoiceToAPI();
-        
-        // Share invoice with customer view link
-        await Share.share({
-          message: `📧 Invoice ${invoiceData.invoiceNumber} from ${invoiceData.companyName}
+        // Try to send to API first for payment link
+        customerViewUrl = await sendInvoiceToAPI();
+      } catch (apiError) {
+        console.error('API error, will share without payment link:', apiError);
+      }
 
-💰 Total: ${totals.total.toFixed(2)} NZD
-📅 Due: ${invoiceData.dueDate}
+      // Share the invoice using the new generator
+      const shared = await InvoiceGenerator.shareInvoice(invoiceData, totals, customerViewUrl);
+      
+      if (!shared) {
+        // User cancelled sharing
+        return;
+      }
 
-🔗 View and pay online: ${customerViewUrl}
+      // Save invoice data
+      await InvoiceGenerator.saveInvoiceData(invoiceData, totals);
+      await saveInvoiceLocally('sent');
 
-Thank you for your business!
-${invoiceData.companyName}`,
-          title: `Invoice ${invoiceData.invoiceNumber}`,
-          url: customerViewUrl,
-        });
-
-        // Save invoice locally for records
-        await saveInvoiceLocally('sent');
-
-        // Clear the temporary booking data
-        await AsyncStorage.removeItem('selectedBookingForInvoice');
-        
+      // Clear the temporary booking data
+      await AsyncStorage.removeItem('selectedBookingForInvoice');
+      
+      // Show success message based on whether we have payment link
+      if (customerViewUrl) {
         Alert.alert(
           'Invoice Sent Successfully! ✅',
-          'The invoice has been sent to your customer with a secure payment link. They can view and pay the invoice online.',
+          'The invoice has been shared with your customer. They can view and pay online using the link included.',
           [
             { 
-              text: 'View Customer Link', 
+              text: 'View Payment Link', 
               onPress: () => Linking.openURL(customerViewUrl),
               style: 'default'
             },
@@ -1052,36 +1053,13 @@ ${invoiceData.companyName}`,
             }
           ]
         );
-
-      } catch (apiError) {
-        console.error('API error, falling back to local sharing:', apiError);
-        
-        // Fallback to local sharing if API fails
-        await Share.share({
-          message: `📧 Invoice ${invoiceData.invoiceNumber} from ${invoiceData.companyName}
-
-💰 Total: ${totals.total.toFixed(2)} NZD
-📅 Due: ${invoiceData.dueDate}
-
-Service: ${invoiceData.serviceTitle}
-Client: ${invoiceData.clientName}
-
-Thank you for your business!
-${invoiceData.companyName}
-
-Contact: ${invoiceData.companyEmail}`,
-          title: `Invoice ${invoiceData.invoiceNumber}`,
-        });
-
-        // Save invoice locally
-        await saveInvoiceLocally('shared_locally');
-
+      } else {
         Alert.alert(
-          'Invoice Shared Locally ✅',
-          'The invoice has been shared. Note: Online payment features are unavailable due to connection issues.',
+          'Invoice Shared! ✅',
+          'The invoice has been shared with your customer. They will receive the complete invoice details.',
           [
             { 
-              text: 'OK', 
+              text: 'Done', 
               onPress: () => navigation.goBack(),
               style: 'default'
             }
@@ -1757,7 +1735,8 @@ Contact: ${invoiceData.companyEmail}`,
         <InvoicePreviewModal
           visible={showInvoicePreview}
           onClose={() => setShowInvoicePreview(false)}
-          invoiceHTML={generateInvoiceHTML()}
+          invoiceData={invoiceData}
+          totals={calculateTotals()}
           invoiceNumber={invoiceData.invoiceNumber}
           onShare={shareInvoice}
           isLoading={isLoading}
@@ -1993,7 +1972,8 @@ const CompanySetupModal: React.FC<CompanySetupModalProps> = ({
 interface InvoicePreviewModalProps {
   visible: boolean;
   onClose: () => void;
-  invoiceHTML: string;
+  invoiceData: InvoiceData;
+  totals: InvoiceTotals;
   invoiceNumber: string;
   onShare: () => void;
   isLoading: boolean;
@@ -2002,12 +1982,13 @@ interface InvoicePreviewModalProps {
 const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   visible,
   onClose,
-  invoiceHTML,
+  invoiceData,
+  totals,
   invoiceNumber,
   onShare,
   isLoading,
 }) => {
-  const [webViewHeight, setWebViewHeight] = useState(screenWidth * 1.4);
+  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -2046,41 +2027,169 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               </View>
             </View>
             
-            <View style={styles.htmlPreview}>
+            <View style={styles.invoicePreviewContainer}>
               <ScrollView 
-                style={styles.htmlScrollView}
-                showsVerticalScrollIndicator={false}
+                style={styles.invoicePreviewScroll}
+                showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
               >
-                <Text style={styles.htmlContent}>
-                  {invoiceHTML.replace(/<[^>]*>/g, '').substring(0, 2000)}...
-                </Text>
+                <View style={styles.invoicePreview}>
+                  {/* Company Header */}
+                  <View style={styles.invoiceHeader}>
+                    <View style={styles.companyLogoSection}>
+                      {invoiceData.companyLogo ? (
+                        <View style={styles.logoPlaceholder}>
+                          <Ionicons name="image" size={35} color="#F59E0B" />
+                        </View>
+                      ) : (
+                        <View style={styles.logoInitial}>
+                          <Text style={styles.logoInitialText}>
+                            {invoiceData.companyName?.charAt(0).toUpperCase() || '?'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.companyInfoSection}>
+                      <Text style={styles.companyNamePreview}>{invoiceData.companyName}</Text>
+                      <View style={styles.companyAddressLine}>
+                        <Ionicons name="location-outline" size={12} color="#F59E0B" style={styles.contactIcon} />
+                        <Text style={styles.companyDetailPreview}>{invoiceData.companyAddress}</Text>
+                      </View>
+                      <View style={styles.companyAddressLine}>
+                        <Ionicons name="call-outline" size={12} color="#F59E0B" style={styles.contactIcon} />
+                        <Text style={styles.companyDetailPreview}>{invoiceData.companyPhone}</Text>
+                      </View>
+                      <View style={styles.companyAddressLine}>
+                        <Ionicons name="mail-outline" size={12} color="#F59E0B" style={styles.contactIcon} />
+                        <Text style={styles.companyDetailPreview}>{invoiceData.companyEmail}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Invoice Details */}
+                  <View style={styles.invoiceMetaSection}>
+                    <View style={styles.invoiceNumberBox}>
+                      <Text style={styles.invoiceLabel}>INVOICE</Text>
+                      <Text style={styles.invoiceNumberText}>#{invoiceNumber}</Text>
+                    </View>
+                    <View style={styles.invoiceDates}>
+                      <View style={styles.dateRow}>
+                        <Text style={styles.dateLabel}>Date:</Text>
+                        <Text style={styles.dateValue}>{invoiceData.invoiceDate}</Text>
+                      </View>
+                      <View style={styles.dateRow}>
+                        <Text style={styles.dateLabel}>Due:</Text>
+                        <Text style={styles.dateValue}>{invoiceData.dueDate}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Client Info */}
+                  <View style={styles.clientSection}>
+                    <View style={styles.sectionHeaderPreview}>
+                      <Ionicons name="person-outline" size={16} color="#F59E0B" />
+                      <Text style={styles.sectionTitlePreview}>Bill To</Text>
+                    </View>
+                    <Text style={styles.clientNamePreview}>{invoiceData.clientName}</Text>
+                    <View style={styles.clientContactLine}>
+                      <Ionicons name="location-outline" size={12} color="#6B7280" style={styles.clientIcon} />
+                      <Text style={styles.clientDetailPreview}>{invoiceData.clientAddress}</Text>
+                    </View>
+                    <View style={styles.clientContactLine}>
+                      <Ionicons name="call-outline" size={12} color="#6B7280" style={styles.clientIcon} />
+                      <Text style={styles.clientDetailPreview}>{invoiceData.clientPhone}</Text>
+                    </View>
+                    <View style={styles.clientContactLine}>
+                      <Ionicons name="mail-outline" size={12} color="#6B7280" style={styles.clientIcon} />
+                      <Text style={styles.clientDetailPreview}>{invoiceData.clientEmail}</Text>
+                    </View>
+                  </View>
+
+                  {/* Services */}
+                  <View style={styles.servicesSection}>
+                    <View style={styles.sectionHeaderPreview}>
+                      <Ionicons name="briefcase-outline" size={16} color="#F59E0B" />
+                      <Text style={styles.sectionTitlePreview}>Services</Text>
+                    </View>
+                    <View style={styles.serviceItem}>
+                      <View style={styles.serviceInfo}>
+                        <Text style={styles.serviceName}>{invoiceData.serviceTitle}</Text>
+                        {invoiceData.serviceDescription && (
+                          <Text style={styles.serviceDesc}>{invoiceData.serviceDescription}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.servicePrice}>{formatCurrency(invoiceData.servicePrice)}</Text>
+                    </View>
+                    
+                    {invoiceData.additionalFees?.map((fee) => (
+                      <View key={fee.id} style={styles.serviceItem}>
+                        <Text style={styles.serviceName}>{fee.name}</Text>
+                        <Text style={styles.servicePrice}>{formatCurrency(fee.amount)}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Totals */}
+                  <View style={styles.totalsSection}>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>Subtotal</Text>
+                      <Text style={styles.totalValue}>{formatCurrency(totals.subtotal)}</Text>
+                    </View>
+                    {totals.discount > 0 && (
+                      <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Discount</Text>
+                        <Text style={styles.totalValue}>-{formatCurrency(totals.discount)}</Text>
+                      </View>
+                    )}
+                    {invoiceData.gstRate > 0 && (
+                      <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>GST ({invoiceData.gstRate}%)</Text>
+                        <Text style={styles.totalValue}>{formatCurrency(totals.gstAmount)}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.totalRow, styles.grandTotalRow]}>
+                      <Text style={styles.grandTotalLabel}>Total Due</Text>
+                      <Text style={styles.grandTotalValue}>{formatCurrency(totals.total)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.invoiceFooter}>
+                    <Text style={styles.footerThankYou}>Thank you for your business!</Text>
+                    <Text style={styles.footerText}>Payment is due within {invoiceData.paymentTerms}</Text>
+                  </View>
+                </View>
               </ScrollView>
             </View>
 
             <View style={styles.previewActions}>
               <TouchableOpacity 
                 style={styles.previewActionButton}
-                onPress={() => {
-                  // Could implement PDF generation here
-                  Alert.alert('Feature Coming Soon', 'PDF generation will be available in a future update.');
+                onPress={async () => {
+                  const totals = calculateTotals();
+                  const shared = await InvoiceGenerator.shareInvoice(invoiceData, totals);
+                  if (shared) {
+                    await InvoiceGenerator.saveInvoiceData(invoiceData, totals);
+                    Alert.alert('Success', 'Invoice exported successfully!');
+                  }
                 }}
               >
-                <Ionicons name="document" size={16} color="#6B7280" />
-                <Text style={styles.previewActionText}>Export PDF</Text>
+                <Ionicons name="document-text" size={16} color="#6B7280" />
+                <Text style={styles.previewActionText}>Export Invoice</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={styles.previewActionButton}
                 onPress={() => {
+                  const textInvoice = InvoiceGenerator.generateTextInvoice(invoiceData, totals);
                   Share.share({
-                    message: invoiceHTML,
+                    message: textInvoice,
                     title: `Invoice ${invoiceNumber}`,
                   });
                 }}
               >
-                <Ionicons name="code" size={16} color="#6B7280" />
-                <Text style={styles.previewActionText}>Share HTML</Text>
+                <Ionicons name="document-outline" size={16} color="#6B7280" />
+                <Text style={styles.previewActionText}>Share Text</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2775,10 +2884,15 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: '#FCD34D',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   previewNote: {
     fontSize: 14,
@@ -2816,6 +2930,274 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#6B7280',
+  },
+
+  // Invoice Preview Styles
+  invoicePreviewContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    margin: 10,
+    overflow: 'hidden',
+  },
+  invoicePreviewScroll: {
+    flex: 1,
+  },
+  invoicePreview: {
+    backgroundColor: 'white',
+    margin: 15,
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  invoiceHeader: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: '#F59E0B',
+  },
+  companyLogoSection: {
+    marginRight: 15,
+  },
+  logoPlaceholder: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoInitial: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#F59E0B',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoInitialText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  companyInfoSection: {
+    flex: 1,
+  },
+  companyNamePreview: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  companyDetailPreview: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  invoiceMetaSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  invoiceNumberBox: {
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  invoiceLabel: {
+    fontSize: 10,
+    color: '#92400E',
+    fontWeight: 'bold',
+  },
+  invoiceNumberText: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: 'bold',
+  },
+  invoiceDates: {
+    alignItems: 'flex-end',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  dateValue: {
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  clientSection: {
+    backgroundColor: '#F9FAFB',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  sectionTitlePreview: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  clientNamePreview: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 3,
+  },
+  clientDetailPreview: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  servicesSection: {
+    marginBottom: 20,
+  },
+  serviceItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  serviceInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  serviceName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  serviceDesc: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  servicePrice: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  totalsSection: {
+    backgroundColor: '#1F2937',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#1F2937',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  totalLabel: {
+    fontSize: 12,
+    color: '#D1D5DB',
+  },
+  totalValue: {
+    fontSize: 12,
+    color: 'white',
+    fontWeight: '600',
+  },
+  grandTotalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#F59E0B',
+    paddingTop: 8,
+    marginTop: 8,
+  },
+  grandTotalLabel: {
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: 'bold',
+  },
+  grandTotalValue: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: 'bold',
+  },
+  invoiceFooter: {
+    alignItems: 'center',
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  footerThankYou: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F59E0B',
+    marginBottom: 5,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+
+  // New enhanced preview styles
+  companyAddressLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  contactIcon: {
+    marginRight: 6,
+  },
+  sectionHeaderPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  clientContactLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  clientIcon: {
+    marginRight: 6,
+  },
+
+  // Preview header styles
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  previewInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#FCD34D',
   },
 });
 

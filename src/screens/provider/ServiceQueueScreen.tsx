@@ -19,7 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccount } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
-import { normalizedShopService } from '../../lib/supabase/normalized';
+import { normalizedShopService, Payment } from '../../lib/supabase/normalized';
 
 // Types
 interface QueueItem {
@@ -134,6 +134,16 @@ const ServiceQueueScreen = ({ navigation }) => {
   const [processingItems, setProcessingItems] = useState(new Set());
   const [invoiceSentItems, setInvoiceSentItems] = useState(new Set());
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Main tab state
+  const [activeTab, setActiveTab] = useState<'queue' | 'payments'>('queue');
+  
+  // Payment-related state
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
+  const [paidPayments, setPaidPayments] = useState<Payment[]>([]);
+  const [paymentStatusTab, setPaymentStatusTab] = useState<'pending' | 'paid'>('pending');
 
   const FREE_USER_LIMIT = 3;
 
@@ -317,15 +327,77 @@ const ServiceQueueScreen = ({ navigation }) => {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await loadQueueData(false); // Manual refresh doesn't need loading indicator
+    if (activeTab === 'queue') {
+      await loadQueueData(false); // Manual refresh doesn't need loading indicator
+    } else {
+      await loadPayments();
+    }
     setIsRefreshing(false);
-  }, [loadQueueData]);
+  }, [loadQueueData, activeTab]);
+
+  // Load payments function
+  const loadPayments = useCallback(async () => {
+    try {
+      setIsLoadingPayments(true);
+      const response = await normalizedShopService.getPayments();
+      
+      if (response.success && response.data) {
+        setPayments(response.data);
+        // Separate pending and paid payments
+        setPendingPayments(response.data.filter(p => p.payment_status === 'pending'));
+        setPaidPayments(response.data.filter(p => p.payment_status === 'paid'));
+      } else {
+        console.error('Failed to load payments:', response.error);
+      }
+    } catch (error) {
+      console.error('Error loading payments:', error);
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  }, []);
+
+  // Load data when tab changes
+  useEffect(() => {
+    if (activeTab === 'payments') {
+      loadPayments();
+    }
+  }, [activeTab, loadPayments]);
 
   // Get filtered data with proper limitations
   const getFilteredData = useCallback(() => {
-    const filtered = selectedFilter === 'all' 
+    let filtered = selectedFilter === 'all' 
       ? queueData 
       : queueData.filter(item => item.status === selectedFilter);
+    
+    // Sort bookings:
+    // 1. Non-completed statuses first (pending, confirmed, in_progress)
+    // 2. Then by date and time (upcoming first)
+    // 3. Completed, cancelled, no_show at the bottom
+    filtered = filtered.sort((a, b) => {
+      // Priority order for statuses
+      const statusPriority = {
+        'pending': 1,
+        'confirmed': 2,
+        'in_progress': 3,
+        'completed': 4,
+        'cancelled': 5,
+        'no_show': 6
+      };
+      
+      const aPriority = statusPriority[a.status] || 999;
+      const bPriority = statusPriority[b.status] || 999;
+      
+      // If different status priorities, sort by priority
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // If same status, sort by date and time (upcoming first)
+      const aDateTime = new Date(`${a.date} ${a.time}`).getTime();
+      const bDateTime = new Date(`${b.date} ${b.time}`).getTime();
+      
+      return aDateTime - bDateTime;
+    });
     
     if (!isPro) {
       return filtered.slice(0, FREE_USER_LIMIT);
@@ -363,18 +435,14 @@ const ServiceQueueScreen = ({ navigation }) => {
 
   // Handle filter selection with premium check
   const handleFilterSelect = useCallback((filterKey: string) => {
-    setSelectedFilter(filterKey);
-    
-    // Show premium modal if user tries to filter and would see limited results
+    // Block free users from using any filter except "all"
     if (!isPro && filterKey !== 'all') {
-      const filteredCount = queueData.filter(item => item.status === filterKey).length;
-      if (filteredCount > FREE_USER_LIMIT) {
-        setTimeout(() => {
-          setShowUpgradeModal(true);
-        }, 300);
-      }
+      setShowUpgradeModal(true);
+      return; // Don't change the selected filter
     }
-  }, [isPro, queueData]);
+    
+    setSelectedFilter(filterKey);
+  }, [isPro]);
 
   // Handle premium upgrade
   const handleUpgradeToPremium = useCallback(async () => {
@@ -524,7 +592,33 @@ const ServiceQueueScreen = ({ navigation }) => {
                 'Service completed successfully'
               );
               
+              console.log('📋 Update booking status response:', response);
+              
               if (response.success) {
+                // Create payment record for completed booking
+                console.log('💰 Creating payment record for completed booking');
+                const paymentResponse = await normalizedShopService.createPaymentRecord({
+                  booking_id: item.booking_id,
+                  client_name: item.client,
+                  client_email: item.client_email,
+                  client_phone: item.client_phone,
+                  service_title: item.title,
+                  service_type: item.service_type,
+                  service_date: item.date,
+                  service_time: item.time,
+                  duration: item.duration,
+                  amount: item.price,
+                  notes: item.notes,
+                  location_type: item.location_type,
+                  location: item.location
+                });
+
+                if (paymentResponse.success) {
+                  console.log('✅ Payment record created successfully');
+                } else {
+                  console.warn('⚠️ Failed to create payment record:', paymentResponse.error);
+                }
+
                 // Update local state immediately
                 setQueueData(prevData =>
                   prevData.map(queueItem =>
@@ -557,9 +651,10 @@ const ServiceQueueScreen = ({ navigation }) => {
               } else {
                 throw new Error(response.error || 'Failed to complete booking');
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error completing booking:', error);
-              Alert.alert('Error', 'Failed to mark booking as completed');
+              const errorMessage = error?.message || error?.error || 'Failed to mark booking as completed';
+              Alert.alert('Error', errorMessage);
             } finally {
               setProcessingItems(prev => {
                 const newSet = new Set(prev);
@@ -842,7 +937,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           </View>
           <View style={[styles.statusBadge, statusStyle.badge]}>
             <Text style={[styles.statusText, statusStyle.text]}>
-              {item.status.toUpperCase()}
+              {item.status === 'completed' ? 'DONE' : item.status.toUpperCase()}
             </Text>
           </View>
         </View>
@@ -862,11 +957,16 @@ const ServiceQueueScreen = ({ navigation }) => {
             />
             <Text style={[
               styles.queueDate, 
-              isUpcoming(item.date) && styles.upcomingDate
+              isUpcoming(item.date) && item.status !== 'completed' && styles.upcomingDate,
+              item.status === 'completed' && styles.completedDate
             ]}>
               {formatBookingDate(item.date)}
             </Text>
-            {isUpcoming(item.date) && (
+            {item.status === 'completed' ? (
+              <View style={styles.completedDateBadge}>
+                <Text style={styles.completedDateBadgeText}>COMPLETED</Text>
+              </View>
+            ) : isUpcoming(item.date) && (
               <View style={styles.upcomingBadge}>
                 <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
               </View>
@@ -926,7 +1026,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           {filterOptions.map((filter) => {
             const count = counts[filter.key];
             const isSelected = selectedFilter === filter.key;
-            const isLocked = !isPro && filter.key !== 'all' && count > FREE_USER_LIMIT;
+            const isLocked = !isPro && filter.key !== 'all';
             
             return (
               <TouchableOpacity
@@ -950,6 +1050,7 @@ const ServiceQueueScreen = ({ navigation }) => {
                     isLocked && styles.filterChipTextLocked,
                   ]}>
                     {filter.label}
+                    {isLocked && ' 🔒'}
                   </Text>
                   {count > 0 && (
                     <View style={[
@@ -982,6 +1083,28 @@ const ServiceQueueScreen = ({ navigation }) => {
       </View>
     );
   }, [getFilterCounts, selectedFilter, isPro, handleFilterSelect]);
+
+  // Render filter restriction notice for free users
+  const renderFilterRestrictionNotice = useCallback(() => {
+    if (isPro) return null;
+
+    return (
+      <View style={styles.restrictionNotice}>
+        <View style={styles.restrictionContent}>
+          <Ionicons name="filter-outline" size={16} color="#F59E0B" />
+          <Text style={styles.restrictionText}>
+            Status filtering is available with Premium
+          </Text>
+          <TouchableOpacity 
+            style={styles.upgradeButtonSmall}
+            onPress={() => setShowUpgradeModal(true)}
+          >
+            <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }, [isPro]);
 
   // Render premium upgrade prompt
   const renderPremiumPrompt = useCallback(() => {
@@ -1021,13 +1144,156 @@ const ServiceQueueScreen = ({ navigation }) => {
     );
   }, [selectedFilter]);
 
+  // Payment render functions
+  const renderPaymentItem = useCallback(({ item }: { item: Payment }) => (
+    <TouchableOpacity 
+      style={[
+        styles.paymentItem, 
+        item.payment_status === 'paid' && styles.paidPaymentItem
+      ]}
+      onPress={() => {
+        Alert.alert(
+          'Payment Details',
+          `Service: ${item.service_title}\nClient: ${item.client_name}\nAmount: $${item.amount}\nStatus: ${item.payment_status}`
+        );
+      }}
+    >
+      <View style={styles.paymentHeader}>
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentService}>{item.service_title}</Text>
+          <Text style={styles.paymentClient}>{item.client_name}</Text>
+          <Text style={styles.paymentDate}>
+            {new Date(item.service_date).toLocaleDateString()}
+          </Text>
+        </View>
+        <View style={styles.paymentAmount}>
+          <Text style={[
+            styles.paymentAmountText,
+            item.payment_status === 'paid' && styles.paidAmountText
+          ]}>
+            ${item.amount?.toFixed(2)}
+          </Text>
+          <View style={[
+            styles.paymentStatusBadge,
+            item.payment_status === 'paid' && styles.paidStatusBadge
+          ]}>
+            <Text style={[
+              styles.paymentStatusText,
+              item.payment_status === 'paid' && styles.paidStatusText
+            ]}>
+              {item.payment_status?.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+      </View>
+      {item.payment_status === 'pending' && (
+        <TouchableOpacity
+          style={styles.markPaidButton}
+          onPress={async () => {
+            try {
+              if (item.id) {
+                const response = await normalizedShopService.updatePaymentStatus(item.id, 'paid');
+                if (response.success) {
+                  Alert.alert('Success', `Payment for ${item.client_name} marked as paid`);
+                  await loadPayments();
+                } else {
+                  Alert.alert('Error', 'Failed to update payment status');
+                }
+              }
+            } catch (error) {
+              console.error('Error updating payment:', error);
+              Alert.alert('Error', 'Failed to update payment');
+            }
+          }}
+        >
+          <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
+          <Text style={styles.markPaidText}>Mark as Paid</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  ), [loadPayments]);
+
+  const renderEmptyPayments = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Ionicons 
+        name="card-outline" 
+        size={64} 
+        color="#E5E7EB" 
+      />
+      <Text style={styles.emptyStateTitle}>
+        No {paymentStatusTab} payments
+      </Text>
+      <Text style={styles.emptyStateSubtitle}>
+        {paymentStatusTab === 'pending' 
+          ? 'Payments will appear here when jobs are completed.'
+          : 'Paid payments will appear here once clients make payments.'
+        }
+      </Text>
+    </View>
+  ), [paymentStatusTab]);
+
+  // Main tab navigation
+  const renderMainTabs = useCallback(() => (
+    <View style={styles.mainTabContainer}>
+      <TouchableOpacity
+        style={[styles.mainTab, activeTab === 'queue' && styles.activeMainTab]}
+        onPress={() => setActiveTab('queue')}
+      >
+        <View style={styles.mainTabContent}>
+          <Ionicons 
+            name={activeTab === 'queue' ? 'list' : 'list-outline'} 
+            size={20} 
+            color={activeTab === 'queue' ? '#F59E0B' : '#6B7280'} 
+          />
+          <Text style={[
+            styles.mainTabText,
+            activeTab === 'queue' && styles.activeMainTabText
+          ]}>
+            Service Queue
+          </Text>
+          {queueStats.totalBookings > 0 && (
+            <View style={styles.mainTabBadge}>
+              <Text style={styles.mainTabBadgeText}>{queueStats.totalBookings}</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={[styles.mainTab, activeTab === 'payments' && styles.activeMainTab]}
+        onPress={() => setActiveTab('payments')}
+      >
+        <View style={styles.mainTabContent}>
+          <Ionicons 
+            name={activeTab === 'payments' ? 'card' : 'card-outline'} 
+            size={20} 
+            color={activeTab === 'payments' ? '#F59E0B' : '#6B7280'} 
+          />
+          <Text style={[
+            styles.mainTabText,
+            activeTab === 'payments' && styles.activeMainTabText
+          ]}>
+            Payments
+          </Text>
+          {pendingPayments.length > 0 && (
+            <View style={styles.mainTabBadge}>
+              <Text style={styles.mainTabBadgeText}>{pendingPayments.length}</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    </View>
+  ), [activeTab, queueStats.totalBookings, pendingPayments.length]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Service Queue</Text>
+        <Text style={styles.headerTitle}>
+          {activeTab === 'queue' ? 'Service Queue' : 'Payment Management'}
+        </Text>
         <View style={styles.headerRight}>
           {isPro && (
             <View style={styles.premiumBadge}>
@@ -1041,35 +1307,101 @@ const ServiceQueueScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Filters */}
-      {renderFilterChips()}
+      {/* Main Tabs */}
+      {renderMainTabs()}
 
-      {/* Premium Prompt */}
-      {renderPremiumPrompt()}
+      {activeTab === 'queue' ? (
+        <>
+          {/* Filters */}
+          {renderFilterChips()}
 
-      {/* Queue List */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading your bookings...</Text>
-        </View>
+          {/* Filter Restriction Notice */}
+          {renderFilterRestrictionNotice()}
+
+          {/* Premium Prompt */}
+          {renderPremiumPrompt()}
+        </>
       ) : (
-        <FlatList
-          data={filteredData}
-          renderItem={renderQueueItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.queueList}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={['#F59E0B']}
-              tintColor="#F59E0B"
-            />
-          }
-          ListEmptyComponent={renderEmptyState}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          {/* Payment Status Sub-tabs */}
+          <View style={styles.paymentSubTabs}>
+            <TouchableOpacity
+              style={[styles.subTab, paymentStatusTab === 'pending' && styles.activeSubTab]}
+              onPress={() => setPaymentStatusTab('pending')}
+            >
+              <Text style={[
+                styles.subTabText, 
+                paymentStatusTab === 'pending' && styles.activeSubTabText
+              ]}>
+                Pending ({pendingPayments.length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.subTab, paymentStatusTab === 'paid' && styles.activeSubTab]}
+              onPress={() => setPaymentStatusTab('paid')}
+            >
+              <Text style={[
+                styles.subTabText, 
+                paymentStatusTab === 'paid' && styles.activeSubTabText
+              ]}>
+                Paid ({paidPayments.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Content */}
+      {activeTab === 'queue' ? (
+        // Queue List
+        isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Loading your bookings...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredData}
+            renderItem={renderQueueItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.queueList}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                colors={['#F59E0B']}
+                tintColor="#F59E0B"
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
+            showsVerticalScrollIndicator={false}
+          />
+        )
+      ) : (
+        // Payment List
+        isLoadingPayments ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Loading payments...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={paymentStatusTab === 'pending' ? pendingPayments : paidPayments}
+            renderItem={renderPaymentItem}
+            keyExtractor={(item) => item.id!}
+            contentContainerStyle={styles.queueList}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                colors={['#F59E0B']}
+                tintColor="#F59E0B"
+              />
+            }
+            ListEmptyComponent={renderEmptyPayments}
+            showsVerticalScrollIndicator={false}
+          />
+        )
       )}
 
       {/* UpgradeModal Integration */}
@@ -1077,8 +1409,8 @@ const ServiceQueueScreen = ({ navigation }) => {
         visible={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={handleUpgradeToPremium}
-        title="Unlock All Your Bookings"
-        subtitle="Get unlimited access to all your customer bookings and premium queue management features"
+        title="Unlock Advanced Filtering"
+        subtitle="Get access to status filters, unlimited bookings view, and premium queue management features"
         features={queueUpgradeFeatures}
         hiddenCount={hiddenItemsCount}
       />
@@ -1123,6 +1455,92 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#F59E0B',
+  },
+
+  // Main Tab Styles
+  mainTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mainTab: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  activeMainTab: {
+    backgroundColor: '#FEF3C7',
+  },
+  mainTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  mainTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  activeMainTabText: {
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  mainTabBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  mainTabBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Payment Sub-tabs Styles
+  paymentSubTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    padding: 4,
+  },
+  subTab: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  activeSubTab: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  subTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  activeSubTabText: {
+    color: '#F59E0B',
+    fontWeight: '600',
   },
   
   // Filter Styles
@@ -1282,8 +1700,8 @@ const styles = StyleSheet.create({
   confirmedText: { color: '#2563EB' },
   inProgressBadge: { backgroundColor: '#F3E8FF' },
   inProgressText: { color: '#7C3AED' },
-  completedBadge: { backgroundColor: '#ECFDF5' },
-  completedText: { color: '#059669' },
+  completedBadge: { backgroundColor: '#10B981', borderWidth: 1, borderColor: '#059669' },
+  completedText: { color: '#FFFFFF', fontWeight: '600' },
   cancelledBadge: { backgroundColor: '#FEE2E2' },
   cancelledText: { color: '#DC2626' },
   noShowBadge: { backgroundColor: '#F3F4F6' },
@@ -1576,6 +1994,150 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // Filter Restriction Notice Styles
+  restrictionNotice: {
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  restrictionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  restrictionText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  upgradeButtonSmall: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  upgradeButtonSmallText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Completed date styles
+  completedDate: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  completedDateBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  completedDateBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Payment Item Styles
+  paymentItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  paidPaymentItem: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  paymentInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  paymentService: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  paymentClient: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  paymentDate: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  paymentAmount: {
+    alignItems: 'flex-end',
+  },
+  paymentAmountText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  paidAmountText: {
+    color: '#10B981',
+  },
+  paymentStatusBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  paidStatusBadge: {
+    backgroundColor: '#10B981',
+  },
+  paymentStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  paidStatusText: {
+    color: '#FFFFFF',
+  },
+  markPaidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  markPaidText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+    marginLeft: 4,
   },
 });
 

@@ -921,7 +921,17 @@ const ServiceManagementScreen = ({ navigation }) => {
       const response = await ServiceManagementAPI.getServicesByShop(shopId);
       
       if (response.success && response.data) {
-        setServices(response.data);
+        // Debug logging
+        console.log('📋 Raw services from API:', response.data.length);
+        console.log('📋 Services:', response.data.map(s => ({ id: s.id, name: s.name, is_active: s.is_active })));
+        
+        // Ensure unique services by ID
+        const uniqueServices = Array.from(
+          new Map(response.data.map(service => [service.id, service])).values()
+        );
+        
+        console.log('📋 Unique services:', uniqueServices.length);
+        setServices(uniqueServices);
       } else {
         throw new Error(response.message || 'Failed to load services');
       }
@@ -1143,11 +1153,22 @@ const ServiceManagementScreen = ({ navigation }) => {
   );
 
   const renderServiceCard = useCallback(({ item }: { item: Service }) => (
-    <View style={styles.serviceCard}>
+    <View style={[styles.serviceCard, !item.is_active && styles.inactiveServiceCard]}>
       <View style={styles.serviceHeader}>
         <View style={styles.serviceInfo}>
-          <Text style={styles.serviceName}>{item.name}</Text>
-          <Text style={styles.serviceCategory}>{item.category}</Text>
+          <View style={styles.serviceNameRow}>
+            <Text style={[styles.serviceName, !item.is_active && styles.inactiveServiceName]}>
+              {item.name}
+            </Text>
+            {!item.is_active && (
+              <View style={styles.inactiveBadge}>
+                <Text style={styles.inactiveBadgeText}>INACTIVE</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.serviceCategory, !item.is_active && styles.inactiveServiceCategory]}>
+            {item.category}
+          </Text>
         </View>
         <View style={styles.serviceToggle}>
           <Switch
@@ -2066,6 +2087,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     marginTop: 4,
+  },
+
+  // Inactive service styles
+  inactiveServiceCard: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    opacity: 0.9,
+  },
+  serviceNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inactiveServiceName: {
+    color: '#6B7280',
+  },
+  inactiveServiceCategory: {
+    color: '#9CA3AF',
+  },
+  inactiveBadge: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inactiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
 
