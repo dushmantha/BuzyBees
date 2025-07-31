@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount } from '../navigation/AppNavigator';
+import { normalizedShopService } from '../lib/supabase/normalized';
 
 interface PrivacySettings {
   profileVisibility: 'public' | 'private' | 'contacts_only';
@@ -90,8 +91,34 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
 
   const loadPrivacySettings = async () => {
     try {
-      const userSettings = await mockPrivacyAPI.getPrivacySettings('user-123');
-      setSettings(userSettings);
+      const response = await normalizedShopService.getPrivacySettings();
+      
+      if (response.success && response.data) {
+        // Map database fields to local state
+        setSettings({
+          profileVisibility: response.data.profile_visibility || 'public',
+          showOnlineStatus: response.data.show_online_status ?? true,
+          allowDirectMessages: response.data.allow_direct_messages ?? true,
+          shareLocationData: response.data.location_sharing ?? false,
+          allowDataAnalytics: response.data.allow_data_analytics ?? true,
+          marketingEmails: response.data.marketing_emails ?? false,
+          pushNotifications: response.data.push_notifications ?? true,
+          twoFactorAuth: response.data.two_factor_auth ?? false,
+          dataCollection: {
+            usage: response.data.allow_data_analytics ?? true,
+            performance: response.data.allow_data_analytics ?? true,
+            crashReports: response.data.allow_data_analytics ?? true,
+          },
+          visibility: {
+            phone: response.data.visibility_phone ?? true,
+            email: response.data.visibility_email ?? false,
+            address: response.data.visibility_address ?? false,
+            workHistory: response.data.visibility_work_history ?? true,
+          },
+        });
+      } else {
+        console.error('Failed to load privacy settings:', response.error);
+      }
     } catch (error) {
       console.error('Error loading privacy settings:', error);
       Alert.alert('Error', 'Failed to load privacy settings');
@@ -127,11 +154,29 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
   const saveSettings = async () => {
     try {
       setIsSaving(true);
-      const response = await mockPrivacyAPI.updatePrivacySettings('user-123', settings);
+      
+      // Map local state to database fields
+      const privacyData = {
+        profile_visibility: settings.profileVisibility,
+        show_online_status: settings.showOnlineStatus,
+        allow_direct_messages: settings.allowDirectMessages,
+        location_sharing: settings.shareLocationData,
+        allow_data_analytics: settings.allowDataAnalytics,
+        marketing_emails: settings.marketingEmails,
+        push_notifications: settings.pushNotifications,
+        two_factor_auth: settings.twoFactorAuth,
+        visibility_phone: settings.visibility.phone,
+        visibility_email: settings.visibility.email,
+        visibility_address: settings.visibility.address,
+        visibility_work_history: settings.visibility.workHistory,
+      };
+      
+      const response = await normalizedShopService.updatePrivacySettings(privacyData);
+      
       if (response.success) {
         Alert.alert('Success', 'Privacy settings updated successfully');
       } else {
-        Alert.alert('Error', 'Failed to update privacy settings');
+        Alert.alert('Error', response.error || 'Failed to update privacy settings');
       }
     } catch (error) {
       console.error('Error saving privacy settings:', error);

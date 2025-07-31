@@ -56,20 +56,20 @@ interface ProfileData {
     is_primary: boolean;
   };
   
-  // Provider-specific data from provider_details table
-  provider_details?: {
+  // Provider-specific data from provider_businesses table
+  provider_business?: {
     id: string;
-    business_name: string;
-    service_category: string;
-    experience_years: number;
-    hourly_rate: number;
-    availability: string;
-    bio?: string;
-    rating: number;
-    completed_jobs: number;
-    total_earnings: number;
+    name: string; // business name
+    category: string; // service category
+    description?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    email?: string;
+    website_url?: string;
     is_verified: boolean;
-    verification_date?: string;
+    women_owned_business?: boolean;
     created_at: string;
     updated_at: string;
     provider_skills?: Array<{
@@ -116,18 +116,6 @@ interface ProfileData {
   };
 }
 
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  amount: number;
-  currency: string;
-  date: string;
-  due_date: string;
-  status: 'pending' | 'paid' | 'overdue';
-  description: string;
-  pdf_url: string;
-  is_new: boolean;
-}
 
 interface ApiResponse<T> {
   data: T;
@@ -150,6 +138,30 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [tempProfile, setTempProfile] = useState<ProfileData | null>(null);
   const [showAccountSwitchModal, setShowAccountSwitchModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [providerSkills, setProviderSkills] = useState<any[]>([]);
+  const [providerCertifications, setProviderCertifications] = useState<any[]>([]);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+  const [isLoadingCerts, setIsLoadingCerts] = useState(false);
+  
+  // Form states for adding skills
+  const [newSkill, setNewSkill] = useState({
+    skill_name: '',
+    experience_level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert',
+    years_experience: 0,
+    is_certified: false
+  });
+  
+  // Form states for adding certifications
+  const [newCert, setNewCert] = useState({
+    certification_name: '',
+    issued_by: '',
+    issue_date: '',
+    expiry_date: '',
+    certificate_number: '',
+    verification_url: ''
+  });
   
   
   const { signOut } = useAuth();
@@ -171,218 +183,31 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     email_verified: false,
     phone_verified: false,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    // Add default provider_business for provider accounts
+    provider_business: accountType === 'provider' ? {
+      id: 'mock-provider-id',
+      name: '',
+      category: '',
+      description: '',
+      is_verified: false,
+      women_owned_business: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } : undefined,
+    // Add default consumer_details for consumer accounts
+    consumer_details: accountType === 'consumer' ? {
+      id: 'mock-consumer-id',
+      budget_range: '',
+      location_preference: '',
+      service_history: 0,
+      total_spent: 0,
+      average_rating_given: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } : undefined
   };
 
-  // Single API service function for comprehensive data fetching
-  const apiService = {
-    async getProfileManagementData(userId: string): Promise<ApiResponse<{
-      profile: ProfileData;
-      invoices: Invoice[];
-      total_count: number;
-      has_more: boolean;
-    }>> {
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const consumerInvoices: Invoice[] = [
-          {
-            id: '1',
-            invoice_number: 'INV-2024-001',
-            amount: 125.00,
-            currency: 'NZD',
-            date: '2024-01-15',
-            due_date: '2024-02-15',
-            status: 'pending',
-            description: 'House cleaning service - 3 hours',
-            pdf_url: 'https://example.com/invoice-001.pdf',
-            is_new: true,
-          },
-          {
-            id: '2',
-            invoice_number: 'INV-2024-002',
-            amount: 280.00,
-            currency: 'NZD',
-            date: '2024-01-08',
-            due_date: '2024-01-31',
-            status: 'paid',
-            description: 'Garden maintenance and landscaping',
-            pdf_url: 'https://example.com/invoice-002.pdf',
-            is_new: false,
-          },
-          {
-            id: '3',
-            invoice_number: 'INV-2023-045',
-            amount: 450.00,
-            currency: 'NZD',
-            date: '2023-12-15',
-            due_date: '2023-12-31',
-            status: 'overdue',
-            description: 'Plumbing repair - kitchen sink',
-            pdf_url: 'https://example.com/invoice-045.pdf',
-            is_new: false,
-          },
-        ];
-
-        const providerPayments: Invoice[] = [
-          {
-            id: '1',
-            invoice_number: 'PAY-2024-001',
-            amount: 1250.00,
-            currency: 'NZD',
-            date: '2024-01-15',
-            due_date: '2024-01-30',
-            status: 'pending',
-            description: 'Payment for electrical installation - John Doe',
-            pdf_url: 'https://example.com/payment-001.pdf',
-            is_new: true,
-          },
-          {
-            id: '2',
-            invoice_number: 'PAY-2024-002',
-            amount: 875.00,
-            currency: 'NZD',
-            date: '2024-01-10',
-            due_date: '2024-01-25',
-            status: 'paid',
-            description: 'Carpentry work - Kitchen cabinets - Sarah Wilson',
-            pdf_url: 'https://example.com/payment-002.pdf',
-            is_new: false,
-          },
-          {
-            id: '3',
-            invoice_number: 'PAY-2024-003',
-            amount: 320.00,
-            currency: 'NZD',
-            date: '2024-01-05',
-            due_date: '2024-01-20',
-            status: 'paid',
-            description: 'Painting service - Living room - Mike Chen',
-            pdf_url: 'https://example.com/payment-003.pdf',
-            is_new: true,
-          },
-          {
-            id: '4',
-            invoice_number: 'PAY-2024-004',
-            amount: 560.00,
-            currency: 'NZD',
-            date: '2024-01-03',
-            due_date: '2024-01-18',
-            status: 'pending',
-            description: 'Plumbing installation - New bathroom - Lisa Johnson',
-            pdf_url: 'https://example.com/payment-004.pdf',
-            is_new: false,
-          },
-          {
-            id: '5',
-            invoice_number: 'PAY-2024-005',
-            amount: 420.00,
-            currency: 'NZD',
-            date: '2024-01-01',
-            due_date: '2024-01-16',
-            status: 'paid',
-            description: 'Electrical repair - Office building - Tech Corp',
-            pdf_url: 'https://example.com/payment-005.pdf',
-            is_new: false,
-          },
-          {
-            id: '6',
-            invoice_number: 'PAY-2023-099',
-            amount: 780.00,
-            currency: 'NZD',
-            date: '2023-12-28',
-            due_date: '2024-01-12',
-            status: 'paid',
-            description: 'Home renovation - Deck construction - Wilson Family',
-            pdf_url: 'https://example.com/payment-099.pdf',
-            is_new: false,
-          },
-        ];
-        
-        const allInvoices = accountType === 'provider' ? providerPayments : consumerInvoices;
-        // Use actual profile data if available, otherwise fall back to mock data
-        const profileToUse = profile || mockProfileData;
-        const limitedInvoices = limit ? allInvoices.slice(0, limit) : allInvoices;
-        
-        return {
-          data: {
-            profile: { ...profileToUse, account_type: accountType },
-            invoices: limitedInvoices,
-            total_count: allInvoices.length,
-            has_more: limit ? allInvoices.length > limit : false
-          },
-          success: true
-        };
-      } catch (error) {
-        console.error('API Error:', error);
-        throw new Error('Failed to fetch profile management data');
-      }
-    },
-
-    async updateProfile(userId: string, profileData: Partial<ProfileData>): Promise<ApiResponse<ProfileData>> {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const profileToUse = profile || mockProfileData;
-      return {
-        data: { ...profileToUse, ...profileData },
-        success: true
-      };
-    },
-
-    async markAsPaid(invoiceId: string): Promise<ApiResponse<null>> {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { data: null, success: true };
-    },
-
-    async markAsRead(invoiceId: string): Promise<ApiResponse<null>> {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: null, success: true };
-    },
-
-    async upgradeToPremium(userId: string): Promise<ApiResponse<ProfileData>> {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('🎯 Upgrading to premium for user:', userId);
-        
-        const profileToUse = profile || mockProfileData;
-        if (!profileToUse) {
-          console.warn('⚠️ Falling back to default profile data');
-          const fallbackProfile = {
-            id: userId,
-            email: 'user@example.com',
-            first_name: 'User',
-            last_name: 'Name',
-            full_name: 'User Name',
-            phone: '',
-            avatar_url: null,
-            account_type: 'consumer' as const,
-            is_premium: true, // This will be set to true after upgrade
-            email_verified: false,
-            phone_verified: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          return {
-            data: fallbackProfile,
-            success: true
-          };
-        }
-        
-        return {
-          data: { ...profileToUse, is_premium: true },
-          success: true
-        };
-      } catch (error) {
-        console.error('❌ Upgrade to premium error:', error);
-        return {
-          data: null,
-          success: false,
-          error: 'Failed to upgrade to premium'
-        };
-      }
-    }
-  };
 
   // Fetch real user profile from Supabase
   useEffect(() => {
@@ -408,34 +233,67 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             email_verified: false,
             phone_verified: false,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            provider_business: accountType === 'provider' ? {
+              id: 'temp-provider-id',
+              name: '',
+              category: '',
+              description: '',
+              is_verified: false,
+              women_owned_business: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined,
+            consumer_details: accountType === 'consumer' ? {
+              id: 'temp-consumer-id',
+              budget_range: '',
+              location_preference: '',
+              service_history: 0,
+              total_spent: 0,
+              average_rating_given: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined
           };
           setProfile(defaultProfile);
           
-          // Still load mock invoices
-          const mockInvoiceResponse = await apiService.getProfileManagementData('current');
-          if (mockInvoiceResponse.success) {
-            setInvoices(mockInvoiceResponse.data.invoices);
-            setTotalInvoiceCount(mockInvoiceResponse.data.total_count);
-            setHasMoreInvoices(mockInvoiceResponse.data.has_more);
-            
-            const newInvoicesCount = mockInvoiceResponse.data.invoices.filter(invoice => invoice.is_new).length;
-            setUnreadCount(newInvoicesCount);
-          }
+          // Profile loaded successfully - no invoice loading needed
+          console.log('✅ Fallback profile created successfully');
           
           setIsLoading(false);
           return;
         }
         
-        // Get real user profile from authService
-        const profileResponse = await authService.getUserProfile();
+        // Get real user profile from normalizedShopService
+        const profileResponse = await normalizedShopService.getUserProfile();
         
         if (profileResponse.success && profileResponse.data) {
-          console.log('✅ Real profile loaded:', profileResponse.data.account_type);
-          setProfile(profileResponse.data);
+          console.log('✅ Real profile loaded:', JSON.stringify(profileResponse.data, null, 2));
+          
+          // Ensure the profile has all required fields with safe defaults
+          const safeProfileData = {
+            ...profileResponse.data,
+            full_name: profileResponse.data.full_name || `${profileResponse.data.first_name || ''} ${profileResponse.data.last_name || ''}`.trim() || 'User',
+            first_name: profileResponse.data.first_name || '',
+            last_name: profileResponse.data.last_name || '', 
+            email: profileResponse.data.email || currentUser.email || '',
+            phone: profileResponse.data.phone || '',
+            address: profileResponse.data.address || '',
+            bio: profileResponse.data.bio || '',
+            avatar_url: profileResponse.data.avatar_url || null,
+            gender: profileResponse.data.gender || '',
+            birth_date: profileResponse.data.birth_date || '',
+            account_type: profileResponse.data.account_type || accountType,
+            is_premium: profileResponse.data.is_premium || false,
+            email_verified: profileResponse.data.email_verified || false,
+            phone_verified: profileResponse.data.phone_verified || false,
+            provider_business: profileResponse.data.provider_business || null
+          };
+          
+          setProfile(safeProfileData);
           
           // Update account type in context if different
-          const profileAccountType = profileResponse.data.account_type;
+          const profileAccountType = safeProfileData.account_type;
           if (profileAccountType && 
               (profileAccountType === 'provider' || profileAccountType === 'consumer') && 
               profileAccountType !== accountType) {
@@ -457,21 +315,33 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             email_verified: false,
             phone_verified: false,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            provider_business: accountType === 'provider' ? {
+              id: `${currentUser.id}-provider`,
+              name: '',
+              category: '',
+              description: '',
+              is_verified: false,
+              women_owned_business: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined,
+            consumer_details: accountType === 'consumer' ? {
+              id: `${currentUser.id}-consumer`,
+              budget_range: '',
+              location_preference: '',
+              service_history: 0,
+              total_spent: 0,
+              average_rating_given: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined
           };
           setProfile(defaultProfile);
         }
         
-        // Still use mock data for invoices (for now)
-        const mockInvoiceResponse = await apiService.getProfileManagementData('current');
-        if (mockInvoiceResponse.success) {
-          setInvoices(mockInvoiceResponse.data.invoices);
-          setTotalInvoiceCount(mockInvoiceResponse.data.total_count);
-          setHasMoreInvoices(mockInvoiceResponse.data.has_more);
-          
-          const newInvoicesCount = mockInvoiceResponse.data.invoices.filter(invoice => invoice.is_new).length;
-          setUnreadCount(newInvoicesCount);
-        }
+        // Profile loaded - no invoice data needed in profile screen
+        console.log('✅ Profile data loaded successfully');
         
         
       } catch (error) {
@@ -490,7 +360,27 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           email_verified: false,
           phone_verified: false,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          provider_business: accountType === 'provider' ? {
+            id: 'fallback-provider-id',
+            name: '',
+            category: '',
+            description: '',
+            is_verified: false,
+            women_owned_business: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } : undefined,
+          consumer_details: accountType === 'consumer' ? {
+            id: 'fallback-consumer-id',
+            budget_range: '',
+            location_preference: '',
+            service_history: 0,
+            total_spent: 0,
+            average_rating_given: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } : undefined
         };
         setProfile(defaultProfile);
       } finally {
@@ -501,6 +391,46 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     fetchUserProfile();
   }, [accountType]);
 
+  // Load skills and certifications for provider accounts
+  useEffect(() => {
+    if (accountType === 'provider' && profile) {
+      loadProviderSkills();
+      loadProviderCertifications();
+    }
+  }, [accountType, profile]);
+
+  const loadProviderSkills = async () => {
+    try {
+      setIsLoadingSkills(true);
+      const response = await normalizedShopService.getProviderSkills();
+      if (response.success) {
+        setProviderSkills(response.data);
+      } else {
+        console.error('Failed to load skills:', response.error);
+      }
+    } catch (error) {
+      console.error('Error loading skills:', error);
+    } finally {
+      setIsLoadingSkills(false);
+    }
+  };
+
+  const loadProviderCertifications = async () => {
+    try {
+      setIsLoadingCerts(true);
+      const response = await normalizedShopService.getProviderCertifications();
+      if (response.success) {
+        setProviderCertifications(response.data);
+      } else {
+        console.error('Failed to load certifications:', response.error);
+      }
+    } catch (error) {
+      console.error('Error loading certifications:', error);
+    } finally {
+      setIsLoadingCerts(false);
+    }
+  };
+
 
   // Handle upgrade to premium
   const handleUpgrade = async () => {
@@ -509,18 +439,148 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       
       Alert.alert('Processing', 'Upgrading your account...', [], { cancelable: false });
       
-      const response = await apiService.upgradeToPremium(userId);
+      // Update user profile to set is_premium to true
+      const response = await normalizedShopService.updateUserProfile({ is_premium: true });
       
       if (response.success) {
-        setProfile(response.data);
+        // Reload the profile to get updated data
+        const profileResponse = await normalizedShopService.getUserProfile();
+        if (profileResponse.success) {
+          setProfile(profileResponse.data);
+        }
         Alert.alert('Success!', 'Your account has been upgraded to Pro. You now have unlimited access to all payments and premium features.');
         
       } else {
-        throw new Error('Upgrade failed');
+        throw new Error(response.error || 'Upgrade failed');
       }
     } catch (error) {
       console.error('Error upgrading account:', error);
       Alert.alert('Error', 'Failed to upgrade account. Please try again.');
+    }
+  };
+
+  // Skills and Certifications Management
+  const handleDeleteSkill = async (skillId: string) => {
+    Alert.alert(
+      'Delete Skill',
+      'Are you sure you want to delete this skill?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await normalizedShopService.deleteProviderSkill(skillId);
+              if (response.success) {
+                loadProviderSkills(); // Reload skills
+                Alert.alert('Success', 'Skill deleted successfully');
+              } else {
+                Alert.alert('Error', 'Failed to delete skill');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete skill');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteCertification = async (certId: string) => {
+    Alert.alert(
+      'Delete Certification',
+      'Are you sure you want to delete this certification?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await normalizedShopService.deleteProviderCertification(certId);
+              if (response.success) {
+                loadProviderCertifications(); // Reload certifications
+                Alert.alert('Success', 'Certification deleted successfully');
+              } else {
+                Alert.alert('Error', 'Failed to delete certification');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete certification');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleAddSkill = async (skillData?: any) => {
+    try {
+      const dataToAdd = skillData || newSkill;
+      
+      // Validate required fields
+      if (!dataToAdd.skill_name.trim()) {
+        Alert.alert('Validation Error', 'Please enter a skill name');
+        return;
+      }
+      
+      const response = await normalizedShopService.addProviderSkill(dataToAdd);
+      if (response.success) {
+        loadProviderSkills(); // Reload skills
+        setShowSkillModal(false);
+        // Reset form
+        setNewSkill({
+          skill_name: '',
+          experience_level: 'Beginner',
+          years_experience: 0,
+          is_certified: false
+        });
+        Alert.alert('Success', 'Skill added successfully');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to add skill');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add skill');
+    }
+  };
+
+  const handleAddCertification = async (certData?: any) => {
+    try {
+      const dataToAdd = certData || newCert;
+      
+      // Validate required fields
+      if (!dataToAdd.certification_name.trim()) {
+        Alert.alert('Validation Error', 'Please enter a certification name');
+        return;
+      }
+      if (!dataToAdd.issued_by.trim()) {
+        Alert.alert('Validation Error', 'Please enter the issuing organization');
+        return;
+      }
+      if (!dataToAdd.issue_date.trim()) {
+        Alert.alert('Validation Error', 'Please enter the issue date');
+        return;
+      }
+      
+      const response = await normalizedShopService.addProviderCertification(dataToAdd);
+      if (response.success) {
+        loadProviderCertifications(); // Reload certifications
+        setShowCertModal(false);
+        // Reset form
+        setNewCert({
+          certification_name: '',
+          issued_by: '',
+          issue_date: '',
+          expiry_date: '',
+          certificate_number: '',
+          verification_url: ''
+        });
+        Alert.alert('Success', 'Certification added successfully');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to add certification');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add certification');
     }
   };
 
@@ -549,8 +609,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         setProfile(updatedProfile);
       }
 
-      setInvoices([]);
-      setUnreadCount(0);
+      console.log('Account type switched successfully');
       
 
     } catch (error) {
@@ -560,9 +619,43 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const handleEdit = useCallback(() => {
+    console.log('🔧 Starting edit mode, current profile:', JSON.stringify(profile, null, 2));
+    
     if (profile) {
-      setTempProfile({ ...profile });
+      // Ensure all required fields have safe defaults
+      const safeProfile = {
+        ...profile,
+        full_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User Name',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        address: profile.address || '',
+        bio: profile.bio || '',
+        gender: profile.gender || '',
+        birth_date: profile.birth_date || '',
+        provider_business: profile.provider_business ? {
+          ...profile.provider_business,
+          name: profile.provider_business.name || '',
+          description: profile.provider_business.description || '',
+          category: profile.provider_business.category || '',
+          address: profile.provider_business.address || '',
+          city: profile.provider_business.city || '',
+          state: profile.provider_business.state || '',
+          country: profile.provider_business.country || '',
+          phone: profile.provider_business.phone || '',
+          email: profile.provider_business.email || '',
+          website_url: profile.provider_business.website_url || '',
+          women_owned_business: profile.provider_business.women_owned_business || false
+        } : null
+      };
+      
+      console.log('🔧 Setting temp profile:', JSON.stringify(safeProfile, null, 2));
+      setTempProfile(safeProfile);
       setIsEditing(true);
+    } else {
+      console.error('❌ No profile data available for editing');
+      Alert.alert('Error', 'Profile data not loaded. Please refresh the screen.');
     }
   }, [profile]);
 
@@ -570,18 +663,25 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     if (!tempProfile) return;
 
     const validateForm = (): boolean => {
-      if (!tempProfile.full_name.trim()) {
+      console.log('🔍 Validating form with tempProfile:', JSON.stringify(tempProfile, null, 2));
+      
+      if (!tempProfile.full_name || !tempProfile.full_name.trim()) {
+        console.log('❌ Validation failed: full_name is empty or undefined');
         Alert.alert('Validation Error', 'Please enter your name');
         return false;
       }
-      if (!/^\S+@\S+\.\S+$/.test(tempProfile.email)) {
+      if (!tempProfile.email || !/^\S+@\S+\.\S+$/.test(tempProfile.email)) {
+        console.log('❌ Validation failed: email is invalid');
         Alert.alert('Validation Error', 'Please enter a valid email address');
         return false;
       }
-      if (!tempProfile.phone.trim()) {
+      if (!tempProfile.phone || !tempProfile.phone.trim()) {
+        console.log('❌ Validation failed: phone is empty or undefined');
         Alert.alert('Validation Error', 'Please enter your phone number');
         return false;
       }
+      
+      console.log('✅ Form validation passed');
       return true;
     };
 
@@ -590,22 +690,68 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     try {
       setIsSaving(true);
       
-      const response = await apiService.updateProfile(userId, tempProfile);
+      // Split the update into user profile and provider business
+      // Clean up data - convert empty strings to null for optional fields, keep required fields as strings
+      const userProfileData = {
+        first_name: tempProfile.first_name || '',
+        last_name: tempProfile.last_name || '',
+        full_name: tempProfile.full_name || '',
+        phone: tempProfile.phone || '',
+        address: tempProfile.address?.trim() || null,
+        bio: tempProfile.bio?.trim() || null,
+        avatar_url: tempProfile.avatar_url?.trim() || null,
+        gender: tempProfile.gender?.trim() || null,
+        birth_date: tempProfile.birth_date?.trim() || null
+      };
+
+      // Update user profile
+      const userResponse = await normalizedShopService.updateUserProfile(userProfileData);
       
-      if (response.success) {
-        setProfile(response.data);
+      if (!userResponse.success) {
+        throw new Error(userResponse.error || 'Failed to update user profile');
+      }
+
+      // Update provider business if it exists
+      if (tempProfile.provider_business && tempProfile.account_type === 'provider') {
+        const businessData = {
+          name: tempProfile.provider_business.name || '',
+          description: tempProfile.provider_business.description?.trim() || null,
+          category: tempProfile.provider_business.category?.trim() || null,
+          address: tempProfile.provider_business.address?.trim() || null,
+          city: tempProfile.provider_business.city?.trim() || null,
+          state: tempProfile.provider_business.state?.trim() || null,
+          country: tempProfile.provider_business.country?.trim() || null,
+          phone: tempProfile.provider_business.phone?.trim() || null,
+          email: tempProfile.provider_business.email?.trim() || null,
+          website_url: tempProfile.provider_business.website_url?.trim() || null,
+          women_owned_business: tempProfile.provider_business.women_owned_business || false
+        };
+
+        const businessResponse = await normalizedShopService.updateProviderBusiness(businessData);
+        
+        if (!businessResponse.success) {
+          throw new Error(businessResponse.error || 'Failed to update business profile');
+        }
+      }
+
+      // Reload the profile to get the updated data
+      const profileResponse = await normalizedShopService.getUserProfile();
+      
+      if (profileResponse.success) {
+        setProfile(profileResponse.data);
         setIsEditing(false);
         Alert.alert('Success', 'Profile updated successfully!');
       } else {
-        throw new Error('Update failed');
+        throw new Error('Failed to reload profile');
       }
+      
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [tempProfile, userId]);
+  }, [tempProfile]);
 
   const handleCancel = () => {
     setIsEditing(false);
@@ -619,11 +765,11 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const updateProviderField = (field: string, value: any) => {
-    if (tempProfile && tempProfile.provider_details) {
+    if (tempProfile && tempProfile.provider_business) {
       setTempProfile(prev => prev ? {
         ...prev,
-        provider_details: {
-          ...prev.provider_details!,
+        provider_business: {
+          ...prev.provider_business!,
           [field]: value
         }
       } : null);
@@ -645,8 +791,15 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const handleChoosePhoto = useCallback(async () => {
     try {
       const imageUri = await showImagePickerOptions();
-      if (imageUri && tempProfile) {
-        setTempProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+      if (imageUri) {
+        // Update tempProfile if it exists (editing mode)
+        if (tempProfile) {
+          setTempProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+        }
+        
+        // Also update the main profile to show the image immediately
+        setProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+        
         return true;
       }
       return false;
@@ -657,53 +810,8 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     }
   }, [showImagePickerOptions, tempProfile]);
 
-  const handleMarkAsPaid = async (invoiceId: string) => {
-    try {
-      const response = await apiService.markAsPaid(invoiceId);
-      if (response.success) {
-        setInvoices(prev => prev.map(invoice => 
-          invoice.id === invoiceId 
-            ? { ...invoice, status: 'paid' as const }
-            : invoice
-        ));
-        Alert.alert('Success', 'Invoice marked as paid');
-      } else {
-        Alert.alert('Error', 'Failed to update invoice status');
-      }
-    } catch (error) {
-      console.error('Error marking invoice as paid:', error);
-      Alert.alert('Error', 'Failed to update invoice status');
-    }
-  };
 
-  const handleMarkAsRead = async (invoiceId: string) => {
-    try {
-      const response = await apiService.markAsRead(invoiceId);
-      if (response.success) {
-        setInvoices(prev => prev.map(invoice => 
-          invoice.id === invoiceId 
-            ? { ...invoice, is_new: false }
-            : invoice
-        ));
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Error marking invoice as read:', error);
-    }
-  };
 
-  const handleDownloadPDF = async (invoice: Invoice) => {
-    try {
-      if (invoice.pdf_url) {
-        await Linking.openURL(invoice.pdf_url);
-      } else {
-        Alert.alert('Error', 'PDF not available');
-      }
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      Alert.alert('Error', 'Failed to download PDF');
-    }
-  };
 
   // Fixed navigation handlers
   const handleNotificationsPress = () => {
@@ -772,7 +880,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  const renderField = (label: string, field: keyof ProfileData, isTextArea = false) => {
+  const renderField = (label: string, field: keyof ProfileData, isTextArea = false, isReadOnly = false) => {
     const currentProfile = isEditing ? tempProfile : profile;
     if (!currentProfile) return null;
 
@@ -782,10 +890,38 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       value = `${currentProfile.first_name || ''} ${currentProfile.last_name || ''}`.trim();
     }
 
+    const handleVerificationPress = () => {
+      if (field === 'email') {
+        Alert.alert(
+          'Email Verification Required',
+          'To change your email address, please verify your new email. This helps keep your account secure.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Verify Email', onPress: () => {
+              // Navigate to email verification or show verification modal
+              Alert.alert('Feature Coming Soon', 'Email verification feature will be available soon.');
+            }}
+          ]
+        );
+      } else if (field === 'phone') {
+        Alert.alert(
+          'Phone Verification Required', 
+          'To change your phone number, please verify your new number via SMS. This helps keep your account secure.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Verify Phone', onPress: () => {
+              // Navigate to phone verification or show verification modal
+              Alert.alert('Feature Coming Soon', 'Phone verification feature will be available soon.');
+            }}
+          ]
+        );
+      }
+    };
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{label}</Text>
-        {isEditing ? (
+        {isEditing && !isReadOnly ? (
           <TextInput
             style={[styles.input, isTextArea && styles.textArea]}
             value={String(value || '')}
@@ -794,32 +930,78 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             numberOfLines={isTextArea ? 3 : 1}
           />
         ) : (
-          <Text style={styles.value}>{value || 'Not provided'}</Text>
+          <View style={styles.readOnlyContainer}>
+            <Text style={[styles.value, isReadOnly && styles.readOnlyValue]}>
+              {value || 'Not provided'}
+            </Text>
+            {isReadOnly && isEditing && (
+              <TouchableOpacity 
+                style={styles.verifyButton}
+                onPress={handleVerificationPress}
+              >
+                <Ionicons name="shield-checkmark-outline" size={16} color="#F59E0B" />
+                <Text style={styles.verifyButtonText}>Verify to change</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     );
   };
 
-  const renderProviderField = (label: string, field: string, isTextArea = false) => {
+  const renderProviderField = (label: string, field: string, isTextArea = false, fieldType: 'text' | 'boolean' | 'numeric' = 'text') => {
     const currentProfile = isEditing ? tempProfile : profile;
-    if (!currentProfile || !currentProfile.provider_details) return null;
+    if (!currentProfile) return null;
 
-    const value = currentProfile.provider_details[field as keyof typeof currentProfile.provider_details];
+    // Initialize provider_business if it doesn't exist
+    if (!currentProfile.provider_business) {
+      currentProfile.provider_business = {
+        id: '',
+        name: '',
+        category: '',
+        description: '',
+        is_verified: false,
+        women_owned_business: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    const value = currentProfile.provider_business[field as keyof typeof currentProfile.provider_business];
 
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{label}</Text>
         {isEditing ? (
-          <TextInput
-            style={[styles.input, isTextArea && styles.textArea]}
-            value={String(value || '')}
-            onChangeText={(text) => updateProviderField(field, text)}
-            multiline={isTextArea}
-            numberOfLines={isTextArea ? 3 : 1}
-            keyboardType={field === 'hourly_rate' || field === 'experience_years' ? 'numeric' : 'default'}
-          />
+          fieldType === 'boolean' ? (
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => updateProviderField(field, !value)}
+            >
+              <View style={[styles.checkbox, value && styles.checkboxChecked]}>
+                {value && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                {value ? 'Yes' : 'No'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TextInput
+              style={[styles.input, isTextArea && styles.textArea]}
+              value={String(value || '')}
+              onChangeText={(text) => updateProviderField(field, text)}
+              multiline={isTextArea}
+              numberOfLines={isTextArea ? 3 : 1}
+              keyboardType={fieldType === 'numeric' ? 'numeric' : 'default'}
+            />
+          )
         ) : (
-          <Text style={styles.value}>{String(value || 'Not provided')}</Text>
+          <Text style={styles.value}>
+            {fieldType === 'boolean' 
+              ? (value ? 'Yes' : 'No')
+              : String(value || 'Not provided')
+            }
+          </Text>
         )}
       </View>
     );
@@ -972,9 +1154,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
 
   const renderUpgradePrompt = () => {
-    if (accountType !== 'provider' || profile?.is_premium || !hasMoreInvoices) return null;
+    if (accountType !== 'provider' || profile?.is_premium) return null;
 
-    const hiddenPaymentsCount = totalInvoiceCount - FREE_PAYMENT_LIMIT;
+    const hiddenPaymentsCount = 0; // No payments in profile anymore
 
     return (
       <TouchableOpacity 
@@ -1000,181 +1182,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  const renderInvoiceItem = ({ item }: { item: Invoice }) => (
-    <TouchableOpacity 
-      style={[styles.invoiceItem, item.is_new && styles.newInvoiceItem]}
-      onPress={() => {
-        setSelectedInvoice(item);
-        setShowInvoiceModal(true);
-        if (item.is_new) {
-          handleMarkAsRead(item.id);
-        }
-      }}
-    >
-      <View style={styles.invoiceHeader}>
-        <View style={styles.invoiceInfo}>
-          <Text style={styles.invoiceNumber}>{item.invoice_number}</Text>
-          <Text style={styles.invoiceDate}>{new Date(item.date).toLocaleDateString()}</Text>
-        </View>
-        <View style={styles.invoiceActions}>
-          {item.is_new && <View style={styles.newBadge} />}
-          <TouchableOpacity
-            style={styles.moreButton}
-            onPress={() => {
-              setSelectedInvoice(item);
-              setShowInvoiceModal(true);
-            }}
-          >
-            <Ionicons name="ellipsis-vertical" size={16} color="#4B5563" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <Text style={styles.invoiceDescription}>{item.description}</Text>
-      
-      <View style={styles.invoiceFooter}>
-        <Text style={styles.invoiceAmount}>
-          ${item.amount.toFixed(2)} {item.currency}
-        </Text>
-        <View style={[
-          styles.statusBadge,
-          item.status === 'paid' && styles.statusPaid,
-          item.status === 'pending' && styles.statusPending,
-          item.status === 'overdue' && styles.statusOverdue,
-        ]}>
-          <Text style={[
-            styles.statusText,
-            item.status === 'paid' && styles.statusTextPaid,
-            item.status === 'pending' && styles.statusTextPending,
-            item.status === 'overdue' && styles.statusTextOverdue,
-          ]}>
-            {item.status.toUpperCase()}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
 
-  const renderInvoiceModal = () => (
-    <Modal
-      visible={showInvoiceModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-    >
-      <SafeAreaView style={styles.modalContainer}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>
-            {accountType === 'provider' ? 'Payment Details' : 'Invoice Details'}
-          </Text>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowInvoiceModal(false)}
-          >
-            <Ionicons name="close" size={24} color="#4B5563" />
-          </TouchableOpacity>
-        </View>
-        
-        {selectedInvoice && (
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>
-                {accountType === 'provider' ? 'Payment Number' : 'Invoice Number'}
-              </Text>
-              <Text style={styles.detailValue}>{selectedInvoice.invoice_number}</Text>
-            </View>
-            
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>Amount</Text>
-              <Text style={styles.detailValue}>
-                ${selectedInvoice.amount.toFixed(2)} {selectedInvoice.currency}
-              </Text>
-            </View>
-            
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>
-                {new Date(selectedInvoice.date).toLocaleDateString()}
-              </Text>
-            </View>
-            
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>
-                {accountType === 'provider' ? 'Expected Payment Date' : 'Due Date'}
-              </Text>
-              <Text style={styles.detailValue}>
-                {new Date(selectedInvoice.due_date).toLocaleDateString()}
-              </Text>
-            </View>
-            
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>Status</Text>
-              <View style={[
-                styles.statusBadge,
-                selectedInvoice.status === 'paid' && styles.statusPaid,
-                selectedInvoice.status === 'pending' && styles.statusPending,
-                selectedInvoice.status === 'overdue' && styles.statusOverdue,
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  selectedInvoice.status === 'paid' && styles.statusTextPaid,
-                  selectedInvoice.status === 'pending' && styles.statusTextPending,
-                  selectedInvoice.status === 'overdue' && styles.statusTextOverdue,
-                ]}>
-                  {selectedInvoice.status.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.invoiceDetail}>
-              <Text style={styles.detailLabel}>Description</Text>
-              <Text style={styles.detailValue}>{selectedInvoice.description}</Text>
-            </View>
-            
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleDownloadPDF(selectedInvoice)}
-              >
-                <Ionicons name="download-outline" size={20} color="#1F2937" />
-                <Text style={styles.actionButtonText}>Download PDF</Text>
-              </TouchableOpacity>
-              
-              {accountType === 'consumer' && selectedInvoice.status !== 'paid' && (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.paidButton]}
-                  onPress={() => {
-                    handleMarkAsPaid(selectedInvoice.id);
-                    setShowInvoiceModal(false);
-                  }}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                  <Text style={[styles.actionButtonText, styles.paidButtonText]}>
-                    Mark as Paid
-                  </Text>
-                </TouchableOpacity>
-              )}
-              
-              {accountType === 'provider' && selectedInvoice.status === 'pending' && (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.contactButton]}
-                  onPress={() => {
-                    setShowInvoiceModal(false);
-                    Alert.alert('Contact Client', 'This would open the messaging feature to contact the client about payment.');
-                  }}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#3B82F6" />
-                  <Text style={[styles.actionButtonText, styles.contactButtonText]}>
-                    Contact Client
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </ScrollView>
-        )}
-      </SafeAreaView>
-    </Modal>
-  );
 
   // Show account switching loader if switching
   if (accountSwitchLoading) {
@@ -1323,30 +1331,10 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             <Text style={styles.sectionTitle}>Basic Information</Text>
             {renderField('First Name', 'first_name')}
             {renderField('Last Name', 'last_name')}
-            {renderField('Email', 'email')}
-            {renderField('Phone', 'phone')}
+            {renderField('Email', 'email', false, true)}
+            {renderField('Phone', 'phone', false, true)}
             {renderField('Address', 'address')}
             {renderField('Bio', 'bio', true)}
-            
-            {/* Gender and Birth Date */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Gender</Text>
-              <Text style={styles.value}>{currentProfile?.gender || 'Not specified'}</Text>
-            </View>
-            
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Date of Birth</Text>
-              <Text style={styles.value}>
-                {currentProfile?.birth_date 
-                  ? new Date(currentProfile.birth_date).toLocaleDateString('en-NZ', {
-                      year: 'numeric',
-                      month: 'long', 
-                      day: 'numeric'
-                    })
-                  : 'Not provided'
-                }
-              </Text>
-            </View>
             
             {/* Location Information */}
             {currentProfile?.location && (
@@ -1363,54 +1351,94 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           {accountType === 'provider' && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Provider Information</Text>
-              {renderProviderField('Business Name', 'business_name')}
-              {renderProviderField('Service Category', 'service_category')}
-              {renderProviderField('Experience (Years)', 'experience_years')}
-              {renderProviderField('Hourly Rate ($)', 'hourly_rate')}
-              {renderProviderField('Availability', 'availability')}
+              {renderProviderField('Business Name', 'name')}
+              {renderProviderField('Service Category', 'category')}
+              {renderProviderField('Business Description', 'description', true)}
+              {renderProviderField('Website URL', 'website_url')}
+              {renderProviderField('Women Owned Business', 'women_owned_business', false, 'boolean')}
               
-              {/* Skills from provider_skills table */}
+              {/* Skills Management */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Skills</Text>
-                <Text style={styles.value}>
-                  {currentProfile?.provider_details?.provider_skills?.length > 0
-                    ? currentProfile.provider_details.provider_skills
-                        .map(skill => `${skill.skill_name} (${skill.experience_level})`)
-                        .join(', ')
-                    : 'No skills added yet'
-                  }
-                </Text>
-              </View>
-              
-              {/* Certifications from provider_certifications table */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Certifications</Text>
-                <Text style={styles.value}>
-                  {currentProfile?.provider_details?.provider_certifications?.length > 0
-                    ? currentProfile.provider_details.provider_certifications
-                        .map(cert => `${cert.certification_name} (${cert.issued_by})`)
-                        .join(', ')
-                    : 'No certifications added yet'
-                  }
-                </Text>
-              </View>
-              
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Rating & Performance</Text>
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={16} color="#F59E0B" />
-                  <Text style={styles.ratingText}>
-                    {currentProfile?.provider_details?.rating || 0}/5
-                  </Text>
-                  <Text style={styles.ratingSubText}>
-                    ({currentProfile?.provider_details?.completed_jobs || 0} jobs completed)
-                  </Text>
+                <View style={styles.managementHeader}>
+                  <Text style={styles.label}>Skills</Text>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => setShowSkillModal(true)}
+                  >
+                    <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+                    <Text style={styles.addButtonText}>Add Skill</Text>
+                  </TouchableOpacity>
                 </View>
+                {isLoadingSkills ? (
+                  <ActivityIndicator size="small" color="#F59E0B" />
+                ) : providerSkills.length > 0 ? (
+                  <View style={styles.skillsList}>
+                    {providerSkills.map((skill, index) => (
+                      <View key={skill.id || index} style={styles.skillItem}>
+                        <View style={styles.skillInfo}>
+                          <Text style={styles.skillName}>{skill.skill_name}</Text>
+                          <Text style={styles.skillLevel}>
+                            {skill.experience_level} • {skill.years_experience || 0} years
+                            {skill.is_certified && ' • Certified'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteSkill(skill.id)}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.value}>No skills added yet</Text>
+                )}
+              </View>
+              
+              {/* Certifications Management */}
+              <View style={styles.fieldContainer}>
+                <View style={styles.managementHeader}>
+                  <Text style={styles.label}>Certifications</Text>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => setShowCertModal(true)}
+                  >
+                    <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+                    <Text style={styles.addButtonText}>Add Certification</Text>
+                  </TouchableOpacity>
+                </View>
+                {isLoadingCerts ? (
+                  <ActivityIndicator size="small" color="#F59E0B" />
+                ) : providerCertifications.length > 0 ? (
+                  <View style={styles.certsList}>
+                    {providerCertifications.map((cert, index) => (
+                      <View key={cert.id || index} style={styles.certItem}>
+                        <View style={styles.certInfo}>
+                          <Text style={styles.certName}>{cert.certification_name}</Text>
+                          <Text style={styles.certDetails}>
+                            {cert.issued_by} • {new Date(cert.issue_date).getFullYear()}
+                            {cert.is_verified && ' • Verified'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteCertification(cert.id)}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.value}>No certifications added yet</Text>
+                )}
+              </View>
+              
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Account Status</Text>
                 <Text style={styles.value}>
-                  Total Earnings: ${currentProfile?.provider_details?.total_earnings || 0}
-                </Text>
-                <Text style={styles.value}>
-                  Verified: {currentProfile?.provider_details?.is_verified ? 'Yes' : 'No'}
+                  Verified: {currentProfile?.provider_business?.is_verified ? 'Yes' : 'No'}
                 </Text>
               </View>
             </View>
@@ -1418,7 +1446,48 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
           {accountType === 'consumer' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Consumer Preferences</Text>
+              <Text style={styles.sectionTitle}>Consumer Information</Text>
+              
+              {/* Personal Information for Consumers */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Gender</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.input}
+                    value={currentProfile?.gender || ''}
+                    onChangeText={(text) => updateField('gender', text)}
+                    placeholder="e.g., Male, Female, Non-binary, Prefer not to say"
+                  />
+                ) : (
+                  <Text style={styles.value}>{currentProfile?.gender || 'Not specified'}</Text>
+                )}
+              </View>
+              
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Date of Birth</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.input}
+                    value={currentProfile?.birth_date || ''}
+                    onChangeText={(text) => updateField('birth_date', text)}
+                    placeholder="YYYY-MM-DD"
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {currentProfile?.birth_date 
+                      ? new Date(currentProfile.birth_date).toLocaleDateString('en-NZ', {
+                          year: 'numeric',
+                          month: 'long', 
+                          day: 'numeric'
+                        })
+                      : 'Not provided'
+                    }
+                  </Text>
+                )}
+              </View>
+
+              {/* Service Preferences */}
+              <Text style={styles.subsectionTitle}>Service Preferences</Text>
               {renderConsumerField('Budget Range', 'budget_range')}
               {renderConsumerField('Location Preference', 'location_preference')}
               
@@ -1544,7 +1613,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         onUpgrade={handleUpgrade}
         title="Upgrade to Pro"
         subtitle="Unlock unlimited payments and premium business features"
-        hiddenCount={hasMoreInvoices ? totalInvoiceCount - FREE_PAYMENT_LIMIT : 0}
+        hiddenCount={0}
         features={[
           {
             icon: 'card-outline',
@@ -1572,6 +1641,284 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           }
         ]}
       />
+
+      {/* Add Skill Modal */}
+      <Modal
+        visible={showSkillModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Skill</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowSkillModal(false);
+                // Reset form when closing
+                setNewSkill({
+                  skill_name: '',
+                  experience_level: 'Beginner',
+                  years_experience: 0,
+                  is_certified: false
+                });
+              }}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {/* Skill Name */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Skill Name *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newSkill.skill_name}
+                onChangeText={(text) => setNewSkill(prev => ({...prev, skill_name: text}))}
+                placeholder="e.g., React Native Development"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Experience Level */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Experience Level *</Text>
+              <View style={styles.pickerContainer}>
+                {['Beginner', 'Intermediate', 'Advanced', 'Expert'].map((level) => (
+                  <TouchableOpacity
+                    key={level}
+                    style={[
+                      styles.pickerOption,
+                      newSkill.experience_level === level && styles.pickerOptionSelected
+                    ]}
+                    onPress={() => setNewSkill(prev => ({...prev, experience_level: level as any}))}
+                  >
+                    <Text style={[
+                      styles.pickerText,
+                      newSkill.experience_level === level && styles.pickerTextSelected
+                    ]}>
+                      {level}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Years of Experience */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Years of Experience</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newSkill.years_experience.toString()}
+                onChangeText={(text) => setNewSkill(prev => ({...prev, years_experience: parseInt(text) || 0}))}
+                placeholder="0"
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Is Certified */}
+            <View style={styles.formField}>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setNewSkill(prev => ({...prev, is_certified: !prev.is_certified}))}
+              >
+                <View style={[styles.checkbox, newSkill.is_certified && styles.checkboxChecked]}>
+                  {newSkill.is_certified && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>I have certification for this skill</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelActionButton]}
+                onPress={() => {
+                  setShowSkillModal(false);
+                  setNewSkill({
+                    skill_name: '',
+                    experience_level: 'Beginner',
+                    years_experience: 0,
+                    is_certified: false
+                  });
+                }}
+              >
+                <Text style={styles.cancelActionText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.actionButton, styles.addActionButton]}
+                onPress={() => handleAddSkill()}
+              >
+                <Text style={styles.addActionText}>Add Skill</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Demo button for testing */}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.demoButton]}
+              onPress={() => {
+                handleAddSkill({
+                  skill_name: 'React Native Development',
+                  experience_level: 'Advanced',
+                  years_experience: 5,
+                  is_certified: true
+                });
+              }}
+            >
+              <Text style={styles.demoButtonText}>Add Demo Skill (for testing)</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Add Certification Modal */}
+      <Modal
+        visible={showCertModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Certification</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowCertModal(false);
+                // Reset form when closing
+                setNewCert({
+                  certification_name: '',
+                  issued_by: '',
+                  issue_date: '',
+                  expiry_date: '',
+                  certificate_number: '',
+                  verification_url: ''
+                });
+              }}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {/* Certification Name */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Certification Name *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.certification_name}
+                onChangeText={(text) => setNewCert(prev => ({...prev, certification_name: text}))}
+                placeholder="e.g., Professional Mobile Developer"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Issued By */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Issued By *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.issued_by}
+                onChangeText={(text) => setNewCert(prev => ({...prev, issued_by: text}))}
+                placeholder="e.g., Tech Certification Board"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Issue Date */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Issue Date * (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.issue_date}
+                onChangeText={(text) => setNewCert(prev => ({...prev, issue_date: text}))}
+                placeholder="2024-01-15"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Expiry Date */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Expiry Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.expiry_date}
+                onChangeText={(text) => setNewCert(prev => ({...prev, expiry_date: text}))}
+                placeholder="2027-01-15 (optional)"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Certificate Number */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Certificate Number</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.certificate_number}
+                onChangeText={(text) => setNewCert(prev => ({...prev, certificate_number: text}))}
+                placeholder="e.g., PMD-2024-001"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Verification URL */}
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Verification URL</Text>
+              <TextInput
+                style={styles.formInput}
+                value={newCert.verification_url}
+                onChangeText={(text) => setNewCert(prev => ({...prev, verification_url: text}))}
+                placeholder="https://verify.example.com/cert123"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelActionButton]}
+                onPress={() => {
+                  setShowCertModal(false);
+                  setNewCert({
+                    certification_name: '',
+                    issued_by: '',
+                    issue_date: '',
+                    expiry_date: '',
+                    certificate_number: '',
+                    verification_url: ''
+                  });
+                }}
+              >
+                <Text style={styles.cancelActionText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.actionButton, styles.addActionButton]}
+                onPress={() => handleAddCertification()}
+              >
+                <Text style={styles.addActionText}>Add Certification</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Demo button for testing */}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.demoButton]}
+              onPress={() => {
+                handleAddCertification({
+                  certification_name: 'Professional Mobile Developer',
+                  issued_by: 'Tech Certification Board',
+                  issue_date: '2024-01-15',
+                  expiry_date: '2027-01-15',
+                  certificate_number: 'PMD-2024-001'
+                });
+              }}
+            >
+              <Text style={styles.demoButtonText}>Add Demo Certification (for testing)</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1830,6 +2177,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 16,
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 20,
+    marginBottom: 12,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -2295,6 +2649,215 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#FFFFFF',
+  },
+  // New styles for read-only fields and verification
+  readOnlyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  readOnlyValue: {
+    flex: 1,
+    color: '#6B7280',
+  },
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginLeft: 12,
+  },
+  verifyButtonText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  // Checkbox styles for boolean fields
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  // Skills and Certifications Management Styles
+  managementHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  addButtonText: {
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  skillsList: {
+    marginTop: 8,
+  },
+  skillItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  skillInfo: {
+    flex: 1,
+  },
+  skillName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  skillLevel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  deleteButton: {
+    padding: 4,
+  },
+  certsList: {
+    marginTop: 8,
+  },
+  certItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  certInfo: {
+    flex: 1,
+  },
+  certName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  certDetails: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  // Form styles for modals
+  formField: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pickerOption: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+  },
+  pickerText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  pickerTextSelected: {
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  // Modal action buttons
+  cancelActionButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  addActionButton: {
+    backgroundColor: '#F59E0B',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  cancelActionText: {
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  addActionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  demoButton: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    marginTop: 16,
+  },
+  demoButtonText: {
+    color: '#4338CA',
+    fontWeight: '500',
+    fontSize: 14,
   },
 });
 

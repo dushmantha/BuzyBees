@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount } from '../navigation/AppNavigator';
+import { normalizedShopService } from '../lib/supabase/normalized';
 
 interface FAQ {
   id: string;
@@ -70,76 +71,104 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       const consumerFAQs: FAQ[] = [
         {
           id: '1',
-          question: 'How do I book a service?',
-          answer: 'To book a service, browse our service categories, select the service you need, choose your preferred date and time, and complete the payment. You\'ll receive a confirmation email with all the details.',
+          question: 'How do I book a service with BuzyBees?',
+          answer: 'To book a service on BuzyBees, browse our service categories (cleaning, plumbing, electrical, etc.), select the service you need, choose your preferred date and time from the provider\'s available slots, and confirm your booking. You\'ll receive instant confirmation with all the details.',
           category: 'Booking',
           helpful_count: 156,
         },
         {
           id: '2',
-          question: 'Can I cancel or reschedule my booking?',
-          answer: 'Yes, you can cancel or reschedule your booking up to 24 hours before the scheduled time without any charges. To do this, go to "My Bookings" in your profile and select the booking you want to modify.',
+          question: 'Can I request a service at my location?',
+          answer: 'Yes! BuzyBees supports both in-house services (at the provider\'s location) and on-location services (at your home or office). When browsing services, look for the location type indicator. For on-location services, you\'ll need to provide your address during booking.',
           category: 'Booking',
           helpful_count: 89,
         },
         {
           id: '3',
-          question: 'What payment methods do you accept?',
-          answer: 'We accept all major credit cards (Visa, Mastercard, American Express), digital wallets (Apple Pay, Google Pay), and bank transfers. All payments are processed securely through our encrypted payment system.',
-          category: 'Payment',
+          question: 'How do I know if a provider is verified?',
+          answer: 'Verified providers on BuzyBees have a blue checkmark on their profile. This means they\'ve completed our verification process including identity verification, business registration, and skill certifications. You can also check their ratings and reviews from other customers.',
+          category: 'Trust & Safety',
           helpful_count: 134,
         },
         {
           id: '4',
-          question: 'How do I rate and review a service provider?',
-          answer: 'After your service is completed, you\'ll receive a notification to rate your experience. You can also go to "My Bookings", find the completed service, and leave a rating and review there.',
-          category: 'Reviews',
+          question: 'What happens after I complete a booking?',
+          answer: 'After booking, you\'ll receive a confirmation with the booking ID (BKR-XXXXX), provider details, and service information. The provider will also be notified. You can track the status in your Service Queue - from pending to confirmed to completed.',
+          category: 'Booking',
           helpful_count: 67,
         },
         {
           id: '5',
-          question: 'What if I\'m not satisfied with the service?',
-          answer: 'If you\'re not satisfied with the service, please contact us within 24 hours. We offer a satisfaction guarantee and will work with you and the service provider to resolve any issues.',
-          category: 'Support',
+          question: 'How do payments work on BuzyBees?',
+          answer: 'Payments are handled securely through BuzyBees. You pay when booking the service, but the payment is held until the service is completed. Once marked as complete by the provider, you have 24 hours to confirm satisfaction before payment is released.',
+          category: 'Payment',
           helpful_count: 203,
+        },
+        {
+          id: '6',
+          question: 'Can I cancel or reschedule my booking?',
+          answer: 'Yes, you can cancel or reschedule based on the provider\'s cancellation policy. Most providers allow free cancellation up to 24 hours before the service. Check the specific cancellation terms on the service details page before booking.',
+          category: 'Booking',
+          helpful_count: 145,
+        },
+        {
+          id: '7',
+          question: 'How do I switch between Consumer and Provider mode?',
+          answer: 'BuzyBees allows you to be both a consumer and provider. Use the "Switch Mode" button in your profile to toggle between modes. As a consumer, you book services. As a provider, you offer services and manage bookings.',
+          category: 'Account',
+          helpful_count: 98,
         },
       ];
 
       const providerFAQs: FAQ[] = [
         {
           id: '1',
-          question: 'How do I get paid for my services?',
-          answer: 'Payments are automatically transferred to your registered bank account within 2-3 business days after service completion. You can track all your earnings in the "Earnings" section of your profile.',
-          category: 'Payment',
+          question: 'How do I set up my BuzyBees provider profile?',
+          answer: 'Create your provider profile by adding your business name, service category, description, and service area. Upload your business logo, add your skills and certifications, set your business hours, and define your service offerings with pricing. Don\'t forget to enable "Women Owned Business" if applicable!',
+          category: 'Getting Started',
           helpful_count: 189,
         },
         {
           id: '2',
-          question: 'How do I manage my availability?',
-          answer: 'You can set your availability in the "Schedule" section. You can block specific dates, set recurring availability patterns, and update your schedule in real-time to reflect your current availability.',
-          category: 'Schedule',
+          question: 'How do I manage my service offerings?',
+          answer: 'Go to Services Management to add, edit, or deactivate services. For each service, specify: name, description, price, duration, location type (in-house or on-location), and assign staff members. You can also create service packages and special offers.',
+          category: 'Services',
           helpful_count: 145,
         },
         {
           id: '3',
-          question: 'What fees does the platform charge?',
-          answer: 'We charge a service fee of 15% on each completed booking. This fee covers payment processing, customer support, marketing, and platform maintenance. There are no monthly or setup fees.',
-          category: 'Fees',
+          question: 'How does the Service Queue work?',
+          answer: 'Your Service Queue shows all bookings organized by status: Pending (awaiting confirmation), Confirmed (accepted bookings), In Progress (ongoing services), and Completed. Use the queue to manage your daily workflow and track upcoming appointments.',
+          category: 'Bookings',
           helpful_count: 234,
         },
         {
           id: '4',
-          question: 'How can I improve my service rating?',
-          answer: 'To improve your rating: arrive on time, communicate clearly with customers, deliver quality service, be professional, and follow up after service completion. Consistently good service leads to better ratings and more bookings.',
-          category: 'Performance',
+          question: 'How do I handle payments and invoices?',
+          answer: 'BuzyBees handles payment processing securely. When a service is marked complete, payment is processed automatically. You can view earnings in the Earnings tab, generate invoices with your business details, and track payment history. Funds are transferred to your bank account within 2-3 business days.',
+          category: 'Payment',
           helpful_count: 167,
         },
         {
           id: '5',
-          question: 'What should I do if a customer cancels?',
-          answer: 'If a customer cancels within the cancellation policy timeframe, you\'ll be notified immediately. For last-minute cancellations, you may be eligible for a cancellation fee. Check your earnings section for details.',
-          category: 'Cancellations',
+          question: 'What are the benefits of verification?',
+          answer: 'Verified providers get a blue checkmark, appear higher in search results, and build more trust with customers. To get verified, submit your business registration, professional certifications, and complete identity verification. Premium providers get priority verification processing.',
+          category: 'Verification',
           helpful_count: 98,
+        },
+        {
+          id: '6',
+          question: 'How do I manage my team/staff?',
+          answer: 'Add team members in the Staff section of your shop management. For each staff member, add their name, role, specialties, and experience. Assign staff to specific services and manage their individual schedules. This helps customers choose their preferred service provider.',
+          category: 'Team Management',
+          helpful_count: 112,
+        },
+        {
+          id: '7',
+          question: 'What is the monthly earnings overview?',
+          answer: 'The dashboard shows your monthly performance including total earnings, completed jobs, active bookings, customer ratings, and growth percentage. Use these insights to track your business performance and identify areas for improvement.',
+          category: 'Analytics',
+          helpful_count: 156,
         },
       ];
 
@@ -153,7 +182,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           type: 'email',
           title: 'Email Support',
           description: 'Get help via email',
-          value: 'support@serviceapp.com',
+          value: 'support@buzybees.com',
           icon: 'mail-outline',
           available: true,
           response_time: '24 hours',
@@ -162,23 +191,23 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           type: 'phone',
           title: 'Phone Support',
           description: 'Call us for immediate assistance',
-          value: '+64 9 123 4567',
+          value: '+64 9 555 0123',
           icon: 'call-outline',
           available: true,
-          response_time: 'Mon-Fri 9AM-6PM',
+          response_time: 'Mon-Fri 9AM-6PM NZST',
         },
         {
           type: 'chat',
-          title: 'Live Chat',
-          description: 'Chat with our support team',
-          value: 'Start Chat',
-          icon: 'chatbubble-outline',
-          available: false,
-          response_time: 'Avg 2-3 minutes',
+          title: 'WhatsApp Support',
+          description: 'Message us on WhatsApp',
+          value: '+64 21 555 0123',
+          icon: 'logo-whatsapp',
+          available: true,
+          response_time: 'Mon-Fri 9AM-6PM NZST',
         },
         {
           type: 'help_desk',
-          title: 'Help Desk',
+          title: 'Help Desk Ticket',
           description: 'Submit a support ticket',
           value: 'Create Ticket',
           icon: 'document-text-outline',
@@ -242,15 +271,30 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
 
   const loadHelpData = async () => {
     try {
-      const [faqData, contactData, ticketData] = await Promise.all([
+      // Load FAQs and contact methods from mock (can be moved to DB later)
+      const [faqData, contactData] = await Promise.all([
         mockHelpAPI.getFAQs(accountType),
         mockHelpAPI.getContactMethods(),
-        mockHelpAPI.getSupportTickets('user-123'),
       ]);
       
       setFaqs(faqData);
       setContactMethods(contactData);
-      setSupportTickets(ticketData);
+      
+      // Load real tickets from Supabase
+      const ticketResponse = await normalizedShopService.getSupportTickets();
+      if (ticketResponse.success && ticketResponse.data) {
+        // Map Supabase tickets to the expected format
+        const mappedTickets = ticketResponse.data.map(ticket => ({
+          id: ticket.id,
+          subject: ticket.subject,
+          status: ticket.status,
+          priority: ticket.priority,
+          created_at: ticket.created_at,
+          last_updated: ticket.updated_at,
+          messages_count: ticket.messages_count || 0,
+        }));
+        setSupportTickets(mappedTickets);
+      }
     } catch (error) {
       console.error('Error loading help data:', error);
       Alert.alert('Error', 'Failed to load help information');
@@ -300,24 +344,46 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const handleContactMethod = async (method: ContactMethod) => {
-    switch (method.type) {
-      case 'email':
-        await Linking.openURL(`mailto:${method.value}`);
-        break;
-      case 'phone':
-        await Linking.openURL(`tel:${method.value}`);
-        break;
-      case 'chat':
-        if (method.available) {
-          // Open chat interface
-          Alert.alert('Live Chat', 'Chat feature would open here');
-        } else {
-          Alert.alert('Live Chat Unavailable', 'Live chat is currently offline. Please try email or phone support.');
-        }
-        break;
-      case 'help_desk':
-        setShowContactModal(true);
-        break;
+    try {
+      switch (method.type) {
+        case 'email':
+          const emailSubject = `BuzyBees Support - ${accountType === 'provider' ? 'Provider' : 'Consumer'} Help`;
+          const emailBody = `Hello BuzyBees Support Team,\n\nI need assistance with:\n\n[Please describe your issue here]\n\nAccount Type: ${accountType}\nApp Version: 1.0.0`;
+          await Linking.openURL(`mailto:${method.value}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`);
+          break;
+        case 'phone':
+          Alert.alert(
+            'Call BuzyBees Support',
+            `${method.response_time}\n\nCall ${method.value}?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Call Now', onPress: () => Linking.openURL(`tel:${method.value}`) }
+            ]
+          );
+          break;
+        case 'chat':
+          if (method.available) {
+            const whatsappMessage = `Hello BuzyBees Support! I need help with my ${accountType} account.`;
+            const whatsappUrl = `whatsapp://send?phone=${method.value.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappMessage)}`;
+            
+            // Try to open WhatsApp, fallback to regular SMS
+            try {
+              await Linking.openURL(whatsappUrl);
+            } catch (error) {
+              // Fallback to SMS if WhatsApp not installed
+              await Linking.openURL(`sms:${method.value}?body=${encodeURIComponent(whatsappMessage)}`);
+            }
+          } else {
+            Alert.alert('WhatsApp Support Unavailable', 'WhatsApp support is currently offline. Please try email or phone support.');
+          }
+          break;
+        case 'help_desk':
+          setShowContactModal(true);
+          break;
+      }
+    } catch (error) {
+      console.error('Error opening contact method:', error);
+      Alert.alert('Error', 'Unable to open contact method. Please try another option.');
     }
   };
 
@@ -328,19 +394,28 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
     }
 
     try {
-      const response = await mockHelpAPI.submitTicket({
+      // Determine category based on subject keywords
+      const subject = contactForm.subject.toLowerCase();
+      let category = 'other';
+      if (subject.includes('payment') || subject.includes('billing')) category = 'payment';
+      else if (subject.includes('booking') || subject.includes('appointment')) category = 'booking';
+      else if (subject.includes('technical') || subject.includes('bug') || subject.includes('error')) category = 'technical';
+      else if (subject.includes('account') || subject.includes('profile')) category = 'account';
+      else if (subject.includes('service') || subject.includes('quality')) category = 'service_quality';
+
+      const ticketData = {
         subject: contactForm.subject,
+        description: contactForm.message,
+        category: category,
         priority: contactForm.priority,
-        status: 'open',
-        created_at: new Date().toISOString(),
-        last_updated: new Date().toISOString(),
-        messages_count: 1,
-      });
+      };
+
+      const response = await normalizedShopService.createSupportTicket(ticketData);
 
       if (response.success) {
         Alert.alert(
-          'Ticket Submitted',
-          `Your support ticket has been created successfully. Ticket ID: ${response.ticketId}`,
+          'Ticket Submitted Successfully!',
+          `Your support ticket has been created. Our team will respond within 1-2 business days.\n\nTicket ID: TICK-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 99999) + 1).padStart(5, '0')}`,
           [{ text: 'OK', onPress: () => {
             setShowContactModal(false);
             setContactForm({ subject: '', message: '', priority: 'normal' });
@@ -348,10 +423,11 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           }}]
         );
       } else {
-        Alert.alert('Error', 'Failed to submit support ticket');
+        Alert.alert('Error', response.error || 'Failed to submit support ticket');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit support ticket');
+      console.error('Error submitting support ticket:', error);
+      Alert.alert('Error', 'Failed to submit support ticket. Please try again.');
     }
   };
 

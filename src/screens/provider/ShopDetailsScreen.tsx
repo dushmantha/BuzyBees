@@ -567,6 +567,9 @@ const ShopDetailsScreen: React.FC = () => {
   
   // Staff specialty input
   const [newSpecialty, setNewSpecialty] = useState('');
+  
+  // Force re-render state for avatar
+  const [avatarRefresh, setAvatarRefresh] = useState(0);
 
   // Discount form state
   const [discountForm, setDiscountForm] = useState<Partial<Discount>>({
@@ -1397,16 +1400,34 @@ const ShopDetailsScreen: React.FC = () => {
       if (asset.uri) {
         try {
           if (imageUploadType === 'staff') {
-            // Compress avatar image
-            const compressionResult = await compressAvatarImage(asset.uri);
+            console.log('🔄 Setting staff avatar immediately:', asset.uri);
+            // Show the image immediately first
+            setStaffForm(prev => {
+              console.log('🔄 Staff form before update:', prev.avatar_url);
+              const updated = { ...prev, avatar_url: asset.uri! };
+              console.log('🔄 Staff form after update:', updated.avatar_url);
+              return updated;
+            });
             
-            if (compressionResult.success && compressionResult.uri) {
+            // Force re-render
+            setAvatarRefresh(prev => prev + 1);
+            
+            // Then compress avatar image in background
+            try {
+              const compressionResult = await compressAvatarImage(asset.uri);
+              console.log('🗜️ Compression result:', compressionResult);
               
-              setStaffForm(prev => ({ ...prev, avatar_url: compressionResult.uri! }));
-            } else {
-              
-              setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
+              if (compressionResult.success && compressionResult.uri) {
+                console.log('✅ Updating with compressed version:', compressionResult.uri);
+                // Update with compressed version
+                setStaffForm(prev => ({ ...prev, avatar_url: compressionResult.uri! }));
+              } else {
+                console.log('⚠️ Compression failed, keeping original');
+              }
+            } catch (compressionError) {
+              console.error('❌ Compression error:', compressionError);
             }
+            // If compression fails, keep the original image (already set above)
           } else {
             // Compress shop image
             const compressionResult = await compressShopImage(asset.uri);
@@ -1992,7 +2013,29 @@ const ShopDetailsScreen: React.FC = () => {
   };
 
   // Staff management
+  const closeStaffModal = () => {
+    console.log('🔄 Closing staff modal and resetting form');
+    setShowStaffModal(false);
+    setEditingStaff(null);
+    
+    // Reset staff form to ensure clean state
+    setStaffForm({
+      name: '', 
+      email: '', 
+      phone: '', 
+      role: '', 
+      specialties: [], 
+      bio: '', 
+      experience_years: 0, 
+      is_active: true,
+      avatar_url: undefined
+    });
+    setAvatarRefresh(prev => prev + 1);
+    setNewSpecialty('');
+  };
+
   const openStaffModal = (staff?: Staff) => {
+    console.log('📝 Opening staff modal, staff:', staff ? 'editing' : 'new');
     if (staff) {
       setEditingStaff(staff);
       
@@ -2003,13 +2046,15 @@ const ShopDetailsScreen: React.FC = () => {
         avatar_url = avatar_url.length > 0 ? avatar_url[0] : undefined;
       }
       
-      setStaffForm({
+      const formData = {
         ...staff,
         avatar_url: avatar_url
-      });
+      };
+      console.log('📝 Setting staff form to:', formData);
+      setStaffForm(formData);
     } else {
       setEditingStaff(null);
-      setStaffForm({
+      const emptyForm = {
         name: '', 
         email: '', 
         phone: '', 
@@ -2019,8 +2064,11 @@ const ShopDetailsScreen: React.FC = () => {
         experience_years: 0, 
         is_active: true,
         avatar_url: undefined
-      });
+      };
+      console.log('📝 Setting empty staff form:', emptyForm);
+      setStaffForm(emptyForm);
       setNewSpecialty('');
+      setAvatarRefresh(prev => prev + 1); // Force avatar re-render
     }
     setShowStaffModal(true);
   };
@@ -2123,8 +2171,7 @@ const ShopDetailsScreen: React.FC = () => {
       });
     }
 
-    setShowStaffModal(false);
-    setEditingStaff(null);
+    closeStaffModal();
   };
 
   const deleteStaff = (staffId: string) => {
@@ -3689,7 +3736,7 @@ const ShopDetailsScreen: React.FC = () => {
       visible={showStaffModal}
       transparent
       animationType="slide"
-      onRequestClose={() => setShowStaffModal(false)}
+      onRequestClose={closeStaffModal}
     >
       <View style={styles.modalOverlay}>
         <KeyboardAvoidingView 
@@ -3701,7 +3748,7 @@ const ShopDetailsScreen: React.FC = () => {
               <Text style={styles.modalTitle}>
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
               </Text>
-              <TouchableOpacity onPress={() => setShowStaffModal(false)}>
+              <TouchableOpacity onPress={closeStaffModal}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
@@ -3715,14 +3762,25 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.avatarUpload}
                     onPress={pickStaffAvatar}
                   >
-                    {getSafeAvatarUrl(staffForm.avatar_url) ? (
-                      <Image source={{ uri: getSafeAvatarUrl(staffForm.avatar_url)! }} style={styles.avatarPreview} />
-                    ) : (
-                      <View style={styles.avatarPlaceholder}>
-                        <Ionicons name="camera-outline" size={32} color="#9CA3AF" />
-                        <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
-                      </View>
-                    )}
+                    {(() => {
+                      const avatarUrl = getSafeAvatarUrl(staffForm.avatar_url);
+                      console.log('🖼️ Rendering avatar (refresh:', avatarRefresh, '), staffForm.avatar_url:', staffForm.avatar_url);
+                      console.log('🖼️ Safe avatar URL:', avatarUrl);
+                      return avatarUrl ? (
+                        <Image 
+                          key={`${avatarUrl}-${avatarRefresh}`} // Force re-render when URI or refresh changes
+                          source={{ uri: avatarUrl }} 
+                          style={styles.avatarPreview}
+                          onLoad={() => console.log('✅ Avatar image loaded successfully')}
+                          onError={(error) => console.error('❌ Avatar image failed to load:', error)}
+                        />
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <Ionicons name="camera-outline" size={32} color="#9CA3AF" />
+                          <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
+                        </View>
+                      );
+                    })()}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -3899,7 +3957,7 @@ const ShopDetailsScreen: React.FC = () => {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setShowStaffModal(false)}
+                onPress={closeStaffModal}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>

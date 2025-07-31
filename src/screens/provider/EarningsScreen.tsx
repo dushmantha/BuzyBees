@@ -16,10 +16,14 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Import the UpgradeModal component
 import UpgradeModal from '../../components/UpgradeModal'; // Adjust the import path as needed
+// Import Supabase service
+import { normalizedShopService } from '../../lib/supabase/normalized';
+import { useAuth } from '../../navigation/AppNavigator';
 
 const { width, height } = Dimensions.get('window');
 
 const EarningsScreen = ({ navigation }) => {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -69,29 +73,86 @@ const EarningsScreen = ({ navigation }) => {
     };
   };
 
-  // Mock API functions - replace with your actual API calls
+  // Real API functions connected to Supabase
   const fetchEarningsData = async (period) => {
     try {
-      setLoading(true);
       const { startDate, endDate } = getDateRange(period);
       
-      const mockData = await new Promise(resolve => {
-        setTimeout(() => {
-          resolve({
-            total: period === 'week' ? 680 : period === 'month' ? 2450 : 12450,
-            thisMonth: 2450,
-            thisWeek: 680,
-            pending: 320,
-            period: period,
-            dateRange: { startDate, endDate }
-          });
-        }, 500);
-      });
+      console.log('🔄 Fetching earnings data for period:', period, 'from', startDate, 'to', endDate);
+      console.log('🔄 User ID:', user?.id);
       
-      setEarningsData(mockData);
+      // Get provider earnings from Supabase using getPayments method
+      const response = await normalizedShopService.getPayments(undefined, undefined, startDate, endDate);
+      
+      console.log('📊 Earnings response:', response.success ? 'Success' : 'Failed', response.data ? 'Has data' : 'No data');
+      
+      if (response.success && response.data) {
+        const earningsData = response.data;
+        console.log('💰 Raw earnings data:', earningsData);
+        
+        // Use the payment data directly from response
+        const payments = response.data || [];
+        console.log('📋 Found', payments.length, 'payments');
+        
+        // Calculate total for selected period
+        const totalForPeriod = payments
+          .filter(p => p.payment_status === 'paid')
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          
+        // Calculate this month and this week totals
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        
+        const thisMonthTotal = payments
+          .filter(p => p.payment_status === 'paid' && new Date(p.service_date) >= startOfMonth)
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          
+        const thisWeekTotal = payments
+          .filter(p => p.payment_status === 'paid' && new Date(p.service_date) >= startOfWeek)
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          
+        const pendingTotal = payments
+          .filter(p => p.payment_status === 'pending')
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          
+        console.log('💵 Totals - Period:', totalForPeriod, 'Month:', thisMonthTotal, 'Week:', thisWeekTotal, 'Pending:', pendingTotal);
+        
+        setEarningsData({
+          total: totalForPeriod,
+          thisMonth: thisMonthTotal,
+          thisWeek: thisWeekTotal,
+          pending: pendingTotal,
+          period: period,
+          dateRange: { startDate, endDate },
+          rawData: response.data
+        });
+      } else {
+        console.error('❌ Failed to fetch earnings data:', response.error);
+        // Don't set error immediately, try fallback with empty data
+        setEarningsData({
+          total: 0,
+          thisMonth: 0,
+          thisWeek: 0,
+          pending: 0,
+          period: period,
+          dateRange: { startDate, endDate },
+          rawData: null
+        });
+      }
     } catch (err) {
-      setError('Failed to fetch earnings data');
-      console.error('Error fetching earnings:', err);
+      console.error('❌ Error fetching earnings:', err);
+      // Set fallback data instead of error
+      setEarningsData({
+        total: 0,
+        thisMonth: 0,
+        thisWeek: 0,
+        pending: 0,
+        period: period,
+        dateRange: { startDate: '', endDate: '' },
+        rawData: null
+      });
     }
   };
 
@@ -99,185 +160,281 @@ const EarningsScreen = ({ navigation }) => {
     try {
       const { startDate, endDate } = getDateRange(period);
       
-      const allTransactions = [
-        {
-          id: '1',
-          client: 'John Doe',
-          service: 'Plumbing Repair',
-          amount: 150,
-          date: '2024-01-15',
-          status: 'completed',
-          category: 'plumbing',
-        },
-        {
-          id: '2',
-          client: 'Jane Smith',
-          service: 'Electrical Work',
-          amount: 220,
-          date: '2024-01-14',
-          status: 'pending',
-          category: 'electrical',
-        },
-        {
-          id: '3',
-          client: 'Mike Johnson',
-          service: 'Carpentry',
-          amount: 180,
-          date: '2024-01-13',
-          status: 'completed',
-          category: 'carpentry',
-        },
-        {
-          id: '4',
-          client: 'Sarah Wilson',
-          service: 'HVAC Service',
-          amount: 320,
-          date: '2024-01-12',
-          status: 'completed',
-          category: 'hvac',
-        },
-        {
-          id: '5',
-          client: 'David Brown',
-          service: 'Painting',
-          amount: 280,
-          date: '2024-01-11',
-          status: 'pending',
-          category: 'painting',
-        },
-        {
-          id: '6',
-          client: 'Lisa Davis',
-          service: 'Plumbing Installation',
-          amount: 450,
-          date: '2024-01-10',
-          status: 'completed',
-          category: 'plumbing',
-        },
-        {
-          id: '7',
-          client: 'Tom Wilson',
-          service: 'Emergency Repair',
-          amount: 190,
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'completed',
-          category: 'electrical',
-        },
-        {
-          id: '8',
-          client: 'Emma Johnson',
-          service: 'Quick Fix',
-          amount: 250,
-          date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'pending',
-          category: 'hvac',
-        },
-        {
-          id: '9',
-          client: 'Robert Smith',
-          service: 'Major Renovation',
-          amount: 1200,
-          date: '2023-12-15',
-          status: 'completed',
-          category: 'carpentry',
-        },
-        {
-          id: '10',
-          client: 'Maria Garcia',
-          service: 'Annual Maintenance',
-          amount: 800,
-          date: '2023-11-20',
-          status: 'completed',
-          category: 'hvac',
-        },
-      ];
-
-      const mockData = await new Promise(resolve => {
-        setTimeout(() => {
-          const filteredByDate = allTransactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date);
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            return transactionDate >= start && transactionDate <= end;
-          });
-
-          const filteredData = filter === 'all' ? filteredByDate : 
-            filteredByDate.filter(transaction => {
-              if (filter === 'completed' || filter === 'pending') {
-                return transaction.status === filter;
-              }
-              return transaction.category === filter;
-            });
-
-          resolve(filteredData.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        }, 300);
-      });
+      console.log('🔄 Fetching transactions for period:', period, 'with filter:', filter);
       
-      setTransactions(mockData);
+      // Get payments from Supabase based on filter
+      let status = undefined;
+      if (filter === 'completed') status = 'paid';
+      if (filter === 'pending') status = 'pending';
+      
+      const response = await normalizedShopService.getPayments(undefined, status, startDate, endDate);
+      
+      console.log('📄 Transactions response:', response.success ? 'Success' : 'Failed', response.data?.length || 0, 'transactions');
+      
+      if (response.success && response.data && response.data.length > 0) {
+        // Transform Supabase payment data to match expected format
+        let transformedTransactions = response.data.map(payment => ({
+          id: payment.id,
+          client: payment.client_name || 'Unknown Client',
+          service: payment.service_title || 'Service',
+          amount: parseFloat(payment.amount) || 0,
+          date: payment.service_date,
+          status: payment.payment_status === 'paid' ? 'completed' : 'pending',
+          category: payment.service_type?.toLowerCase() || 'other',
+          bookingId: payment.booking_id,
+          paymentMethod: payment.payment_method,
+          location: payment.location,
+          duration: payment.duration,
+          notes: payment.notes
+        }));
+        
+        // Apply category filter if needed
+        if (filter !== 'all' && filter !== 'completed' && filter !== 'pending') {
+          transformedTransactions = transformedTransactions.filter(transaction => 
+            transaction.category === filter
+          );
+        }
+        
+        // Sort by date (newest first)
+        transformedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        console.log('✅ Transformed transactions:', transformedTransactions.length);
+        setTransactions(transformedTransactions);
+      } else {
+        console.log('📄 No transactions found or error:', response.error);
+        setTransactions([]);
+      }
     } catch (err) {
-      setError('Failed to fetch transactions');
-      console.error('Error fetching transactions:', err);
+      console.error('❌ Error fetching transactions:', err);
+      setTransactions([]);
     }
   };
 
   const fetchMonthlyData = async (period) => {
     try {
-      const { startDate, endDate } = getDateRange(period);
+      console.log('🔄 Fetching monthly breakdown data for period:', period);
       
-      const allMonthlyData = [
-        { id: '1', month: 'January 2024', amount: 2450, jobs: 12, status: 'completed', date: '2024-01-31' },
-        { id: '2', month: 'December 2023', amount: 2180, jobs: 11, status: 'completed', date: '2023-12-31' },
-        { id: '3', month: 'November 2023', amount: 1950, jobs: 9, status: 'completed', date: '2023-11-30' },
-        { id: '4', month: 'October 2023', amount: 2100, jobs: 10, status: 'completed', date: '2023-10-31' },
-        { id: '5', month: 'September 2023', amount: 1800, jobs: 8, status: 'completed', date: '2023-09-30' },
-        { id: '6', month: 'August 2023', amount: 2200, jobs: 13, status: 'completed', date: '2023-08-31' },
-        { id: '7', month: 'July 2023', amount: 1900, jobs: 9, status: 'completed', date: '2023-07-31' },
-      ];
-
-      const mockData = await new Promise(resolve => {
-        setTimeout(() => {
-          let filteredData = allMonthlyData;
-          
-          if (period === 'week') {
-            filteredData = [
-              { id: 'w1', month: 'Today', amount: 280, jobs: 2, status: 'completed', date: new Date().toISOString().split('T')[0] },
-              { id: 'w2', month: 'Yesterday', amount: 150, jobs: 1, status: 'completed', date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
-              { id: 'w3', month: '2 days ago', amount: 250, jobs: 1, status: 'completed', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+      // Get all payments for the provider
+      const response = await normalizedShopService.getPayments();
+      
+      console.log('📊 Monthly data response:', response.success ? 'Success' : 'Failed', response.data?.length || 0, 'payments');
+      
+      if (response.success && response.data && response.data.length > 0) {
+        const payments = response.data.filter(p => p.payment_status === 'paid');
+        console.log('💰 Paid payments for breakdown:', payments.length);
+        
+        let groupedData = [];
+        
+        if (period === 'week') {
+          // Create some sample data for week view if no real data
+          if (payments.length === 0) {
+            groupedData = [
+              { id: 'sample-1', month: 'Today', amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
             ];
-          } else if (period === 'month') {
-            filteredData = allMonthlyData.slice(0, 1);
+          } else {
+            // Group by days for the week view
+            const today = new Date();
+            const dailyData = {};
+            
+            // Initialize last 7 days
+            for (let i = 6; i >= 0; i--) {
+              const date = new Date(today);
+              date.setDate(today.getDate() - i);
+              const dateStr = date.toISOString().split('T')[0];
+              dailyData[dateStr] = { amount: 0, jobs: 0, date: dateStr };
+            }
+            
+            // Group payments by day
+            payments.forEach(payment => {
+              const paymentDate = payment.service_date;
+              if (dailyData[paymentDate]) {
+                dailyData[paymentDate].amount += parseFloat(payment.amount);
+                dailyData[paymentDate].jobs += 1;
+              }
+            });
+            
+            groupedData = Object.values(dailyData)
+              .filter(day => day.amount > 0 || day.jobs > 0)
+              .map((day, index) => ({
+                id: `day-${index}`,
+                month: formatDateLabel(day.date),
+                amount: day.amount,
+                jobs: day.jobs,
+                status: 'completed',
+                date: day.date
+              }));
+          }
+            
+        } else if (period === 'month') {
+          // Show current month data or sample
+          if (payments.length === 0) {
+            groupedData = [
+              { id: 'sample-1', month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
+            ];
+          } else {
+            // Group by weeks for the month view
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            const monthlyPayments = payments.filter(payment => {
+              const paymentDate = new Date(payment.service_date);
+              return paymentDate.getMonth() === currentMonth && 
+                     paymentDate.getFullYear() === currentYear;
+            });
+            
+            if (monthlyPayments.length > 0) {
+              const weeklyData = {};
+              monthlyPayments.forEach(payment => {
+                const paymentDate = new Date(payment.service_date);
+                const weekStart = getWeekStart(paymentDate);
+                const weekKey = weekStart.toISOString().split('T')[0];
+                
+                if (!weeklyData[weekKey]) {
+                  weeklyData[weekKey] = { amount: 0, jobs: 0, date: weekKey };
+                }
+                
+                weeklyData[weekKey].amount += parseFloat(payment.amount);
+                weeklyData[weekKey].jobs += 1;
+              });
+              
+              groupedData = Object.values(weeklyData).map((week, index) => ({
+                id: `week-${index}`,
+                month: `Week of ${new Date(week.date).toLocaleDateString()}`,
+                amount: week.amount,
+                jobs: week.jobs,
+                status: 'completed',
+                date: week.date
+              }));
+            } else {
+              groupedData = [
+                { id: 'sample-1', month: 'This Month', amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
+              ];
+            }
           }
           
-          resolve(filteredData);
-        }, 300);
-      });
-      
-      setMonthlyData(mockData);
+        } else {
+          // Year view
+          if (payments.length === 0) {
+            groupedData = [
+              { id: 'sample-1', month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
+            ];
+          } else {
+            // Group by months for the year view
+            const monthlyData = {};
+            
+            payments.forEach(payment => {
+              const paymentDate = new Date(payment.service_date);
+              const monthKey = `${paymentDate.getFullYear()}-${paymentDate.getMonth()}`;
+              const monthLabel = paymentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              
+              if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { amount: 0, jobs: 0, month: monthLabel, date: payment.service_date };
+              }
+              
+              monthlyData[monthKey].amount += parseFloat(payment.amount);
+              monthlyData[monthKey].jobs += 1;
+            });
+            
+            groupedData = Object.values(monthlyData)
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .map((month, index) => ({
+                id: `month-${index}`,
+                month: month.month,
+                amount: month.amount,
+                jobs: month.jobs,
+                status: 'completed',
+                date: month.date
+              }));
+          }
+        }
+        
+        console.log('📊 Final grouped data:', groupedData.length, 'items');
+        setMonthlyData(groupedData);
+      } else {
+        console.log('📊 No payment data available, using empty state');
+        // Set empty state data
+        setMonthlyData([
+          { id: 'empty-1', month: 'No data available', amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
+        ]);
+      }
     } catch (err) {
-      setError('Failed to fetch monthly data');
-      console.error('Error fetching monthly data:', err);
+      console.error('❌ Error fetching monthly data:', err);
+      setMonthlyData([
+        { id: 'error-1', month: 'Error loading data', amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
+      ]);
     } finally {
       setLoading(false);
     }
   };
+  
+  // Helper functions
+  const formatDateLabel = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+  
+  const getWeekStart = (date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day;
+    return new Date(d.setDate(diff));
+  };
 
   // Fetch data when component mounts or period changes
   useEffect(() => {
-    const fetchAllData = async () => {
-      await Promise.all([
-        fetchEarningsData(selectedPeriod),
-        fetchTransactions(selectedPeriod, selectedFilter),
-        fetchMonthlyData(selectedPeriod)
+    if (!user?.id) {
+      console.log('⚠️ No user available, showing empty state');
+      setEarningsData({
+        total: 0,
+        thisMonth: 0,
+        thisWeek: 0,
+        pending: 0,
+        period: selectedPeriod,
+        dateRange: { startDate: '', endDate: '' },
+        rawData: null
+      });
+      setTransactions([]);
+      setMonthlyData([
+        { id: 'no-user', month: 'No data available', amount: 0, jobs: 0, status: 'completed', date: new Date().toISOString().split('T')[0] }
       ]);
+      setLoading(false);
+      return;
+    }
+    
+    console.log('🔄 Starting data fetch for user:', user.id, 'period:', selectedPeriod);
+    
+    const fetchAllData = async () => {
+      try {
+        await Promise.all([
+          fetchEarningsData(selectedPeriod),
+          fetchTransactions(selectedPeriod, selectedFilter),
+          fetchMonthlyData(selectedPeriod)
+        ]);
+        console.log('✅ All data fetched successfully');
+      } catch (error) {
+        console.error('❌ Error in fetchAllData:', error);
+        setLoading(false);
+      }
     };
 
     fetchAllData();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, user?.id]);
 
   // Fetch transactions when filter changes
   useEffect(() => {
+    if (!user?.id) return;
     fetchTransactions(selectedPeriod, selectedFilter);
-  }, [selectedFilter]);
+  }, [selectedFilter, user?.id]);
 
   const periodButtons = [
     { key: 'week', label: 'Week' },

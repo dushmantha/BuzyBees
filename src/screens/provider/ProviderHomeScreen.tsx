@@ -18,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount, useAuth } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
 import { authService } from '../../lib/supabase/index';
+import { normalizedShopService } from '../../lib/supabase/normalized';
 
 const { width } = Dimensions.get('window');
 
@@ -62,6 +63,16 @@ interface DashboardStats {
   growthPercentage: number;
   weeklyBookings: number;
   monthlyGrowth: number;
+  // Monthly overview stats
+  thisMonthBookings?: number;
+  thisMonthCompletedJobs?: number;
+  thisMonthActiveBookings?: number;
+  thisMonthCustomers?: number;
+  thisMonthAverageJobValue?: number;
+  // Rating and response stats
+  totalReviews?: number;
+  averageResponseTimeMinutes?: number;
+  averageResponseTime?: string;
 }
 
 interface ActivityItem {
@@ -184,70 +195,98 @@ const ProviderHomeScreen: React.FC = () => {
       try {
         console.log('📊 Fetching real dashboard data from Supabase...');
         
-        // Get real shops data directly from provider_businesses table
-        console.log('🔄 Calling getProviderBusinesses for provider:', providerId);
-        const shopsResponse = await authService.getProviderBusinesses(providerId);
+        // Get real data in parallel
+        const [shopsResponse, statsResponse, activityResponse, revenueResponse] = await Promise.all([
+          // Get shops
+          authService.getProviderBusinesses(providerId),
+          // Get dashboard stats
+          normalizedShopService.getDashboardStats(providerId),
+          // Get activity feed
+          normalizedShopService.getActivityFeed(providerId, 10),
+          // Get monthly revenue for shops
+          normalizedShopService.getShopMonthlyRevenue()
+        ]);
+        
         console.log('📥 Shops response:', shopsResponse);
+        console.log('📊 Stats response:', statsResponse);
+        console.log('📋 Activity response:', activityResponse);
+        console.log('💰 Revenue response:', revenueResponse);
+        
         let realShops: Shop[] = [];
         
         if (shopsResponse.success && shopsResponse.data) {
           console.log('✅ Real shops data received:', shopsResponse.data);
           
+          // Create revenue lookup map
+          const revenueMap = new Map<string, number>();
+          if (revenueResponse.success && revenueResponse.data) {
+            revenueResponse.data.forEach(item => {
+              if (item.shop_id) {
+                revenueMap.set(item.shop_id, item.monthly_revenue);
+              }
+            });
+            console.log('💰 Revenue map created:', Object.fromEntries(revenueMap));
+          }
+          
           // Transform provider_businesses data to Shop interface
-          realShops = shopsResponse.data.map((business: any) => ({
-            id: business.id,
-            name: business.name,
-            description: business.description || '',
-            image: business.image_url || business.logo_url || '',
-            location: business.address ? `${business.address}, ${business.city}, ${business.state}` : `${business.city || ''}, ${business.state || ''}`,
-            category: business.category || 'General Services',
-            rating: 0, // New shops start with no rating
-            reviews_count: 0,
-            is_active: business.is_active !== undefined ? business.is_active : true,
-            total_services: business.services?.length || 0,
-            monthly_revenue: 0, // New shops start with no revenue
-            certificate_images: [],
-            business_hours: {
-              start: business.business_hours_start || '09:00',
-              end: business.business_hours_end || '17:00'
-            },
-            contact_info: {
+          realShops = shopsResponse.data.map((business: any) => {
+            const monthlyRevenue = revenueMap.get(business.id) || 0;
+            console.log(`💰 Shop ${business.name} (${business.id}) revenue: $${monthlyRevenue}`);
+            
+            return {
+              id: business.id,
+              name: business.name,
+              description: business.description || '',
+              image: business.image_url || business.logo_url || '',
+              location: business.address ? `${business.address}, ${business.city}, ${business.state}` : `${business.city || ''}, ${business.state || ''}`,
+              category: business.category || 'General Services',
+              rating: 0, // Will be updated when we add reviews
+              reviews_count: 0,
+              is_active: business.is_active !== undefined ? business.is_active : true,
+              total_services: business.services?.length || 0,
+              monthly_revenue: monthlyRevenue, // Real revenue from payments table
+              certificate_images: [],
+              business_hours: {
+                start: business.business_hours_start || '09:00',
+                end: business.business_hours_end || '17:00'
+              },
+              contact_info: {
+                phone: business.phone || '',
+                email: business.email || '',
+                website: business.website_url || ''
+              },
+              created_at: business.created_at || new Date().toISOString(),
+              // Additional fields for compatibility
+              city: business.city || '',
+              state: business.state || '',
+              address: business.address || '',
               phone: business.phone || '',
               email: business.email || '',
-              website: business.website_url || ''
-            },
-            created_at: business.created_at || new Date().toISOString(),
-            // Additional fields for compatibility
-            city: business.city || '',
-            state: business.state || '',
-            address: business.address || '',
-            phone: business.phone || '',
-            email: business.email || '',
-            website_url: business.website_url || '',
-            image_url: business.image_url || business.logo_url || '',
-            images: business.images || [],
-            logo_url: business.logo_url || '',
-            isActive: business.is_active !== undefined ? business.is_active : true,
-            openingHours: `${business.business_hours_start || '09:00'} - ${business.business_hours_end || '17:00'}`,
-            services: business.services?.map((s: any) => typeof s === 'string' ? s : s.name || s.title || 'Service') || [],
-            imageUrl: business.image_url || business.logo_url || ''
-          }));
+              website_url: business.website_url || '',
+              image_url: business.image_url || business.logo_url || '',
+              images: business.images || [],
+              logo_url: business.logo_url || '',
+              isActive: business.is_active !== undefined ? business.is_active : true,
+              openingHours: `${business.business_hours_start || '09:00'} - ${business.business_hours_end || '17:00'}`,
+              services: business.services?.map((s: any) => typeof s === 'string' ? s : s.name || s.title || 'Service') || [],
+              imageUrl: business.image_url || business.logo_url || ''
+            };
+          });
           
           console.log('🏪 Transformed real shops:', realShops);
         } else {
           console.warn('⚠️ Failed to get real shops data:', shopsResponse.error);
-          console.warn('⚠️ Full response object:', JSON.stringify(shopsResponse, null, 2));
         }
         
-        // Get basic stats (use mock for now since complex dashboard stats would require additional tables)
-        const mockStats = {
+        // Use real stats from the API
+        const realStats = statsResponse.success && statsResponse.data ? statsResponse.data : {
           totalEarnings: 0,
           activeJobs: 0,
           completedJobs: 0,
-          customerRating: 0,
+          customerRating: 4.5,
           pendingBookings: 0,
           thisMonthEarnings: 0,
-          responseRate: 0,
+          responseRate: 95,
           totalCustomers: 0,
           averageJobValue: 0,
           growthPercentage: 0,
@@ -255,39 +294,55 @@ const ProviderHomeScreen: React.FC = () => {
           monthlyGrowth: 0,
         };
         
-        // Get basic activity (use mock for now)
-        const mockActivity: ActivityItem[] = [
-          {
-            id: '1',
-            type: 'new_booking',
-            title: 'New Shop Created',
-            description: realShops.length > 0 ? `Your shop "${realShops[0].name}" is now live and ready for bookings!` : 'Your business is ready to start accepting bookings',
-            timestamp: new Date().toISOString(),
-            priority: 'high',
-          }
-        ];
+        console.log('📊 Final dashboard stats:', realStats);
         
-        const mockNotifications: Notification[] = [
+        // Use real activity from the API
+        const realActivity = activityResponse.success && activityResponse.data 
+          ? activityResponse.data 
+          : [{
+              id: '1',
+              type: 'system' as const,
+              title: 'Welcome to BuzyBees',
+              description: realShops.length > 0 ? `Your shop "${realShops[0].name}" is ready for bookings!` : 'Create your first shop to start accepting bookings',
+              timestamp: new Date().toISOString(),
+              priority: 'medium' as const,
+            }];
+        
+        // Basic notifications (can be enhanced later with a notifications table)
+        const notifications: Notification[] = [
           {
             id: '1',
             type: 'system',
-            title: 'Welcome to BuzyBees!',
-            message: 'Your provider dashboard is ready. Start by managing your shop details.',
+            title: 'Dashboard Updated',
+            message: 'Your dashboard now shows real-time data from your business',
             timestamp: new Date().toISOString(),
             is_read: false,
-            priority: 'medium',
+            priority: 'low',
           }
         ];
         
+        // If there are pending bookings, add a notification
+        if (realStats.pendingBookings > 0) {
+          notifications.unshift({
+            id: '2',
+            type: 'booking',
+            title: 'Pending Bookings',
+            message: `You have ${realStats.pendingBookings} booking${realStats.pendingBookings > 1 ? 's' : ''} waiting for approval`,
+            timestamp: new Date().toISOString(),
+            is_read: false,
+            priority: 'high',
+          });
+        }
+        
         return {
-          stats: mockStats,
-          activity: mockActivity,
-          shops: realShops, // Use real shops data!
-          notifications: mockNotifications,
+          stats: realStats,
+          activity: realActivity,
+          shops: realShops,
+          notifications: notifications,
         };
       } catch (error) {
         console.error('❌ API Error getting real data:', error);
-        // Return minimal real data structure instead of mock data
+        // Return minimal real data structure
         return {
           stats: {
             totalEarnings: 0,
@@ -311,7 +366,7 @@ const ProviderHomeScreen: React.FC = () => {
             timestamp: new Date().toISOString(),
             priority: 'medium',
           }],
-          shops: [], // Return empty shops array instead of mock shops
+          shops: [],
           notifications: [{
             id: '1',
             type: 'system',
@@ -1051,6 +1106,11 @@ const ProviderHomeScreen: React.FC = () => {
           <Text style={styles.overviewValue}>
             {formatCurrency(dashboardStats.thisMonthEarnings)}
           </Text>
+          <View style={styles.overviewStats}>
+            <Text style={styles.overviewSubtext}>
+              {dashboardStats.thisMonthBookings || 0} bookings • {dashboardStats.thisMonthCompletedJobs || 0} completed
+            </Text>
+          </View>
           <View style={styles.overviewChange}>
             <Ionicons 
               name={(dashboardStats.monthlyGrowth || 0) > 0 ? "arrow-up" : "arrow-down"} 
@@ -1072,7 +1132,9 @@ const ProviderHomeScreen: React.FC = () => {
             <Text style={styles.overviewLabel}>Rating</Text>
           </View>
           <Text style={styles.overviewValue}>{(dashboardStats.customerRating || 0).toFixed(1)}</Text>
-          <Text style={styles.overviewSubtext}>Based on reviews</Text>
+          <Text style={styles.overviewSubtext}>
+            {dashboardStats.totalReviews || 0} review{(dashboardStats.totalReviews || 0) !== 1 ? 's' : ''}
+          </Text>
         </View>
 
         <View style={styles.overviewCard}>
@@ -1089,10 +1151,14 @@ const ProviderHomeScreen: React.FC = () => {
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
             <Ionicons name="time-outline" size={16} color="#4B5563" />
-            <Text style={styles.overviewLabel}>Response Rate</Text>
+            <Text style={styles.overviewLabel}>Response Time</Text>
           </View>
-          <Text style={styles.overviewValue}>{dashboardStats.responseRate || 0}%</Text>
-          <Text style={styles.overviewSubtext}>Within 1 hour</Text>
+          <Text style={styles.overviewValue}>
+            {dashboardStats.averageResponseTime || 'No data'}
+          </Text>
+          <Text style={styles.overviewSubtext}>
+            {dashboardStats.responseRate || 0}% response rate
+          </Text>
         </View>
       </View>
     </View>
@@ -1164,7 +1230,7 @@ const ProviderHomeScreen: React.FC = () => {
 
           <View style={styles.shopRevenue}>
             <Text style={styles.shopRevenueLabel}>Monthly Revenue</Text>
-            <Text style={styles.shopRevenueValue}>{formatCurrency(item.monthly_revenue)}</Text>
+            <Text style={styles.shopRevenueValue}>{formatCurrency(item.monthly_revenue || 0)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -1634,6 +1700,9 @@ const styles = StyleSheet.create({
   overviewSubtext: {
     fontSize: 11,
     color: '#6B7280',
+  },
+  overviewStats: {
+    marginVertical: 4,
   },
   overviewChange: {
     flexDirection: 'row',

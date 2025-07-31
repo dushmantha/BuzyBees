@@ -15,13 +15,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Mock import for demo purposes - replace with actual import
-// import { useAccount } from '../navigation/AppNavigator';
-
-// Mock useAccount hook for demonstration
-const useAccount = () => ({
-  accountType: 'consumer' as 'consumer' | 'provider'
-});
+import { useAccount } from '../navigation/AppNavigator';
 
 interface LegalDocument {
   id: string;
@@ -37,7 +31,7 @@ interface LegalDocument {
 }
 
 interface TermsConditionsScreenProps {
-  navigation?: {
+  navigation: {
     goBack: () => void;
     navigate: (screen: string) => void;
   };
@@ -45,17 +39,23 @@ interface TermsConditionsScreenProps {
 
 const { width } = Dimensions.get('window');
 
-const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({ 
-  navigation = { 
-    goBack: () => console.log('Navigate back'), 
-    navigate: (screen: string) => console.log('Navigate to:', screen) 
-  } 
-}) => {
+const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({ navigation }) => {
   const { accountType } = useAccount();
   const [isLoading, setIsLoading] = useState(true);
   const [activeDocument, setActiveDocument] = useState<'terms' | 'privacy' | 'cookies' | 'community' | 'provider'>('terms');
   const [documents, setDocuments] = useState<Record<string, LegalDocument>>({});
   const [viewMode, setViewMode] = useState<'cards' | 'detail'>('cards');
+
+  // Enhanced back navigation handler
+  const handleBackNavigation = () => {
+    if (viewMode === 'detail') {
+      // If in detail view, go back to cards view
+      setViewMode('cards');
+    } else {
+      // If in cards view, navigate back to previous screen
+      navigation.goBack();
+    }
+  };
 
   // Mock API service with enhanced document metadata
   const mockLegalAPI = {
@@ -77,20 +77,21 @@ const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({
 
 **Last Updated: January 15, 2025**
 
-## Welcome to Our Platform! 👋
+## Welcome to BuzyBees! 🐝
 
-Thank you for choosing our service marketplace. These terms help ensure a safe, fair, and enjoyable experience for everyone.
+Thank you for choosing BuzyBees, your trusted service marketplace. These terms help ensure a safe, fair, and enjoyable experience for everyone in our buzzing community.
 
-## 🎯 What We Do
+## 🎯 What BuzyBees Does
 
-We connect people who need services with trusted professionals who provide them. Whether you're looking for:
+BuzyBees connects busy people who need services with skilled professionals who provide them. Whether you're looking for:
 
-- 🏠 **Home Services**: Cleaning, repairs, maintenance
-- 💄 **Personal Care**: Beauty, wellness, fitness
-- 📚 **Learning**: Tutoring, skill development
-- 🎉 **Events**: Planning, catering, entertainment
+- 🏠 **Home Services**: Cleaning, repairs, maintenance, gardening
+- 💄 **Personal Care**: Beauty, wellness, fitness, spa services
+- 📚 **Learning**: Tutoring, skill development, coaching
+- 🎉 **Events**: Planning, catering, entertainment, photography
+- 🔧 **Professional Services**: IT support, consulting, design
 
-We've got you covered!
+Our busy bees have got you covered!
 
 ## 🔐 Your Account
 
@@ -105,19 +106,19 @@ We've got you covered!
 - **🔧 Provider**: Offer your services
 - **💎 Premium**: Enhanced features and benefits
 
-## 💰 How Payments Work
+## 💰 How BuzyBees Payments Work
 
 ### Simple & Secure
-- All payments processed safely through our platform
-- 15% platform fee on completed services
-- Payments released after service completion
-- No hidden fees or surprises
+- All payments processed safely through our secure platform
+- 12% platform fee on completed services (competitive rates for our community)
+- Payments released after service completion and satisfaction
+- Transparent pricing - no hidden fees or surprises
 
 ### Protection for Everyone
-- Secure payment processing
-- Dispute resolution available
-- Refund policy for eligible issues
-- 24/7 fraud monitoring
+- Bank-level secure payment processing
+- Fair dispute resolution available
+- Comprehensive refund policy for eligible issues
+- 24/7 fraud monitoring and protection
 
 ## 🤝 Community Standards
 
@@ -150,10 +151,11 @@ We've got you covered!
 ## 📞 Need Help?
 
 ### We're Here for You
-- **Email**: support@serviceapp.com
-- **Phone**: +64 9 123 4567
-- **Live Chat**: Available 24/7
-- **Help Center**: Comprehensive guides
+- **Email**: support@buzybees.com
+- **Phone**: +1 (555) 123-BEES
+- **Live Chat**: Available 24/7 in the app
+- **Help Center**: Comprehensive guides and FAQs
+- **WhatsApp**: Quick support via WhatsApp
 
 ## 🔄 Updates
 
@@ -161,7 +163,7 @@ We may update these terms occasionally. You'll be notified of any important chan
 
 ---
 
-**Questions?** Our friendly support team is always ready to help explain anything you don't understand. We believe in transparency and want you to feel confident using our platform.`
+**Questions?** Our friendly BuzyBees support team is always ready to help explain anything you don't understand. We believe in transparency and want you to feel confident using our platform to find the perfect services for your busy life.`
         },
         privacy: {
           id: 'privacy_v1.8',
@@ -177,9 +179,9 @@ We may update these terms occasionally. You'll be notified of any important chan
 
 **Last Updated: January 10, 2025**
 
-## Your Privacy Matters 🔒
+## Your Privacy Matters at BuzyBees 🔒
 
-We believe your personal information should be just that - personal. This policy explains exactly how we handle your data.
+At BuzyBees, we believe your personal information should be just that - personal. This policy explains exactly how we handle your data in our service marketplace.
 
 ## 📊 What Information We Collect
 
@@ -243,7 +245,7 @@ You can manage cookies in your browser settings or through your account preferen
 
 Have questions about your privacy? We're here to help!
 
-- **Email**: privacy@serviceapp.com
+- **Email**: privacy@buzybees.com
 - **Response Time**: Within 24 hours
 - **Privacy Officer**: Available for complex questions
 
@@ -347,10 +349,10 @@ We only work with reputable companies that follow strict privacy standards:
 ## 📞 Questions About Cookies?
 
 ### We're Here to Help
-- **Email**: privacy@serviceapp.com
-- **Live Chat**: Available 24/7
+- **Email**: privacy@buzybees.com
+- **Live Chat**: Available 24/7 in the BuzyBees app
 - **Help Center**: Step-by-step guides
-- **Phone**: +64 9 123 4567
+- **Phone**: +1 (555) 123-BEES
 
 ---
 
@@ -370,9 +372,9 @@ We only work with reputable companies that follow strict privacy standards:
 
 **Last Updated: January 5, 2025**
 
-## Building an Amazing Community Together 🌟
+## Building an Amazing BuzyBees Community Together 🌟
 
-Our platform is more than just a marketplace - it's a community of real people helping each other. These guidelines help us all create a positive environment.
+BuzyBees is more than just a marketplace - it's a hive of real people helping each other get things done. These guidelines help us all create a positive, productive environment where everyone can thrive.
 
 ## ✨ What Makes Our Community Great
 
@@ -455,9 +457,9 @@ We believe in second chances, but safety comes first:
 
 ### How to Report
 - **In-App**: Use the report button on any profile or message
-- **Email**: safety@serviceapp.com
-- **Phone**: +64 9 123 4567
-- **Live Chat**: Available 24/7 for urgent issues
+- **Email**: safety@buzybees.com
+- **Phone**: +1 (555) 123-BEES
+- **Live Chat**: Available 24/7 for urgent issues in the app
 
 ## 🎉 Recognition & Rewards
 
@@ -486,10 +488,10 @@ We love celebrating people who make our community awesome:
 ## 📞 Questions or Concerns?
 
 ### We're Always Here
-- **Community Team**: community@serviceapp.com
-- **General Support**: support@serviceapp.com
-- **Safety Issues**: safety@serviceapp.com
-- **Phone**: +64 9 123 4567
+- **Community Team**: community@buzybees.com
+- **General Support**: support@buzybees.com
+- **Safety Issues**: safety@buzybees.com
+- **Phone**: +1 (555) 123-BEES
 
 ---
 
@@ -509,9 +511,9 @@ We love celebrating people who make our community awesome:
 
 **Last Updated: January 20, 2025**
 
-## Welcome to Our Provider Community! 🎉
+## Welcome to the BuzyBees Provider Community! 🎉
 
-Congratulations on joining our platform as a service provider! This agreement outlines everything you need to know to build a successful business with us.
+Congratulations on joining BuzyBees as a service provider! This agreement outlines everything you need to know to build a successful business with our buzzing community of customers.
 
 ## 🎯 Your Provider Journey
 
@@ -544,7 +546,7 @@ Congratulations on joining our platform as a service provider! This agreement ou
 ## 💰 Earnings & Payments
 
 ### 💵 How You Get Paid
-- **Platform Fee**: 15% of each completed job
+- **Platform Fee**: 12% of each completed job (competitive rates!)
 - **Payment Timeline**: Funds available 2-3 business days after completion
 - **Direct Deposit**: Money goes straight to your bank account
 - **No Hidden Fees**: What you see is what you get
@@ -629,10 +631,10 @@ Unlock advanced features with our premium membership:
 ## 📞 Support & Resources
 
 ### 🆘 When You Need Help
-- **Provider Support**: providers@serviceapp.com
-- **Technical Issues**: tech@serviceapp.com
-- **Emergency Line**: +64 9 123 4567
-- **Live Chat**: 24/7 instant support
+- **Provider Support**: providers@buzybees.com
+- **Technical Issues**: tech@buzybees.com
+- **Emergency Line**: +1 (555) 123-BEES
+- **Live Chat**: 24/7 instant support in the app
 
 ### 📚 Learning Center
 - **Video Tutorials**: Step-by-step guidance
@@ -654,7 +656,7 @@ Unlock advanced features with our premium membership:
 
 We're committed to helping you build a thriving business on our platform. With the right tools, support, and community, there's no limit to what you can achieve.
 
-**Ready to get started?** Contact our Provider Success team at providers@serviceapp.com for personalized onboarding assistance!`
+**Ready to get started?** Contact our Provider Success team at providers@buzybees.com for personalized onboarding assistance!`
         }
       };
     }
@@ -711,9 +713,9 @@ We're committed to helping you build a thriving business on our platform. With t
           text: '📧 Email',
           onPress: async () => {
             try {
-              await Linking.openURL('mailto:legal@serviceapp.com?subject=Legal Question');
+              await Linking.openURL('mailto:legal@buzybees.com?subject=Legal Question');
             } catch (error) {
-              Alert.alert('Email Not Available', 'Please contact legal@serviceapp.com');
+              Alert.alert('Email Not Available', 'Please contact legal@buzybees.com');
             }
           }
         },
@@ -721,9 +723,9 @@ We're committed to helping you build a thriving business on our platform. With t
           text: '📞 Call',
           onPress: async () => {
             try {
-              await Linking.openURL('tel:+6491234567');
+              await Linking.openURL('tel:+15551232337');
             } catch (error) {
-              Alert.alert('Call Not Available', 'Please call +64 9 123 4567');
+              Alert.alert('Call Not Available', 'Please call +1 (555) 123-BEES');
             }
           }
         }
@@ -862,26 +864,25 @@ We're committed to helping you build a thriving business on our platform. With t
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
         
-        {/* Detail Header */}
-        <View style={styles.detailHeader}>
+        {/* Simple back bar for detail view */}
+        <View style={styles.detailBackBar}>
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => setViewMode('cards')}
+            style={styles.detailBackButton}
+            onPress={handleBackNavigation}
           >
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Text style={styles.detailBackText}>Back</Text>
           </TouchableOpacity>
           
-          <View style={styles.detailHeaderInfo}>
-            <Text style={styles.detailTitle}>{currentDocument.title}</Text>
-            <Text style={styles.detailSubtitle}>Version {currentDocument.version}</Text>
+          <View style={styles.detailActions}>
+            <Text style={styles.detailVersion}>v{currentDocument.version}</Text>
+            <TouchableOpacity
+              style={styles.detailExportButton}
+              onPress={() => handleExportDocument(currentDocument)}
+            >
+              <Ionicons name="download-outline" size={20} color="#F59E0B" />
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity
-            style={styles.exportButton}
-            onPress={() => handleExportDocument(currentDocument)}
-          >
-            <Ionicons name="download-outline" size={20} color="#F59E0B" />
-          </TouchableOpacity>
         </View>
 
         {/* Document Content */}
@@ -918,12 +919,25 @@ We're committed to helping you build a thriving business on our platform. With t
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
       
-      {/* Main Header */}
-      <View style={styles.mainHeader}>
+      {/* Simple back navigation for main view */}
+      <View style={styles.simpleHeader}>
+        <TouchableOpacity
+          style={styles.simpleBackButton}
+          onPress={handleBackNavigation}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Text style={styles.simpleBackText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.simpleTitle}>Terms & Conditions</Text>
+      </View>
+      
+      {/* Welcome Header */}
+      <View style={styles.welcomeHeader}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Legal Documents</Text>
           <Text style={styles.headerSubtitle}>
-            Everything you need to know about using our platform safely and legally
+            Everything you need to know about using BuzyBees safely and legally
           </Text>
         </View>
         <View style={styles.headerIcon}>
@@ -1048,20 +1062,87 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Main Header Styles
-  mainHeader: {
-    backgroundColor: '#FFFFFF',
+  // Simple Header Styles
+  simpleHeader: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 0,
+  },
+  simpleBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    minWidth: 60,
+    zIndex: 10, // Ensure button is above other elements
+  },
+  simpleBackText: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  simpleTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+    textAlign: 'center',
+    marginRight: 60, // Account for back button width
+  },
+  
+  // Welcome Header Styles (for main view)
+  welcomeHeader: {
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingVertical: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    borderBottomWidth: 0,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  
+  // Detail View Styles
+  detailBackBar: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 0,
+  },
+  detailBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  detailBackText: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  detailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailVersion: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginRight: 12,
+  },
+  detailExportButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEF3C7',
   },
   headerContent: {
     flex: 1,
@@ -1160,45 +1241,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Detail View Styles
-  detailHeader: {
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    marginRight: 16,
-  },
-  detailHeaderInfo: {
-    flex: 1,
-  },
-  detailTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  detailSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  exportButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#FEF3C7',
-  },
+  // Content Styles
   detailContent: {
     flex: 1,
   },

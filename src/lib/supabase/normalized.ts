@@ -2348,6 +2348,82 @@ class NormalizedShopService {
     }
   }
 
+  // Get monthly revenue for each shop
+  async getShopMonthlyRevenue(shopId?: string): Promise<ServiceResponse<{ shop_id?: string; monthly_revenue: number }[]>> {
+    try {
+      console.log('💰 Calculating monthly revenue for shops');
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Get current month's date range
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const dateFrom = firstDayOfMonth.toISOString().split('T')[0];
+      const dateTo = lastDayOfMonth.toISOString().split('T')[0];
+
+      console.log('📅 Calculating revenue from', dateFrom, 'to', dateTo);
+
+      // Build query for current month's paid payments
+      let query = this.client
+        .from('payments')
+        .select('shop_id, amount')
+        .eq('provider_id', user.id)
+        .eq('payment_status', 'paid')
+        .gte('service_date', dateFrom)
+        .lte('service_date', dateTo);
+
+      if (shopId) {
+        query = query.eq('shop_id', shopId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('❌ Get shop revenue error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      // Group by shop_id and sum amounts
+      const revenueByShop = new Map<string, number>();
+      
+      data?.forEach(payment => {
+        const shopId = payment.shop_id || 'unknown';
+        const amount = parseFloat(payment.amount) || 0;
+        revenueByShop.set(shopId, (revenueByShop.get(shopId) || 0) + amount);
+      });
+
+      // Convert to array format
+      const result = Array.from(revenueByShop.entries()).map(([shop_id, monthly_revenue]) => ({
+        shop_id: shop_id === 'unknown' ? undefined : shop_id,
+        monthly_revenue
+      }));
+
+      console.log('✅ Monthly revenue calculated:', result);
+      return {
+        success: true,
+        data: result
+      };
+
+    } catch (error: any) {
+      console.error('❌ Calculate monthly revenue error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to calculate monthly revenue'
+      };
+    }
+  }
+
   // Get payments for provider
   async getPayments(
     shopId?: string,
@@ -2404,6 +2480,1439 @@ class NormalizedShopService {
 
     } catch (error) {
       console.error('❌ Unexpected get payments error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get dashboard statistics for provider
+  async getDashboardStats(providerId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📊 Fetching dashboard statistics for provider:', providerId);
+
+      const user = await this.getCurrentUser();
+      if (!user || user.id !== providerId) {
+        return {
+          success: false,
+          error: 'User not authenticated or unauthorized'
+        };
+      }
+
+      // Get current date info
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
+      // Fetch all necessary data in parallel
+      const [
+        bookingsResult,
+        paymentsResult,
+        shopsResult,
+        thisMonthPaymentsResult,
+        lastMonthPaymentsResult,
+        ratingStatsResult,
+        responseStatsResult
+      ] = await Promise.all([
+        // All bookings
+        this.client
+          .from('shop_bookings')
+          .select('*')
+          .eq('provider_id', providerId),
+        
+        // All payments
+        this.client
+          .from('payments')
+          .select('*')
+          .eq('provider_id', providerId),
+        
+        // All shops
+        this.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('provider_id', providerId),
+        
+        // This month's payments
+        this.client
+          .from('payments')
+          .select('*')
+          .eq('provider_id', providerId)
+          .gte('service_date', startOfMonth)
+          .lte('service_date', endOfMonth),
+        
+        // Last month's payments
+        this.client
+          .from('payments')
+          .select('*')
+          .eq('provider_id', providerId)
+          .gte('service_date', startOfLastMonth)
+          .lte('service_date', endOfLastMonth),
+
+        // Rating statistics
+        this.client
+          .rpc('get_provider_rating_stats', { p_provider_id: providerId }),
+
+        // Response time statistics
+        this.client
+          .rpc('get_provider_response_stats', { p_provider_id: providerId })
+      ]);
+
+      const bookings = bookingsResult.data || [];
+      const payments = paymentsResult.data || [];
+      const shops = shopsResult.data || [];
+      const thisMonthPayments = thisMonthPaymentsResult.data || [];
+      const lastMonthPayments = lastMonthPaymentsResult.data || [];
+      const ratingStats = ratingStatsResult.data?.[0] || { average_rating: 0, total_reviews: 0 };
+      const responseStats = responseStatsResult.data?.[0] || { 
+        average_response_minutes: 0, 
+        response_rate_percentage: 0 
+      };
+
+      // Debug logging
+      console.log('📊 Total bookings found:', bookings.length);
+      console.log('📊 Bookings by status:', bookings.reduce((acc, b) => {
+        acc[b.status] = (acc[b.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>));
+
+      // Calculate statistics
+      const completedBookings = bookings.filter(b => b.status === 'completed');
+      console.log('📊 Completed bookings:', completedBookings.length);
+      
+      const paidPayments = payments.filter(p => p.payment_status === 'paid');
+      const thisMonthPaidPayments = thisMonthPayments.filter(p => p.payment_status === 'paid');
+      const lastMonthPaidPayments = lastMonthPayments.filter(p => p.payment_status === 'paid');
+
+      // Calculate unique customers from bookings
+      const uniqueCustomers = new Set([
+        ...bookings.map(b => b.customer_email || b.customer_phone).filter(Boolean)
+      ]);
+
+      // Calculate this month's unique customers
+      const thisMonthBookings = bookings.filter(b => {
+        const bookingDate = new Date(b.booking_date);
+        const startDate = new Date(startOfMonth);
+        const endDate = new Date(endOfMonth);
+        return bookingDate >= startDate && bookingDate <= endDate;
+      });
+
+      console.log('📊 This month date range:', startOfMonth, 'to', endOfMonth);
+      console.log('📊 This month bookings:', thisMonthBookings.length);
+      console.log('📊 This month bookings by status:', thisMonthBookings.reduce((acc, b) => {
+        acc[b.status] = (acc[b.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>));
+
+      const thisMonthUniqueCustomers = new Set([
+        ...thisMonthBookings.map(b => b.customer_email || b.customer_phone).filter(Boolean)
+      ]);
+
+      // Calculate total earnings
+      const totalEarnings = paidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const thisMonthEarnings = thisMonthPaidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const lastMonthEarnings = lastMonthPaidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+      // Calculate growth percentage
+      const monthlyGrowth = lastMonthEarnings > 0 
+        ? ((thisMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100
+        : thisMonthEarnings > 0 ? 100 : 0;
+
+      // Calculate average job value
+      const averageJobValue = completedBookings.length > 0
+        ? totalEarnings / completedBookings.length
+        : 0;
+
+      // Calculate this month's completed jobs
+      const thisMonthCompletedJobs = thisMonthBookings.filter(b => b.status === 'completed').length;
+      console.log('📊 This month completed jobs:', thisMonthCompletedJobs);
+
+      // Calculate this month's active bookings (confirmed or in_progress)
+      const thisMonthActiveBookings = thisMonthBookings.filter(
+        b => b.status === 'confirmed' || b.status === 'in_progress'
+      ).length;
+
+      // Use real rating and response stats from database
+      const customerRating = parseFloat(ratingStats.average_rating) || 0;
+      const responseRate = responseStats.response_rate_percentage || 0;
+
+      const stats = {
+        totalEarnings,
+        activeJobs: bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length,
+        completedJobs: completedBookings.length,
+        customerRating, // Real rating from reviews
+        pendingBookings: bookings.filter(b => b.status === 'pending').length,
+        thisMonthEarnings,
+        responseRate, // Real response rate from bookings
+        totalCustomers: uniqueCustomers.size,
+        averageJobValue,
+        growthPercentage: monthlyGrowth,
+        weeklyBookings: bookings.filter(b => {
+          const bookingDate = new Date(b.booking_date);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return bookingDate >= weekAgo;
+        }).length,
+        monthlyGrowth,
+        // New monthly overview stats
+        thisMonthBookings: thisMonthBookings.length,
+        thisMonthCompletedJobs,
+        thisMonthActiveBookings,
+        thisMonthCustomers: thisMonthUniqueCustomers.size,
+        thisMonthAverageJobValue: thisMonthCompletedJobs > 0 
+          ? thisMonthEarnings / thisMonthCompletedJobs 
+          : 0,
+        // Rating and response stats
+        totalReviews: ratingStats.total_reviews || 0,
+        averageResponseTimeMinutes: parseFloat(responseStats.average_response_minutes) || 0,
+        averageResponseTime: formatResponseTime(parseFloat(responseStats.average_response_minutes) || 0)
+      };
+
+      // Helper function to format response time
+      function formatResponseTime(minutes: number): string {
+        if (minutes === 0) return 'No data';
+        if (minutes < 60) return `${Math.round(minutes)}m`;
+        if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
+        return `${Math.round(minutes / 1440)}d`;
+      }
+
+      console.log('✅ Dashboard stats calculated:', stats);
+      return {
+        success: true,
+        data: stats,
+        message: 'Dashboard statistics retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Dashboard stats error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get activity feed for provider
+  async getActivityFeed(providerId: string, limit: number = 20): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('📋 Fetching activity feed for provider:', providerId);
+
+      const user = await this.getCurrentUser();
+      if (!user || user.id !== providerId) {
+        return {
+          success: false,
+          error: 'User not authenticated or unauthorized'
+        };
+      }
+
+      // Fetch recent activities from different sources
+      const [bookingsResult, paymentsResult, shopsResult] = await Promise.all([
+        // Recent bookings
+        this.client
+          .from('shop_bookings')
+          .select('*, shop_services(name)')
+          .eq('provider_id', providerId)
+          .order('created_at', { ascending: false })
+          .limit(limit),
+        
+        // Recent payments
+        this.client
+          .from('payments')
+          .select('*')
+          .eq('provider_id', providerId)
+          .order('created_at', { ascending: false })
+          .limit(limit),
+        
+        // Recent shop updates
+        this.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('provider_id', providerId)
+          .order('updated_at', { ascending: false })
+          .limit(5)
+      ]);
+
+      const activities: any[] = [];
+
+      // Transform bookings to activities
+      if (bookingsResult.data) {
+        bookingsResult.data.forEach(booking => {
+          if (booking.status === 'pending') {
+            activities.push({
+              id: `booking-${booking.id}`,
+              type: 'new_booking',
+              title: 'New Booking Request',
+              description: `${booking.customer_name} requested ${booking.shop_services?.name || 'a service'} for ${booking.booking_date}`,
+              timestamp: booking.created_at,
+              customer: booking.customer_name,
+              priority: 'high'
+            });
+          } else if (booking.status === 'completed') {
+            activities.push({
+              id: `booking-complete-${booking.id}`,
+              type: 'job_completed',
+              title: 'Service Completed',
+              description: `Completed service for ${booking.customer_name}`,
+              timestamp: booking.updated_at,
+              amount: booking.total_amount,
+              customer: booking.customer_name,
+              priority: 'low'
+            });
+          }
+        });
+      }
+
+      // Transform payments to activities
+      if (paymentsResult.data) {
+        paymentsResult.data.forEach(payment => {
+          if (payment.payment_status === 'paid') {
+            activities.push({
+              id: `payment-${payment.id}`,
+              type: 'payment_received',
+              title: 'Payment Received',
+              description: `Payment for ${payment.service_title} from ${payment.client_name}`,
+              timestamp: payment.updated_at || payment.created_at,
+              amount: payment.amount,
+              customer: payment.client_name,
+              priority: 'medium'
+            });
+          }
+        });
+      }
+
+      // Transform shop updates to activities
+      if (shopsResult.data) {
+        shopsResult.data.forEach(shop => {
+          // Only show if recently updated (within last 24 hours)
+          const updateTime = new Date(shop.updated_at);
+          const dayAgo = new Date();
+          dayAgo.setDate(dayAgo.getDate() - 1);
+          
+          if (updateTime > dayAgo && shop.updated_at !== shop.created_at) {
+            activities.push({
+              id: `shop-update-${shop.id}`,
+              type: 'schedule_updated',
+              title: 'Shop Updated',
+              description: `Updated settings for ${shop.name}`,
+              timestamp: shop.updated_at,
+              priority: 'low'
+            });
+          }
+        });
+      }
+
+      // Sort activities by timestamp (most recent first)
+      activities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      // Limit to requested number
+      const limitedActivities = activities.slice(0, limit);
+
+      console.log('✅ Activity feed retrieved:', limitedActivities.length, 'activities');
+      return {
+        success: true,
+        data: limitedActivities,
+        message: 'Activity feed retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Activity feed error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Create a review for a completed booking
+  async createReview(reviewData: {
+    booking_id: string;
+    shop_id: string;
+    provider_id: string;
+    service_id?: string;
+    customer_name: string;
+    customer_email?: string;
+    customer_phone?: string;
+    rating: number;
+    title?: string;
+    comment?: string;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('⭐ Creating review for booking:', reviewData.booking_id);
+
+      const { data, error } = await this.client
+        .from('reviews')
+        .insert({
+          booking_id: reviewData.booking_id,
+          shop_id: reviewData.shop_id,
+          provider_id: reviewData.provider_id,
+          service_id: reviewData.service_id,
+          customer_name: reviewData.customer_name,
+          customer_email: reviewData.customer_email,
+          customer_phone: reviewData.customer_phone,
+          rating: reviewData.rating,
+          title: reviewData.title,
+          comment: reviewData.comment,
+          is_verified: true,
+          is_public: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Create review error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ Review created successfully');
+      return {
+        success: true,
+        data,
+        message: 'Review submitted successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected create review error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get reviews for a shop
+  async getShopReviews(shopId: string, limit: number = 20): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('⭐ Fetching reviews for shop:', shopId);
+
+      const { data, error } = await this.client
+        .from('reviews')
+        .select('*')
+        .eq('shop_id', shopId)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('❌ Get shop reviews error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ Successfully fetched', data?.length || 0, 'reviews');
+      return {
+        success: true,
+        data: data || [],
+        message: 'Reviews retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get reviews error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get shop rating statistics
+  async getShopRatingStats(shopId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📊 Fetching rating stats for shop:', shopId);
+
+      const { data, error } = await this.client
+        .rpc('get_shop_rating_stats', { p_shop_id: shopId });
+
+      if (error) {
+        console.error('❌ Get shop rating stats error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      const stats = data?.[0] || { average_rating: 0, total_reviews: 0, rating_distribution: {} };
+
+      console.log('✅ Shop rating stats retrieved:', stats);
+      return {
+        success: true,
+        data: stats,
+        message: 'Rating statistics retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get rating stats error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get provider rating statistics
+  async getProviderRatingStats(providerId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📊 Fetching rating stats for provider:', providerId);
+
+      const { data, error } = await this.client
+        .rpc('get_provider_rating_stats', { p_provider_id: providerId });
+
+      if (error) {
+        console.error('❌ Get provider rating stats error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      const stats = data?.[0] || { average_rating: 0, total_reviews: 0, shops_with_reviews: 0 };
+
+      console.log('✅ Provider rating stats retrieved:', stats);
+      return {
+        success: true,
+        data: stats,
+        message: 'Provider rating statistics retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get provider rating stats error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Get provider response time statistics
+  async getProviderResponseStats(providerId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('⏱️ Fetching response stats for provider:', providerId);
+
+      const { data, error } = await this.client
+        .rpc('get_provider_response_stats', { p_provider_id: providerId });
+
+      if (error) {
+        console.error('❌ Get provider response stats error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      const stats = data?.[0] || { 
+        average_response_minutes: 0, 
+        response_rate_percentage: 0, 
+        total_responded: 0, 
+        total_bookings: 0 
+      };
+
+      console.log('✅ Provider response stats retrieved:', stats);
+      return {
+        success: true,
+        data: stats,
+        message: 'Response statistics retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get response stats error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Add provider response to a review
+  async addProviderResponse(reviewId: string, response: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('💬 Adding provider response to review:', reviewId);
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const { data, error } = await this.client
+        .from('reviews')
+        .update({
+          provider_response: response,
+          provider_responded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reviewId)
+        .eq('provider_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Add provider response error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ Provider response added successfully');
+      return {
+        success: true,
+        data,
+        message: 'Response added successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected add response error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // PROVIDER SKILLS MANAGEMENT
+  // ==============================================
+
+  async addProviderSkill(skillData: {
+    skill_name: string;
+    experience_level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+    years_experience?: number;
+    is_certified?: boolean;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🎯 Adding provider skill:', skillData);
+
+      const { data, error } = await supabase.rpc('add_provider_skill', {
+        p_skill_name: skillData.skill_name,
+        p_experience_level: skillData.experience_level,
+        p_years_experience: skillData.years_experience || 0,
+        p_is_certified: skillData.is_certified || false
+      });
+
+      if (error) {
+        console.error('❌ Error adding skill:', error);
+        throw error;
+      }
+
+      console.log('✅ Skill added successfully:', data);
+      return {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      console.error('❌ Error in addProviderSkill:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getProviderSkills(providerId?: string): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🔍 Getting provider skills for:', providerId || 'current user');
+
+      const { data, error } = await supabase.rpc('get_provider_skills', {
+        p_provider_id: providerId || null
+      });
+
+      if (error) {
+        console.error('❌ Error getting skills:', error);
+        throw error;
+      }
+
+      console.log('✅ Skills retrieved:', data?.length || 0, 'skills');
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('❌ Error in getProviderSkills:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async deleteProviderSkill(skillId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🗑️ Deleting provider skill:', skillId);
+
+      const { error } = await supabase
+        .from('provider_skills')
+        .delete()
+        .eq('id', skillId);
+
+      if (error) {
+        console.error('❌ Error deleting skill:', error);
+        throw error;
+      }
+
+      console.log('✅ Skill deleted successfully');
+      return {
+        success: true,
+        data: null
+      };
+    } catch (error) {
+      console.error('❌ Error in deleteProviderSkill:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // PROVIDER CERTIFICATIONS MANAGEMENT
+  // ==============================================
+
+  async addProviderCertification(certData: {
+    certification_name: string;
+    issued_by: string;
+    issue_date: string;
+    expiry_date?: string;
+    certificate_number?: string;
+    verification_url?: string;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🏆 Adding provider certification:', certData);
+
+      const { data, error } = await supabase.rpc('add_provider_certification', {
+        p_certification_name: certData.certification_name,
+        p_issued_by: certData.issued_by,
+        p_issue_date: certData.issue_date,
+        p_expiry_date: certData.expiry_date || null,
+        p_certificate_number: certData.certificate_number || null,
+        p_verification_url: certData.verification_url || null
+      });
+
+      if (error) {
+        console.error('❌ Error adding certification:', error);
+        throw error;
+      }
+
+      console.log('✅ Certification added successfully:', data);
+      return {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      console.error('❌ Error in addProviderCertification:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getProviderCertifications(providerId?: string): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🔍 Getting provider certifications for:', providerId || 'current user');
+
+      const { data, error } = await supabase.rpc('get_provider_certifications', {
+        p_provider_id: providerId || null
+      });
+
+      if (error) {
+        console.error('❌ Error getting certifications:', error);
+        throw error;
+      }
+
+      console.log('✅ Certifications retrieved:', data?.length || 0, 'certifications');
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('❌ Error in getProviderCertifications:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async deleteProviderCertification(certId: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🗑️ Deleting provider certification:', certId);
+
+      const { error } = await supabase
+        .from('provider_certifications')
+        .delete()
+        .eq('id', certId);
+
+      if (error) {
+        console.error('❌ Error deleting certification:', error);
+        throw error;
+      }
+
+      console.log('✅ Certification deleted successfully');
+      return {
+        success: true,
+        data: null
+      };
+    } catch (error) {
+      console.error('❌ Error in deleteProviderCertification:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // USER PROFILE MANAGEMENT
+  // ==============================================
+
+  async updateUserProfile(profileData: {
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    phone?: string;
+    address?: string;
+    bio?: string;
+    avatar_url?: string;
+    gender?: string;
+    birth_date?: string;
+    is_premium?: boolean;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('👤 Updating user profile:', profileData);
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const { data, error } = await this.client
+        .from('users')
+        .update({
+          ...profileData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error updating user profile:', error);
+        return {
+          success: false,
+          error: `Failed to update profile: ${error.message}`
+        };
+      }
+
+      console.log('✅ User profile updated successfully');
+      return {
+        success: true,
+        data: data,
+        message: 'Profile updated successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error updating user profile:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async updateProviderBusiness(businessData: {
+    name?: string;
+    description?: string;
+    category?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    website_url?: string;
+    women_owned_business?: boolean;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🏢 Updating provider business:', JSON.stringify(businessData, null, 2));
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      console.log('👤 Current user ID:', user.id);
+
+      // First check if a business profile exists
+      const { data: businessList, error: checkError } = await this.client
+        .from('provider_businesses')
+        .select('id')
+        .eq('provider_id', user.id)
+        .limit(1);
+
+      if (checkError) {
+        console.error('❌ Error checking provider business:', checkError);
+        return {
+          success: false,
+          error: `Failed to check business profile: ${checkError.message}`
+        };
+      }
+
+      const existingBusiness = businessList && businessList.length > 0 ? businessList[0] : null;
+
+      // If there are multiple business profiles, clean them up (keep only the most recent)
+      if (businessList && businessList.length > 1) {
+        console.warn('⚠️ Multiple business profiles found for provider, cleaning up duplicates...');
+        
+        // Get all business profiles to find the most recent one
+        const { data: allBusinesses, error: allError } = await this.client
+          .from('provider_businesses')
+          .select('id, created_at')
+          .eq('provider_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (!allError && allBusinesses && allBusinesses.length > 1) {
+          // Keep the first (most recent) and delete the rest
+          const idsToDelete = allBusinesses.slice(1).map(b => b.id);
+          
+          const { error: deleteError } = await this.client
+            .from('provider_businesses')
+            .delete()
+            .in('id', idsToDelete);
+
+          if (deleteError) {
+            console.error('❌ Error cleaning up duplicate businesses:', deleteError);
+          } else {
+            console.log('✅ Cleaned up', idsToDelete.length, 'duplicate business profiles');
+          }
+        }
+      }
+
+      let result;
+      if (existingBusiness) {
+        // Update existing business - use the ID we found
+        const { error: updateError } = await this.client
+          .from('provider_businesses')
+          .update({
+            ...businessData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingBusiness.id);
+
+        if (updateError) {
+          console.error('❌ Error updating provider business:', updateError);
+          return {
+            success: false,
+            error: `Failed to update business profile: ${updateError.message}`
+          };
+        }
+
+        // Fetch the updated record
+        const { data: updatedData, error: fetchError } = await this.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('id', existingBusiness.id)
+          .limit(1);
+
+        if (fetchError || !updatedData || updatedData.length === 0) {
+          console.error('❌ Error fetching updated business:', fetchError);
+          return {
+            success: false,
+            error: 'Failed to fetch updated business profile'
+          };
+        }
+
+        result = updatedData[0];
+      } else {
+        // Create new business profile
+        const { data: insertData, error: insertError } = await this.client
+          .from('provider_businesses')
+          .insert({
+            provider_id: user.id,
+            ...businessData,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+
+        if (insertError) {
+          console.error('❌ Error creating provider business:', insertError);
+          return {
+            success: false,
+            error: `Failed to create business profile: ${insertError.message}`
+          };
+        }
+
+        if (!insertData || insertData.length === 0) {
+          return {
+            success: false,
+            error: 'Failed to create business profile - no data returned'
+          };
+        }
+
+        result = insertData[0];
+      }
+
+      console.log('✅ Provider business updated/created successfully');
+      return {
+        success: true,
+        data: result,
+        message: existingBusiness ? 'Business profile updated successfully' : 'Business profile created successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error updating provider business:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getUserProfile(userId?: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('👤 Getting user profile for:', userId || 'current user');
+
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const targetUserId = userId || currentUser.id;
+
+      // Get user data
+      const { data: userData, error: userError } = await this.client
+        .from('users')
+        .select('*')
+        .eq('id', targetUserId)
+        .single();
+
+      if (userError) {
+        console.error('❌ Error getting user profile:', userError);
+        return {
+          success: false,
+          error: `Failed to get profile: ${userError.message}`
+        };
+      }
+
+      // Get provider business separately if user is a provider
+      let providerBusiness = null;
+      if (userData.account_type === 'provider') {
+        const { data: businessList, error: businessError } = await this.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('provider_id', targetUserId)
+          .limit(1);
+
+        if (businessError) {
+          console.error('⚠️ Error getting provider business:', businessError);
+          // Don't fail the whole request if business doesn't exist
+        } else if (businessList && businessList.length > 0) {
+          providerBusiness = businessList[0];
+        }
+      }
+
+      // Format the response to match ProfileScreen expectations
+      const profile = {
+        ...userData,
+        provider_business: providerBusiness
+      };
+
+      console.log('✅ User profile retrieved successfully');
+      return {
+        success: true,
+        data: profile,
+        message: 'Profile retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error getting user profile:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // USER PRIVACY SETTINGS
+  // ==============================================
+
+  async getPrivacySettings(): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🔐 Getting privacy settings');
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Get user preferences which contain privacy settings
+      const { data, error } = await this.client
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('❌ Error getting privacy settings:', error);
+        return {
+          success: false,
+          error: `Failed to get privacy settings: ${error.message}`
+        };
+      }
+
+      // If no preferences exist, return default settings
+      const defaultSettings = {
+        profile_visibility: 'public',
+        location_sharing: false,
+        show_online_status: true,
+        allow_direct_messages: true,
+        allow_data_analytics: true,
+        marketing_emails: false,
+        two_factor_auth: false,
+        visibility_phone: true,
+        visibility_email: false,
+        visibility_address: false,
+        visibility_work_history: true
+      };
+
+      console.log('✅ Privacy settings retrieved');
+      return {
+        success: true,
+        data: data || defaultSettings,
+        message: 'Privacy settings retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error getting privacy settings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async updatePrivacySettings(settings: {
+    profile_visibility?: string;
+    location_sharing?: boolean;
+    show_online_status?: boolean;
+    allow_direct_messages?: boolean;
+    allow_data_analytics?: boolean;
+    marketing_emails?: boolean;
+    two_factor_auth?: boolean;
+    visibility_phone?: boolean;
+    visibility_email?: boolean;
+    visibility_address?: boolean;
+    visibility_work_history?: boolean;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🔐 Updating privacy settings:', settings);
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Check if preferences exist
+      const { data: existing, error: checkError } = await this.client
+        .from('user_preferences')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Error checking preferences:', checkError);
+        return {
+          success: false,
+          error: `Failed to check preferences: ${checkError.message}`
+        };
+      }
+
+      let result;
+      if (existing) {
+        // Update existing preferences
+        const { data, error } = await this.client
+          .from('user_preferences')
+          .update({
+            ...settings,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('❌ Error updating privacy settings:', error);
+          return {
+            success: false,
+            error: `Failed to update privacy settings: ${error.message}`
+          };
+        }
+        result = data;
+      } else {
+        // Create new preferences
+        const { data, error } = await this.client
+          .from('user_preferences')
+          .insert({
+            user_id: user.id,
+            ...settings,
+            // Set default notification preferences
+            email_notifications: true,
+            push_notifications: true,
+            sms_notifications: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('❌ Error creating privacy settings:', error);
+          return {
+            success: false,
+            error: `Failed to create privacy settings: ${error.message}`
+          };
+        }
+        result = data;
+      }
+
+      console.log('✅ Privacy settings updated successfully');
+      return {
+        success: true,
+        data: result,
+        message: 'Privacy settings updated successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error updating privacy settings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // SUPPORT TICKET SYSTEM
+  // ==============================================
+
+  async createSupportTicket(ticketData: {
+    subject: string;
+    description: string;
+    category: string;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    user_name?: string;
+    user_email?: string;
+    user_phone?: string;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('🎫 Creating support ticket:', ticketData.subject);
+
+      const { data, error } = await supabase.rpc('create_support_ticket', {
+        p_subject: ticketData.subject,
+        p_description: ticketData.description,
+        p_category: ticketData.category,
+        p_priority: ticketData.priority || 'normal',
+        p_user_name: ticketData.user_name || null,
+        p_user_email: ticketData.user_email || null,
+        p_user_phone: ticketData.user_phone || null
+      });
+
+      if (error) {
+        console.error('❌ Error creating support ticket:', error);
+        return {
+          success: false,
+          error: `Failed to create support ticket: ${error.message}`
+        };
+      }
+
+      console.log('✅ Support ticket created successfully:', data);
+      return {
+        success: true,
+        data: data,
+        message: 'Support ticket created successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error creating support ticket:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getSupportTickets(): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🎫 Getting support tickets');
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .select(`
+          *,
+          support_ticket_messages (
+            id,
+            message,
+            created_at,
+            sender_id
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error getting support tickets:', error);
+        return {
+          success: false,
+          error: `Failed to get support tickets: ${error.message}`
+        };
+      }
+
+      // Count messages for each ticket
+      const ticketsWithCount = (data || []).map(ticket => ({
+        ...ticket,
+        messages_count: ticket.support_ticket_messages?.length || 0
+      }));
+
+      console.log('✅ Support tickets retrieved:', ticketsWithCount.length);
+      return {
+        success: true,
+        data: ticketsWithCount,
+        message: 'Support tickets retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error getting support tickets:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async addTicketMessage(ticketId: string, message: string): Promise<ServiceResponse<any>> {
+    try {
+      console.log('💬 Adding message to ticket:', ticketId);
+
+      const { data, error } = await supabase.rpc('add_ticket_message', {
+        p_ticket_id: ticketId,
+        p_message: message,
+        p_is_internal: false
+      });
+
+      if (error) {
+        console.error('❌ Error adding ticket message:', error);
+        return {
+          success: false,
+          error: `Failed to add message: ${error.message}`
+        };
+      }
+
+      console.log('✅ Message added successfully');
+      return {
+        success: true,
+        data: data,
+        message: 'Message added successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error adding ticket message:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ==============================================
+  // PROVIDER VERIFICATION SYSTEM
+  // ==============================================
+
+  async submitVerificationRequest(requestData: {
+    request_type: 'business' | 'identity' | 'certification' | 'skill';
+    documents?: any;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('✅ Submitting verification request:', requestData);
+
+      const { data, error } = await supabase.rpc('submit_verification_request', {
+        p_request_type: requestData.request_type,
+        p_documents: requestData.documents || null
+      });
+
+      if (error) {
+        console.error('❌ Error submitting verification request:', error);
+        throw error;
+      }
+
+      console.log('✅ Verification request submitted successfully:', data);
+      return {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      console.error('❌ Error in submitVerificationRequest:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getVerificationRequests(): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🔍 Getting verification requests');
+
+      const { data, error } = await supabase
+        .from('verification_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error getting verification requests:', error);
+        throw error;
+      }
+
+      console.log('✅ Verification requests retrieved:', data?.length || 0, 'requests');
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('❌ Error in getVerificationRequests:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

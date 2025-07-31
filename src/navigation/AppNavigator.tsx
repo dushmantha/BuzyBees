@@ -1020,7 +1020,7 @@ const AppNavigator = () => {
         component={TermsConditionsScreen}
         options={{
           title: 'Terms & Conditions',
-          headerShown: true,
+          headerShown: false,
           ...getHeaderStyle(),
         }}
       />

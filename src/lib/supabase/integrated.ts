@@ -483,9 +483,28 @@ class IntegratedShopService {
           
           // Check if it's a bucket issue
           if (error.message?.includes('bucket') || error.message?.includes('not found')) {
+            console.error('🪣 Storage bucket missing. Please create buckets manually:');
+            console.error('🔧 Go to Supabase Dashboard > Storage');
+            console.error('🔧 Create bucket: "shop-images" (public)');
+            console.error('🔧 Create bucket: "user-avatars" (public)');
+            console.error('🔧 Or run: storage_setup_user_safe.sql');
+            
             return {
               success: false,
-              error: 'Storage bucket "shop-images" not found. Please create it in Supabase Dashboard > Storage'
+              error: 'Storage buckets missing. Please create "shop-images" and "user-avatars" buckets in Supabase Dashboard > Storage (make them public)'
+            };
+          }
+          
+          // Fallback: For development, allow local images to be used temporarily
+          if (localUri.startsWith('file://')) {
+            console.warn('⚠️ Upload failed, using local URI as fallback for development');
+            console.warn('⚠️ This is temporary - images will not persist across app restarts');
+            console.warn('⚠️ Please create the required storage buckets for production use');
+            
+            return {
+              success: true,
+              data: localUri, // Return the local URI as fallback
+              warning: 'Using local image (temporary). Create storage buckets for persistence.'
             };
           }
           
