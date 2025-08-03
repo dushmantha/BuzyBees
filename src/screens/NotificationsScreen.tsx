@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount, useNotifications } from '../navigation/AppNavigator';
+import { usePremium } from '../contexts/PremiumContext';
 import UpgradeModal from '../components/UpgradeModal'; // Import the separate component
 
 interface Notification {
@@ -40,7 +41,8 @@ interface NotificationsResponse {
 }
 
 const NotificationsScreen = ({ navigation }: { navigation: any }) => {
-  const { accountType, isPro } = useAccount();
+  const { accountType } = useAccount();
+  const { isPremium } = usePremium();
   const { refreshNotifications, setNotificationCount } = useNotifications();
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -360,7 +362,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 
   const handleNotificationPress = (notification: Notification, index: number) => {
     // Check if user is trying to access beyond the 3 notification limit
-    if (!isPro && index >= 3) {
+    if (!isPremium && index >= 3) {
       setShowUpgradeModal(true);
       return;
     }
@@ -378,7 +380,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
     event.stopPropagation();
     
     // Check if user is trying to access beyond the 3 notification limit
-    if (!isPro && index >= 3) {
+    if (!isPremium && index >= 3) {
       setShowUpgradeModal(true);
       return;
     }
@@ -502,7 +504,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
   );
 
   // Limit notifications for free users
-  const displayedNotifications = isPro ? filteredNotifications : filteredNotifications.slice(0, 3);
+  const displayedNotifications = isPremium ? filteredNotifications : filteredNotifications.slice(0, 3);
   const hiddenNotificationsCount = filteredNotifications.length - displayedNotifications.length;
 
   // Custom features for notifications upgrade modal
@@ -535,7 +537,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 
   const renderNotificationItem = ({ item, index }: { item: Notification; index: number }) => {
     const isExpanded = expandedNotifications.has(item.id);
-    const isLocked = !isPro && index >= 3;
+    const isLocked = !isPremium && index >= 3;
     
     return (
       <View style={[
@@ -656,7 +658,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const renderUpgradePrompt = () => {
-    if (isPro || hiddenNotificationsCount <= 0) return null;
+    if (isPremium || hiddenNotificationsCount <= 0) return null;
 
     return (
       <TouchableOpacity 

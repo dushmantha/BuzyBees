@@ -2348,6 +2348,123 @@ class NormalizedShopService {
     }
   }
 
+  // Get shop statistics (rating, reviews, staff count, services count)
+  async getShopStatistics(shopId?: string): Promise<ServiceResponse<{ 
+    shop_id: string; 
+    rating: number; 
+    reviews_count: number; 
+    staff_count: number; 
+    services_count: number; 
+  }[]>> {
+    try {
+      console.log('📊 Fetching shop statistics');
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Get all shops for this provider
+      let shopQuery = this.client
+        .from('provider_businesses')
+        .select('id')
+        .eq('provider_id', user.id);
+
+      if (shopId) {
+        shopQuery = shopQuery.eq('id', shopId);
+      }
+
+      const { data: shops, error: shopsError } = await shopQuery;
+
+      if (shopsError) {
+        console.error('❌ Get shops error:', shopsError);
+        return {
+          success: false,
+          error: shopsError.message
+        };
+      }
+
+      if (!shops || shops.length === 0) {
+        return {
+          success: true,
+          data: []
+        };
+      }
+
+      const shopIds = shops.map(s => s.id);
+      console.log('🏪 Processing statistics for shops:', shopIds);
+
+      // Get statistics for all shops in parallel
+      const statisticsPromises = shopIds.map(async (shopId) => {
+        const [reviewsResult, staffResult, servicesResult] = await Promise.all([
+          // Get reviews and calculate rating
+          this.client
+            .from('reviews')
+            .select('rating')
+            .eq('shop_id', shopId),
+          
+          // Get staff count
+          this.client
+            .from('shop_staff')
+            .select('id')
+            .eq('shop_id', shopId)
+            .eq('is_active', true),
+          
+          // Get services count
+          this.client
+            .from('shop_services')
+            .select('id')
+            .eq('shop_id', shopId)
+            .eq('is_active', true)
+        ]);
+
+        // Calculate rating and reviews count
+        const reviews = reviewsResult.data || [];
+        const rating = reviews.length > 0 
+          ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length 
+          : 0;
+        const reviews_count = reviews.length;
+
+        // Get counts
+        const staff_count = staffResult.data?.length || 0;
+        const services_count = servicesResult.data?.length || 0;
+
+        console.log(`📊 Shop ${shopId} stats:`, {
+          rating: rating.toFixed(1),
+          reviews_count,
+          staff_count,
+          services_count
+        });
+
+        return {
+          shop_id: shopId,
+          rating: Math.round(rating * 10) / 10, // Round to 1 decimal
+          reviews_count,
+          staff_count,
+          services_count
+        };
+      });
+
+      const statistics = await Promise.all(statisticsPromises);
+
+      console.log('✅ Shop statistics calculated:', statistics);
+      return {
+        success: true,
+        data: statistics
+      };
+
+    } catch (error: any) {
+      console.error('❌ Get shop statistics error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get shop statistics'
+      };
+    }
+  }
+
   // Get monthly revenue for each shop
   async getShopMonthlyRevenue(shopId?: string): Promise<ServiceResponse<{ shop_id?: string; monthly_revenue: number }[]>> {
     try {
@@ -2371,14 +2488,43 @@ class NormalizedShopService {
 
       console.log('📅 Calculating revenue from', dateFrom, 'to', dateTo);
 
-      // Build query for current month's paid payments
+      // First, check if there are any payments at all for this provider
+      console.log('🔍 Checking all payments for provider:', user.id);
+      const { data: allPayments, error: allPaymentsError } = await this.client
+        .from('payments')
+        .select('*')
+        .eq('provider_id', user.id);
+
+      if (allPaymentsError) {
+        console.error('❌ Error checking all payments:', allPaymentsError);
+      } else {
+        console.log('💳 Total payments found:', allPayments?.length || 0);
+        console.log('💳 Payment statuses:', [...new Set(allPayments?.map(p => p.payment_status))]);
+        console.log('💳 Payment sample:', allPayments?.slice(0, 3));
+      }
+
+      // Build query for current month's paid payments  
       let query = this.client
         .from('payments')
-        .select('shop_id, amount')
+        .select('shop_id, amount, payment_status, service_date, created_at')
         .eq('provider_id', user.id)
         .eq('payment_status', 'paid')
         .gte('service_date', dateFrom)
         .lte('service_date', dateTo);
+
+      // Also try alternative query with created_at date
+      console.log('🔍 Also checking payments by created_at date...');
+      const { data: altPayments, error: altError } = await this.client
+        .from('payments')
+        .select('shop_id, amount, payment_status, service_date, created_at')
+        .eq('provider_id', user.id)
+        .eq('payment_status', 'paid')
+        .gte('created_at', dateFrom)
+        .lte('created_at', dateTo + 'T23:59:59');
+
+      if (!altError && altPayments) {
+        console.log('💳 Payments by created_at:', altPayments.length);
+      }
 
       if (shopId) {
         query = query.eq('shop_id', shopId);
@@ -2394,14 +2540,92 @@ class NormalizedShopService {
         };
       }
 
+      console.log('💳 Current month payments found:', data?.length || 0);
+      console.log('💳 Current month payment details:', data);
+
+      // If no current month data, try different approaches
+      let finalData = data;
+      if (!data || data.length === 0) {
+        console.log('⚠️ No current month data, trying all-time revenue...');
+        
+        // Try 1: All-time paid payments
+        const { data: allTimeData, error: allTimeError } = await this.client
+          .from('payments')
+          .select('shop_id, amount, payment_status, service_date, created_at')
+          .eq('provider_id', user.id)
+          .eq('payment_status', 'paid');
+
+        if (!allTimeError && allTimeData && allTimeData.length > 0) {
+          console.log('💳 All-time PAID payments found:', allTimeData.length);
+          finalData = allTimeData;
+        } else {
+          // Try 2: All payments regardless of status
+          console.log('⚠️ No paid payments, checking all payment statuses...');
+          const { data: allStatusData, error: allStatusError } = await this.client
+            .from('payments')
+            .select('shop_id, amount, payment_status, service_date, created_at')
+            .eq('provider_id', user.id);
+
+          if (!allStatusError && allStatusData) {
+            console.log('💳 All payments (any status) found:', allStatusData.length);
+            console.log('💳 Payment statuses found:', [...new Set(allStatusData.map(p => p.payment_status))]);
+            finalData = allStatusData;
+          }
+        }
+      }
+
+      // Get all shop IDs for this provider to check matching
+      const { data: providerShops, error: shopsError } = await this.client
+        .from('provider_businesses')
+        .select('id, name')
+        .eq('provider_id', user.id);
+
+      if (shopsError) {
+        console.error('❌ Error getting provider shops:', shopsError);
+      } else {
+        console.log('🏪 Provider shops:', providerShops?.map(s => ({ id: s.id, name: s.name })));
+      }
+
       // Group by shop_id and sum amounts
       const revenueByShop = new Map<string, number>();
       
-      data?.forEach(payment => {
-        const shopId = payment.shop_id || 'unknown';
+      finalData?.forEach(payment => {
+        let shopId = payment.shop_id;
         const amount = parseFloat(payment.amount) || 0;
+        
+        console.log(`💰 Processing payment:`, {
+          originalShopId: payment.shop_id,
+          amount: amount,
+          status: payment.payment_status,
+          bookingId: payment.booking_id,
+          serviceDate: payment.service_date
+        });
+        
+        // Handle payments without shop_id - assign to first shop as fallback
+        if (!shopId && providerShops && providerShops.length > 0) {
+          shopId = providerShops[0].id;
+          console.log(`⚠️ Payment missing shop_id, assigning to first shop: ${shopId}`);
+        } else if (!shopId) {
+          shopId = 'unknown';
+          console.warn(`⚠️ Payment missing shop_id and no shops available`);
+        }
+        
+        // Check if this shop_id exists in provider_businesses
+        const shopExists = providerShops?.find(s => s.id === shopId);
+        if (!shopExists && shopId !== 'unknown') {
+          console.warn(`⚠️ Payment has shop_id ${shopId} but this shop doesn't exist in provider_businesses`);
+          // If shop doesn't exist, assign to first available shop
+          if (providerShops && providerShops.length > 0) {
+            shopId = providerShops[0].id;
+            console.log(`🔧 Reassigning to first available shop: ${shopId}`);
+          }
+        }
+        
         revenueByShop.set(shopId, (revenueByShop.get(shopId) || 0) + amount);
+        console.log(`✅ Added $${amount} to shop ${shopId}. New total: $${revenueByShop.get(shopId)}`);
       });
+
+      console.log('💰 Revenue by shop before conversion:', Object.fromEntries(revenueByShop));
 
       // Convert to array format
       const result = Array.from(revenueByShop.entries()).map(([shop_id, monthly_revenue]) => ({
@@ -2409,7 +2633,7 @@ class NormalizedShopService {
         monthly_revenue
       }));
 
-      console.log('✅ Monthly revenue calculated:', result);
+      console.log('✅ Final revenue calculated:', result);
       return {
         success: true,
         data: result

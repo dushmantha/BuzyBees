@@ -19,7 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import api from '../services/api/home/providerHomeAPI';
-// import { useAuth } from '../context/AuthContext'; // Uncomment when auth is ready
+import { useAuth } from '../context/AuthContext';
+import { usePremium } from '../contexts/PremiumContext';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 3;
@@ -98,7 +99,8 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const user = null; // Temporary - replace with useAuth when ready
+  const { user, isLoading: authLoading } = useAuth();
+  const { isPremium, subscription, isLoading: premiumLoading } = usePremium();
   
   const [homeData, setHomeData] = useState<HomeData>({
     categories: [],
@@ -121,27 +123,54 @@ const HomeScreen = () => {
 
   // Fetch home data
   const fetchHomeData = useCallback(async () => {
+    // Don't fetch if auth is still loading or no user
+    if (authLoading || premiumLoading || !user?.id) {
+      console.log('🔄 Skipping home data fetch - loading or no user:', { 
+        authLoading, 
+        premiumLoading, 
+        userId: user?.id 
+      });
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
+      console.log('📦 Fetching home data for user:', {
+        userId: user.id,
+        isPremium,
+        subscriptionType: subscription?.subscription_type,
+        subscriptionStatus: subscription?.subscription_status
+      });
       
-      const { data, error: fetchError } = await api.getHomeData(user?.id);
+      const { data, error: fetchError } = await api.getHomeData(user.id);
       
       if (fetchError) {
         throw new Error(fetchError);
       }
       
       if (data) {
+        console.log('✅ Home data loaded successfully:', {
+          categories: data.categories?.length || 0,
+          services: data.popularServices?.length || 0,
+          promotions: data.promotions?.length || 0,
+          stats: data.stats
+        });
         setHomeData(data);
+      } else {
+        console.warn('⚠️ No data returned from home API');
+        setError('No data available.');
       }
       
     } catch (err) {
-      console.error('Error fetching home data:', err);
+      console.error('❌ Error fetching home data:', err);
       setError('Failed to load data. Please try again.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, authLoading, premiumLoading, isPremium, subscription]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -504,7 +533,7 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  if (isLoading && homeData.categories.length === 0) {
+  if ((isLoading || authLoading || premiumLoading) && homeData.categories.length === 0) {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1A2533" />
@@ -534,6 +563,11 @@ const HomeScreen = () => {
         <View style={styles.headerContent}>
           <Text style={styles.headerGreeting}>Hej{user ? ` ${user.full_name}` : ''}! 👋</Text>
           <Text style={styles.headerTitle}>Vad vill du boka?</Text>
+          {__DEV__ && (
+            <Text style={styles.debugText}>
+              Debug: Premium={isPremium ? 'Yes' : 'No'} | Type={subscription?.subscription_type || 'None'} | Status={subscription?.subscription_status || 'None'}
+            </Text>
+          )}
         </View>
         {user && (
           <TouchableOpacity style={styles.profileButton}>
@@ -841,6 +875,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F2937', // Dark accent charcoal black
     letterSpacing: -0.5,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginTop: 4,
   },
   profileButton: {
     width: 40,

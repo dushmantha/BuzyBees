@@ -19,16 +19,17 @@ import UpgradeModal from '../../components/UpgradeModal'; // Adjust the import p
 // Import Supabase service
 import { normalizedShopService } from '../../lib/supabase/normalized';
 import { useAuth } from '../../navigation/AppNavigator';
+import { usePremium } from '../../contexts/PremiumContext';
 
 const { width, height } = Dimensions.get('window');
 
 const EarningsScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { isPremium, isLoading: premiumLoading } = usePremium();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
   
   // API data states
   const [earningsData, setEarningsData] = useState(null);
@@ -459,14 +460,14 @@ const EarningsScreen = ({ navigation }) => {
 
   const getDisplayedTransactions = () => {
     const filtered = getFilteredTransactions();
-    if (!isPremiumUser) {
+    if (!isPremium) {
       return filtered.slice(0, 3);
     }
     return filtered;
   };
 
   const getDisplayedMonthlyData = () => {
-    if (!isPremiumUser) {
+    if (!isPremium) {
       return monthlyData.slice(0, 3);
     }
     return monthlyData;
@@ -477,7 +478,7 @@ const EarningsScreen = ({ navigation }) => {
   };
 
   const handleFilterPress = (filterKey) => {
-    if (!isPremiumUser && filterKey !== 'all') {
+    if (!isPremium && filterKey !== 'all') {
       setUpgradeSource('filter');
       setShowUpgradeModal(true);
       return;
@@ -607,7 +608,7 @@ const EarningsScreen = ({ navigation }) => {
       style={[
         styles.filterOption,
         selectedFilter === item.key && styles.activeFilterOption,
-        !isPremiumUser && item.key !== 'all' && styles.lockedFilterOption
+        !isPremium && item.key !== 'all' && styles.lockedFilterOption
       ]}
       onPress={() => handleFilterPress(item.key)}
     >
@@ -623,7 +624,7 @@ const EarningsScreen = ({ navigation }) => {
         ]}>
           {item.label}
         </Text>
-        {!isPremiumUser && item.key !== 'all' && (
+        {!isPremium && item.key !== 'all' && (
           <Ionicons name="lock-closed" size={16} color="#F59E0B" />
         )}
       </View>
@@ -631,7 +632,7 @@ const EarningsScreen = ({ navigation }) => {
   );
 
   const renderMonthItem = ({ item, index }) => {
-    const isBlurred = !isPremiumUser && index >= 3;
+    const isBlurred = !isPremium && index >= 3;
     
     return (
       <View style={[styles.monthItem, isBlurred && styles.blurredItem]}>
@@ -656,7 +657,7 @@ const EarningsScreen = ({ navigation }) => {
   };
 
   const renderTransactionItem = ({ item, index }) => {
-    const isBlurred = !isPremiumUser && index >= 3;
+    const isBlurred = !isPremium && index >= 3;
     
     return (
       <View style={[styles.transactionItem, isBlurred && styles.blurredItem]}>
@@ -721,7 +722,7 @@ const EarningsScreen = ({ navigation }) => {
             showsVerticalScrollIndicator={false}
           />
           
-          {!isPremiumUser && (
+          {!isPremium && (
             <TouchableOpacity
               style={styles.upgradeButton}
               onPress={() => {
@@ -739,7 +740,7 @@ const EarningsScreen = ({ navigation }) => {
   );
 
   const renderPremiumPrompt = (type) => {
-    if (isPremiumUser) return null;
+    if (isPremium) return null;
     
     const remainingCount = type === 'transactions' 
       ? Math.max(0, transactions.length - 3)
@@ -806,7 +807,7 @@ const EarningsScreen = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Earnings</Text>
-          {!isPremiumUser && (
+          {!isPremium && (
             <View style={styles.freeUserBadge}>
               <Text style={styles.freeUserText}>Free</Text>
             </View>
@@ -814,14 +815,14 @@ const EarningsScreen = ({ navigation }) => {
         </View>
         <TouchableOpacity 
           style={styles.exportButton}
-          onPress={() => !isPremiumUser && handleUpgradePress('export')}
+          onPress={() => !isPremium && handleUpgradePress('export')}
         >
           <Ionicons 
             name="download-outline" 
             size={24} 
-            color={isPremiumUser ? "#10B981" : "#F59E0B"} 
+            color={isPremium ? "#10B981" : "#F59E0B"} 
           />
-          {!isPremiumUser && (
+          {!isPremium && (
             <Ionicons 
               name="lock-closed" 
               size={12} 
@@ -907,7 +908,7 @@ const EarningsScreen = ({ navigation }) => {
             >
               <Ionicons name="filter-outline" size={20} color="#10B981" />
               <Text style={styles.filterButtonText}>Filter</Text>
-              {!isPremiumUser && (
+              {!isPremium && (
                 <Ionicons name="lock-closed" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
               )}
             </TouchableOpacity>

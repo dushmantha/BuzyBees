@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccount } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
 import { normalizedShopService, Payment } from '../../lib/supabase/normalized';
+import { usePremium } from '../../contexts/PremiumContext';
 
 // Types
 interface QueueItem {
@@ -72,7 +73,8 @@ interface ApiResponse<T> {
 }
 
 const ServiceQueueScreen = ({ navigation }) => {
-  const { isPro, user } = useAccount();
+  const { user } = useAccount();
+  const { isPremium } = usePremium();
   const [selectedFilter, setSelectedFilter] = useState('all');
 
   // Helper function to format booking ID
@@ -399,12 +401,12 @@ const ServiceQueueScreen = ({ navigation }) => {
       return aDateTime - bDateTime;
     });
     
-    if (!isPro) {
+    if (!isPremium) {
       return filtered.slice(0, FREE_USER_LIMIT);
     }
     
     return filtered;
-  }, [queueData, selectedFilter, isPro]);
+  }, [queueData, selectedFilter, isPremium]);
 
   // Get counts for each filter using stats from API
   const getFilterCounts = useCallback(() => {
@@ -421,14 +423,14 @@ const ServiceQueueScreen = ({ navigation }) => {
 
   // Check if there are hidden items
   const getHiddenItemsCount = useCallback(() => {
-    if (isPro) return 0;
+    if (isPremium) return 0;
     
     const allFiltered = selectedFilter === 'all' 
       ? queueData 
       : queueData.filter(item => item.status === selectedFilter);
     
     return Math.max(0, allFiltered.length - FREE_USER_LIMIT);
-  }, [queueData, selectedFilter, isPro]);
+  }, [queueData, selectedFilter, isPremium]);
 
   const filteredData = getFilteredData();
   const hiddenItemsCount = getHiddenItemsCount();
@@ -436,13 +438,13 @@ const ServiceQueueScreen = ({ navigation }) => {
   // Handle filter selection with premium check
   const handleFilterSelect = useCallback((filterKey: string) => {
     // Block free users from using any filter except "all"
-    if (!isPro && filterKey !== 'all') {
+    if (!isPremium && filterKey !== 'all') {
       setShowUpgradeModal(true);
       return; // Don't change the selected filter
     }
     
     setSelectedFilter(filterKey);
-  }, [isPro]);
+  }, [isPremium]);
 
   // Handle premium upgrade
   const handleUpgradeToPremium = useCallback(async () => {
@@ -1026,7 +1028,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           {filterOptions.map((filter) => {
             const count = counts[filter.key];
             const isSelected = selectedFilter === filter.key;
-            const isLocked = !isPro && filter.key !== 'all';
+            const isLocked = !isPremium && filter.key !== 'all';
             
             return (
               <TouchableOpacity
@@ -1082,11 +1084,11 @@ const ServiceQueueScreen = ({ navigation }) => {
         </ScrollView>
       </View>
     );
-  }, [getFilterCounts, selectedFilter, isPro, handleFilterSelect]);
+  }, [getFilterCounts, selectedFilter, isPremium, handleFilterSelect]);
 
   // Render filter restriction notice for free users
   const renderFilterRestrictionNotice = useCallback(() => {
-    if (isPro) return null;
+    if (isPremium) return null;
 
     return (
       <View style={styles.restrictionNotice}>
@@ -1104,11 +1106,11 @@ const ServiceQueueScreen = ({ navigation }) => {
         </View>
       </View>
     );
-  }, [isPro]);
+  }, [isPremium]);
 
   // Render premium upgrade prompt
   const renderPremiumPrompt = useCallback(() => {
-    if (isPro || hiddenItemsCount === 0) return null;
+    if (isPremium || hiddenItemsCount === 0) return null;
 
     return (
       <View style={styles.premiumPrompt}>
@@ -1126,7 +1128,7 @@ const ServiceQueueScreen = ({ navigation }) => {
         </View>
       </View>
     );
-  }, [isPro, hiddenItemsCount]);
+  }, [isPremium, hiddenItemsCount]);
 
   // Empty state
   const renderEmptyState = useCallback(() => {
@@ -1295,7 +1297,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           {activeTab === 'queue' ? 'Service Queue' : 'Payment Management'}
         </Text>
         <View style={styles.headerRight}>
-          {isPro && (
+          {isPremium && (
             <View style={styles.premiumBadge}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <Text style={styles.premiumBadgeText}>Premium</Text>

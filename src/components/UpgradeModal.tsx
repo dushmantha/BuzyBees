@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,18 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { stripeService, PRICING_PLANS } from '../lib/stripe/stripeService';
+import { usePremium } from '../contexts/PremiumContext';
+import StripeWebView from './StripeWebView';
 
 interface UpgradeModalProps {
   visible: boolean;
   onClose: () => void;
-  onUpgrade: () => void;
+  onUpgrade: (planType: 'monthly' | 'yearly') => void;
   title?: string;
   subtitle?: string;
   features?: Array<{
@@ -34,6 +39,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   features,
   hiddenCount = 0
 }) => {
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  
+  const { refreshSubscription } = usePremium();
   
   const defaultFeatures = [
     {
@@ -63,6 +75,114 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   ];
 
   const featuresToShow = features || defaultFeatures;
+
+  // Handle payment success from WebView
+  const handlePaymentSuccess = async (sessionId: string) => {
+    setShowWebView(false);
+    setIsProcessing(true);
+    
+    try {
+      const result = await stripeService.checkPaymentStatus(sessionId || currentSessionId || '');
+      if (result.success) {
+        // Refresh premium subscription data
+        console.log('🔄 Refreshing premium subscription after payment success');
+        await refreshSubscription();
+        
+        Alert.alert(
+          'Payment Successful!',
+          'Welcome to BuzyBees Pro! Your premium features are now active.',
+          [{ 
+            text: 'Get Started', 
+            onPress: () => {
+              onUpgrade(selectedPlan);
+              onClose();
+            }
+          }]
+        );
+      } else {
+        Alert.alert(
+          'Payment Pending',
+          'Your payment is being processed. You will receive a confirmation shortly.',
+          [{ 
+            text: 'OK',
+            onPress: () => {
+              // Still refresh to check if status changed
+              refreshSubscription();
+            }
+          }]
+        );
+      }
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      Alert.alert(
+        'Payment Status Unknown',
+        'Please check your subscription status in settings.',
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            // Refresh in case payment went through
+            refreshSubscription();
+          }
+        }]
+      );
+    } finally {
+      setIsProcessing(false);
+      setCurrentSessionId(null);
+    }
+  };
+
+  // Handle payment cancellation from WebView
+  const handlePaymentCancel = () => {
+    setShowWebView(false);
+    setIsProcessing(false);
+    setCurrentSessionId(null);
+    Alert.alert(
+      'Payment Cancelled',
+      'Your payment was cancelled. You can try again anytime.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Handle WebView close
+  const handleWebViewClose = () => {
+    setShowWebView(false);
+    setIsProcessing(false);
+    setCheckoutUrl('');
+  };
+
+  const handleUpgrade = async () => {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    
+    try {
+      // Create payment session
+      const paymentSession = await stripeService.createPaymentSession(selectedPlan);
+      setCurrentSessionId(paymentSession.sessionId);
+      
+      // Get checkout URL and show WebView
+      const url = stripeService.getCheckoutUrl(paymentSession);
+      setCheckoutUrl(url);
+      setShowWebView(true);
+      setIsProcessing(false); // Allow user interaction with WebView
+      
+    } catch (error) {
+      console.error('Error creating payment session:', error);
+      setIsProcessing(false);
+      setCurrentSessionId(null);
+      
+      Alert.alert(
+        'Payment Error',
+        'Unable to start payment process. Please try again later.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handlePlanSelect = (plan: 'monthly' | 'yearly') => {
+    if (isProcessing) return;
+    setSelectedPlan(plan);
+  };
 
   return (
     <Modal
@@ -124,24 +244,61 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <Text style={styles.pricingTitle}>Choose Your Plan</Text>
             
             {/* Monthly Option */}
-            <View style={styles.pricingOption}>
-              <Text style={styles.pricingLabel}>Monthly</Text>
-              <Text style={styles.pricingPrice}>$9.99/month</Text>
+            <TouchableOpacity
+              style={[
+                styles.pricingOption,
+                selectedPlan === 'monthly' && styles.pricingOptionSelected
+              ]}
+              onPress={() => handlePlanSelect('monthly')}
+              disabled={isProcessing}
+              activeOpacity={0.7}
+            >
+              <View style={styles.pricingHeader}>
+                <Text style={styles.pricingLabel}>Monthly</Text>
+                <View style={[
+                  styles.radioButton,
+                  selectedPlan === 'monthly' && styles.radioButtonSelected
+                ]}>
+                  {selectedPlan === 'monthly' && (
+                    <View style={styles.radioButtonInner} />
+                  )}
+                </View>
+              </View>
+              <Text style={styles.pricingPrice}>${PRICING_PLANS.monthly.price}/month</Text>
               <Text style={styles.pricingDescription}>Perfect for trying out Pro features</Text>
-            </View>
+            </TouchableOpacity>
             
             {/* Yearly Option - Recommended */}
-            <View style={[styles.pricingOption, styles.pricingOptionRecommended]}>
+            <TouchableOpacity
+              style={[
+                styles.pricingOption,
+                styles.pricingOptionRecommended,
+                selectedPlan === 'yearly' && styles.pricingOptionSelected
+              ]}
+              onPress={() => handlePlanSelect('yearly')}
+              disabled={isProcessing}
+              activeOpacity={0.7}
+            >
               <View style={styles.recommendedBadge}>
                 <Text style={styles.recommendedText}>RECOMMENDED</Text>
               </View>
-              <Text style={styles.pricingLabel}>Yearly</Text>
+              <View style={styles.pricingHeader}>
+                <Text style={styles.pricingLabel}>Yearly</Text>
+                <View style={[
+                  styles.radioButton,
+                  selectedPlan === 'yearly' && styles.radioButtonSelected
+                ]}>
+                  {selectedPlan === 'yearly' && (
+                    <View style={styles.radioButtonInner} />
+                  )}
+                </View>
+              </View>
               <View style={styles.pricingYearlyContainer}>
-                <Text style={styles.pricingPrice}>$99.99/year</Text>
+                <Text style={styles.pricingPrice}>${PRICING_PLANS.yearly.price}/year</Text>
                 <Text style={styles.pricingSavings}>Save 17%</Text>
               </View>
               <Text style={styles.pricingDescription}>Best value - 2 months free!</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Benefits List */}
             <View style={styles.benefitsList}>
@@ -180,27 +337,65 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
         {/* Footer with Action Buttons */}
         <View style={styles.modalFooter}>
           <TouchableOpacity 
-            style={styles.upgradeButton}
-            onPress={onUpgrade}
+            style={[
+              styles.upgradeButton,
+              isProcessing && styles.upgradeButtonDisabled
+            ]}
+            onPress={handleUpgrade}
+            disabled={isProcessing}
             activeOpacity={0.8}
           >
-            <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
-            <Ionicons name="star" size={16} color="#FFFFFF" />
+            {isProcessing ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.upgradeButtonText}>
+                  {currentSessionId ? 'Complete Payment...' : 'Starting Payment...'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.upgradeButtonText}>
+                  Upgrade to {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Pro
+                </Text>
+                <Ionicons name="star" size={16} color="#FFFFFF" />
+              </>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.laterButton}
             onPress={onClose}
+            disabled={isProcessing}
             activeOpacity={0.6}
           >
-            <Text style={styles.laterButtonText}>Maybe Later</Text>
+            <Text style={[
+              styles.laterButtonText,
+              isProcessing && styles.laterButtonTextDisabled
+            ]}>
+              Maybe Later
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.secureText}>
             <Ionicons name="shield-checkmark" size={14} color="#6B7280" /> Secure payment • Cancel anytime
           </Text>
+          
+          {selectedPlan && (
+            <Text style={styles.selectedPlanText}>
+              Selected: {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Plan - ${selectedPlan === 'monthly' ? `${PRICING_PLANS.monthly.price}/month` : `${PRICING_PLANS.yearly.price}/year`}
+            </Text>
+          )}
         </View>
       </SafeAreaView>
+
+      {/* Stripe WebView Modal */}
+      <StripeWebView
+        visible={showWebView}
+        checkoutUrl={checkoutUrl}
+        onSuccess={handlePaymentSuccess}
+        onCancel={handlePaymentCancel}
+        onClose={handleWebViewClose}
+      />
     </Modal>
   );
 };
@@ -354,9 +549,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     position: 'relative',
   },
+  pricingOptionSelected: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FFFBEB',
+  },
   pricingOptionRecommended: {
     borderColor: '#F59E0B',
     backgroundColor: '#FFFBEB',
+  },
+  pricingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   recommendedBadge: {
     position: 'absolute',
@@ -486,6 +691,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  upgradeButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowColor: '#9CA3AF',
+  },
   upgradeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -501,10 +710,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  laterButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
   secureText: {
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  selectedPlanText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  
+  // Radio Button Styles
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: '#F59E0B',
+  },
+  radioButtonInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F59E0B',
   },
 });
 

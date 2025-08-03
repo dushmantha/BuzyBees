@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount, useAuth } from '../../navigation/AppNavigator';
+import { usePremium } from '../../contexts/PremiumContext';
 import UpgradeModal from '../../components/UpgradeModal';
 import { authService } from '../../lib/supabase/index';
 import { normalizedShopService } from '../../lib/supabase/normalized';
@@ -99,6 +100,7 @@ interface Shop {
   reviews_count: number;
   is_active: boolean;
   total_services: number;
+  staff_count: number;
   monthly_revenue: number;
   certificate_images: string[];
   business_hours: {
@@ -164,7 +166,7 @@ interface QuickAction {
 const ProviderHomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ProviderHomeRouteProp>();
-  const { isPro } = useAccount();
+  const { isPremium } = usePremium();
   const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(true);
@@ -196,7 +198,7 @@ const ProviderHomeScreen: React.FC = () => {
         console.log('📊 Fetching real dashboard data from Supabase...');
         
         // Get real data in parallel
-        const [shopsResponse, statsResponse, activityResponse, revenueResponse] = await Promise.all([
+        const [shopsResponse, statsResponse, activityResponse, revenueResponse, shopStatsResponse] = await Promise.all([
           // Get shops
           authService.getProviderBusinesses(providerId),
           // Get dashboard stats
@@ -204,13 +206,26 @@ const ProviderHomeScreen: React.FC = () => {
           // Get activity feed
           normalizedShopService.getActivityFeed(providerId, 10),
           // Get monthly revenue for shops
-          normalizedShopService.getShopMonthlyRevenue()
+          normalizedShopService.getShopMonthlyRevenue(),
+          // Get shop statistics (rating, reviews, staff, services)
+          normalizedShopService.getShopStatistics()
         ]);
         
         console.log('📥 Shops response:', shopsResponse);
         console.log('📊 Stats response:', statsResponse);
         console.log('📋 Activity response:', activityResponse);
         console.log('💰 Revenue response:', revenueResponse);
+        console.log('📊 Shop statistics response:', shopStatsResponse);
+        
+        // Debug: Check if revenue response has any data
+        if (revenueResponse.success && revenueResponse.data) {
+          console.log('✅ Revenue data found:', revenueResponse.data.length, 'entries');
+          revenueResponse.data.forEach(item => {
+            console.log(`💰 Shop ${item.shop_id}: $${item.monthly_revenue}`);
+          });
+        } else {
+          console.log('❌ No revenue data found. Error:', revenueResponse.error);
+        }
         
         let realShops: Shop[] = [];
         
@@ -220,18 +235,56 @@ const ProviderHomeScreen: React.FC = () => {
           // Create revenue lookup map
           const revenueMap = new Map<string, number>();
           if (revenueResponse.success && revenueResponse.data) {
+            console.log('💰 Raw revenue data:', revenueResponse.data);
             revenueResponse.data.forEach(item => {
               if (item.shop_id) {
                 revenueMap.set(item.shop_id, item.monthly_revenue);
+                console.log(`💰 Added to revenue map: ${item.shop_id} = $${item.monthly_revenue}`);
+              } else {
+                console.warn('⚠️ Revenue item missing shop_id:', item);
               }
             });
-            console.log('💰 Revenue map created:', Object.fromEntries(revenueMap));
+            console.log('💰 Final revenue map:', Object.fromEntries(revenueMap));
+          } else {
+            console.error('❌ Revenue response failed:', revenueResponse.error);
+          }
+
+          // Create statistics lookup map
+          const statsMap = new Map<string, {rating: number, reviews_count: number, staff_count: number, services_count: number}>();
+          if (shopStatsResponse.success && shopStatsResponse.data) {
+            shopStatsResponse.data.forEach(item => {
+              statsMap.set(item.shop_id, {
+                rating: item.rating,
+                reviews_count: item.reviews_count,
+                staff_count: item.staff_count,
+                services_count: item.services_count
+              });
+            });
+            console.log('📊 Statistics map created:', Object.fromEntries(statsMap));
           }
           
           // Transform provider_businesses data to Shop interface
           realShops = shopsResponse.data.map((business: any) => {
+            console.log(`🏪 Processing shop: ${business.name} (ID: ${business.id})`);
+            console.log(`🔍 Looking for revenue with shop_id: ${business.id}`);
+            console.log(`🔍 Available revenue keys:`, Array.from(revenueMap.keys()));
+            
             const monthlyRevenue = revenueMap.get(business.id) || 0;
-            console.log(`💰 Shop ${business.name} (${business.id}) revenue: $${monthlyRevenue}`);
+            const shopStats = statsMap.get(business.id) || {
+              rating: 0,
+              reviews_count: 0,
+              staff_count: 0,
+              services_count: 0
+            };
+            
+            console.log(`💰 Shop ${business.name} (${business.id}):`, {
+              revenue: `$${monthlyRevenue}`,
+              revenueFound: revenueMap.has(business.id),
+              rating: shopStats.rating,
+              reviews: shopStats.reviews_count,
+              staff: shopStats.staff_count,
+              services: shopStats.services_count
+            });
             
             return {
               id: business.id,
@@ -240,10 +293,11 @@ const ProviderHomeScreen: React.FC = () => {
               image: business.image_url || business.logo_url || '',
               location: business.address ? `${business.address}, ${business.city}, ${business.state}` : `${business.city || ''}, ${business.state || ''}`,
               category: business.category || 'General Services',
-              rating: 0, // Will be updated when we add reviews
-              reviews_count: 0,
+              rating: shopStats.rating, // Real rating from reviews
+              reviews_count: shopStats.reviews_count, // Real reviews count
               is_active: business.is_active !== undefined ? business.is_active : true,
-              total_services: business.services?.length || 0,
+              total_services: shopStats.services_count, // Real services count from shop_services table
+              staff_count: shopStats.staff_count, // Real staff count from shop_staff table
               monthly_revenue: monthlyRevenue, // Real revenue from payments table
               certificate_images: [],
               business_hours: {
@@ -489,6 +543,7 @@ const ProviderHomeScreen: React.FC = () => {
             reviews_count: 287,
             is_active: true,
             total_services: 18,
+            staff_count: 5,
             monthly_revenue: 8450.00,
             certificate_images: [],
             business_hours: { start: '09:00', end: '19:00' },
@@ -517,6 +572,7 @@ const ProviderHomeScreen: React.FC = () => {
             reviews_count: 194,
             is_active: true,
             total_services: 12,
+            staff_count: 3,
             monthly_revenue: 12200.00,
             certificate_images: [],
             business_hours: { start: '10:00', end: '20:00' },
@@ -544,6 +600,7 @@ const ProviderHomeScreen: React.FC = () => {
             reviews_count: 168,
             is_active: false,
             total_services: 9,
+            staff_count: 2,
             monthly_revenue: 6800.00,
             certificate_images: [],
             business_hours: { start: '09:00', end: '21:00' },
@@ -773,6 +830,7 @@ const ProviderHomeScreen: React.FC = () => {
           reviews_count: 0,
           is_active: newShop.is_active,
           total_services: newShop.services?.length || 0,
+          staff_count: 0, // New shop starts with no staff
           monthly_revenue: 0, // New shop starts with no revenue
           certificate_images: [],
           business_hours: {
@@ -1220,11 +1278,15 @@ const ProviderHomeScreen: React.FC = () => {
           <View style={styles.shopMetrics}>
             <View style={styles.shopMetric}>
               <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={styles.shopMetricText}>{item.rating || 0}</Text>
+              <Text style={styles.shopMetricText}>{item.rating?.toFixed(1) || '0.0'}</Text>
             </View>
             <View style={styles.shopMetric}>
               <Ionicons name="people" size={12} color="#4B5563" />
-              <Text style={styles.shopMetricText}>{item.reviews_count || 0}</Text>
+              <Text style={styles.shopMetricText}>{item.staff_count || 0}</Text>
+            </View>
+            <View style={styles.shopMetric}>
+              <Ionicons name="construct" size={12} color="#10B981" />
+              <Text style={styles.shopMetricText}>{item.total_services || 0}</Text>
             </View>
           </View>
 
@@ -1257,14 +1319,14 @@ const ProviderHomeScreen: React.FC = () => {
   );
 
   const renderRecentActivity = () => {
-    const activitiesToShow = isPro ? recentActivity : recentActivity.slice(0, 3);
+    const activitiesToShow = isPremium ? recentActivity : recentActivity.slice(0, 3);
     const hiddenActivitiesCount = recentActivity.length - activitiesToShow.length;
 
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          {!isPro && hiddenActivitiesCount > 0 && (
+          {!isPremium && hiddenActivitiesCount > 0 && (
             <TouchableOpacity 
               style={styles.proButton}
               onPress={() => setShowUpgradeModal(true)}
@@ -1320,7 +1382,7 @@ const ProviderHomeScreen: React.FC = () => {
         </View>
 
         {/* Upgrade Prompt for Free Users */}
-        {!isPro && hiddenActivitiesCount > 0 && (
+        {!isPremium && hiddenActivitiesCount > 0 && (
           <TouchableOpacity 
             style={styles.upgradePrompt}
             onPress={() => setShowUpgradeModal(true)}

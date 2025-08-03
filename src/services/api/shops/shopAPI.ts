@@ -52,6 +52,14 @@ class ShopAPI {
     try {
       console.log('🏪 Fetching all shops from database...');
       
+      // Check if user is authenticated (required for RLS)
+      const { data: { session }, error: sessionError } = await this.supabase.client.auth.getSession();
+      console.log('🔐 Auth session check:', { 
+        hasSession: !!session, 
+        userId: session?.user?.id,
+        sessionError: sessionError?.message 
+      });
+      
       const result = await this.supabase.client
         .from('provider_businesses')
         .select('*')

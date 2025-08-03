@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // FIXED IMPORTS - Use named imports from the corrected service
 import { supabase, authService } from '../lib/supabase/index';
 import type { User, Session } from '@supabase/supabase-js';
+import { usePremium } from '../contexts/PremiumContext';
 import SplashScreen from '../screens/SplashScreen';
 
 // Import Screens
@@ -210,10 +211,10 @@ export const useAccount = () => {
 // Account Provider Component with Supabase integration
 const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
+  const { isPremium } = usePremium();
   const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
-  const [isPro] = useState(false); // Mock Pro status for now
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -421,7 +422,7 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         isLoading, 
         userProfile, 
         refreshProfile,
-        isPro 
+        isPro: isPremium 
       }}
     >
       {children}

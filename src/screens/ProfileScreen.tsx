@@ -23,6 +23,8 @@ import mockService from '../services/api/mock/index';
 import UpgradeModal from '../components/UpgradeModal';
 import { authService } from '../lib/supabase/index';
 import { normalizedShopService } from '../lib/supabase/normalized';
+import { usePremium } from '../contexts/PremiumContext';
+import { stripeService } from '../lib/stripe/stripeService';
 
 interface ProfileData {
   id: string;
@@ -130,6 +132,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   // Use the global account context and notifications
   const { accountType, setAccountType, isLoading: accountSwitchLoading } = useAccount();
   const { notificationCount } = useNotifications();
+  const { isPremium, subscription, refreshSubscription } = usePremium();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -140,6 +143,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSkillModal, setShowSkillModal] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
+  const [isCancelingSubscription, setIsCancelingSubscription] = useState(false);
   const [providerSkills, setProviderSkills] = useState<any[]>([]);
   const [providerCertifications, setProviderCertifications] = useState<any[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -457,6 +461,118 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       console.error('Error upgrading account:', error);
       Alert.alert('Error', 'Failed to upgrade account. Please try again.');
     }
+  };
+
+  // Handle cancel subscription
+  const handleCancelSubscription = async () => {
+    console.log('📱 Cancel subscription button pressed');
+    console.log('📊 Current subscription status:', subscription?.subscription_status);
+    
+    Alert.alert(
+      'Cancel Subscription',
+      'Are you sure you want to cancel your premium subscription? You will continue to have access to premium features until the end of your current billing period.',
+      [
+        { text: 'Keep Subscription', style: 'cancel' },
+        {
+          text: 'Cancel Subscription',
+          style: 'destructive',
+          onPress: () => {
+            // Use immediate function to handle async properly
+            (async () => {
+              try {
+                console.log('🔄 Starting subscription cancellation...');
+                console.log('📊 User subscription data:', subscription);
+                setIsCancelingSubscription(true);
+                
+                // Cancel subscription through Stripe
+                console.log('📞 Calling stripeService.cancelSubscription()');
+                await stripeService.cancelSubscription();
+                console.log('✅ Stripe cancellation successful');
+                
+                // Wait for database to update
+                console.log('⏳ Waiting for database update...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Refresh subscription status
+                console.log('🔄 Refreshing subscription status...');
+                await refreshSubscription();
+                
+                console.log('✅ Subscription cancellation completed');
+                
+                Alert.alert(
+                  'Subscription Cancelled',
+                  'Your subscription has been cancelled. You will continue to have access to premium features until the end of your current billing period.',
+                  [{ text: 'OK' }]
+                );
+                
+              } catch (error: any) {
+                console.error('❌ Error canceling subscription:', error);
+                console.error('Error details:', {
+                  message: error.message,
+                  stack: error.stack,
+                  response: error.response,
+                  name: error.name
+                });
+                
+                Alert.alert(
+                  'Cancellation Error',
+                  `Failed to cancel subscription: ${error.message || 'Unknown error'}. Please check your internet connection and try again.`,
+                  [{ text: 'OK' }]
+                );
+              } finally {
+                setIsCancelingSubscription(false);
+              }
+            })();
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle upgrade plan (monthly to yearly)
+  const handleUpgradePlan = async () => {
+    Alert.alert(
+      'Upgrade to Yearly Plan',
+      'Upgrade to our yearly plan and save 17% (2 months free)! You\'ll be charged the prorated difference for the remainder of your current billing period.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upgrade to Yearly',
+          style: 'default',
+          onPress: async () => {
+            try {
+              setIsCancelingSubscription(true); // Reuse the loading state
+              
+              // Update subscription through Stripe
+              const result = await stripeService.updateSubscriptionPlan('yearly');
+              
+              if (result.success) {
+                // Refresh premium context to get updated status
+                await refreshSubscription();
+                
+                Alert.alert(
+                  'Upgrade Successful!',
+                  'You\'ve been upgraded to the yearly plan. Thank you for your continued support!',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                throw new Error('Upgrade failed');
+              }
+              
+            } catch (error) {
+              console.error('Error upgrading subscription:', error);
+              Alert.alert(
+                'Upgrade Failed',
+                'Failed to upgrade your subscription. Please try again or contact support.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsCancelingSubscription(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Skills and Certifications Management
@@ -1153,32 +1269,111 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   );
 
 
-  const renderUpgradePrompt = () => {
-    if (accountType !== 'provider' || profile?.is_premium) return null;
+  const renderSubscriptionSection = () => {
+    if (accountType !== 'provider') return null;
 
-    const hiddenPaymentsCount = 0; // No payments in profile anymore
+    // Show upgrade prompt for non-premium users
+    if (!isPremium) {
+      return (
+        <TouchableOpacity 
+          style={styles.upgradePrompt}
+          onPress={() => setShowUpgradeModal(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.upgradePromptContent}>
+            <View style={styles.upgradePromptIcon}>
+              <Ionicons name="star" size={20} color="#F59E0B" />
+            </View>
+            <View style={styles.upgradePromptText}>
+              <Text style={styles.upgradePromptTitle}>
+                Upgrade to Premium
+              </Text>
+              <Text style={styles.upgradePromptSubtitle}>
+                Unlock unlimited features and premium tools
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+          </View>
+        </TouchableOpacity>
+      );
+    }
 
+    // Show subscription management for premium users
     return (
-      <TouchableOpacity 
-        style={styles.upgradePrompt}
-        onPress={() => setShowUpgradeModal(true)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.upgradePromptContent}>
-          <View style={styles.upgradePromptIcon}>
-            <Ionicons name="star" size={20} color="#F59E0B" />
+      <View style={styles.subscriptionSection}>
+        {/* Premium status indicator */}
+        <View style={styles.premiumStatusCard}>
+          <View style={styles.premiumStatusHeader}>
+            <View style={styles.premiumStatusIcon}>
+              <Ionicons name="star" size={20} color="#F59E0B" />
+            </View>
+            <View style={styles.premiumStatusText}>
+              <Text style={styles.premiumStatusTitle}>Premium Active</Text>
+              <Text style={styles.premiumStatusSubtitle}>
+                {subscription?.subscription_status === 'cancelled' 
+                  ? 'Cancelled - access until period end' 
+                  : 'All premium features unlocked'
+                }
+              </Text>
+            </View>
           </View>
-          <View style={styles.upgradePromptText}>
-            <Text style={styles.upgradePromptTitle}>
-              Upgrade to see all payments
-            </Text>
-            <Text style={styles.upgradePromptSubtitle}>
-              {hiddenPaymentsCount} more payment{hiddenPaymentsCount > 1 ? 's' : ''} available with Pro
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+          
+          {/* Subscription details */}
+          {subscription && (
+            <View style={styles.subscriptionDetails}>
+              <Text style={styles.subscriptionDetailText}>
+                Plan: {subscription.subscription_type === 'monthly' ? 'Monthly' : 'Yearly'} Pro
+              </Text>
+              {subscription.subscription_end_date && (
+                <Text style={styles.subscriptionDetailText}>
+                  {subscription.subscription_status === 'cancelled' 
+                    ? `Access until: ${new Date(subscription.subscription_end_date).toLocaleDateString()}`
+                    : `Renews: ${new Date(subscription.subscription_end_date).toLocaleDateString()}`
+                  }
+                </Text>
+              )}
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
+
+        {/* Upgrade button for monthly subscribers */}
+        {subscription?.subscription_type === 'monthly' && subscription?.subscription_status !== 'cancel_at_period_end' && (
+          <TouchableOpacity 
+            style={styles.upgradePlanButton}
+            onPress={handleUpgradePlan}
+            disabled={isCancelingSubscription}
+            activeOpacity={0.8}
+          >
+            {isCancelingSubscription ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="arrow-up-circle-outline" size={20} color="#FFFFFF" />
+            )}
+            <Text style={styles.upgradePlanText}>
+              Upgrade to Yearly (Save 17%)
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Cancel subscription button */}
+        {subscription?.subscription_status !== 'cancel_at_period_end' && (
+          <TouchableOpacity 
+            style={styles.cancelSubscriptionButton}
+            onPress={handleCancelSubscription}
+            disabled={isCancelingSubscription}
+            activeOpacity={0.8}
+          >
+            {isCancelingSubscription ? (
+              <ActivityIndicator size="small" color="#EF4444" />
+            ) : (
+              <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+            )}
+            <Text style={styles.cancelSubscriptionText}>
+              {isCancelingSubscription ? 'Processing...' : 'Cancel Subscription'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
   };
 
@@ -1279,7 +1474,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           ]}>
             {accountType === 'provider' ? 'Service Provider' : 'Service Consumer'}
           </Text>
-          {profile.is_premium && (
+          {isPremium && (
             <View style={styles.premiumBadge}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <Text style={styles.premiumText}>PRO</Text>
@@ -1558,6 +1753,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
           </View>
+
+          {/* Subscription Section */}
+          {renderSubscriptionSection()}
 
           <TouchableOpacity 
             style={styles.logoutButton}
@@ -2858,6 +3056,102 @@ const styles = StyleSheet.create({
     color: '#4338CA',
     fontWeight: '500',
     fontSize: 14,
+  },
+
+  // Subscription Section Styles
+  subscriptionSection: {
+    marginBottom: 16,
+  },
+  premiumStatusCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  premiumStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  premiumStatusIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  premiumStatusText: {
+    flex: 1,
+  },
+  premiumStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  premiumStatusSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  subscriptionDetails: {
+    backgroundColor: '#FEFCE8',
+    borderRadius: 8,
+    padding: 12,
+    gap: 4,
+  },
+  subscriptionDetailText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  cancelSubscriptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    gap: 8,
+  },
+  cancelSubscriptionText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  upgradePlanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  upgradePlanText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
