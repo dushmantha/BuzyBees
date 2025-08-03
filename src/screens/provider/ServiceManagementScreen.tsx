@@ -25,6 +25,7 @@ import ServiceManagementAPI, {
   ServiceAvailability 
 } from '../../services/ServiceManagementAPI';
 import { useAuth } from '../../navigation/AppNavigator';
+import { CancellationBanner } from '../../components/CancellationBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -1314,6 +1315,7 @@ const ServiceManagementScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <CancellationBanner />
       <View style={styles.header}>
         <View style={styles.shopSelector}>
           <View style={styles.shopSelectorContent}>

@@ -20,6 +20,7 @@ import UpgradeModal from '../../components/UpgradeModal'; // Adjust the import p
 import { normalizedShopService } from '../../lib/supabase/normalized';
 import { useAuth } from '../../navigation/AppNavigator';
 import { usePremium } from '../../contexts/PremiumContext';
+import { CancellationBanner } from '../../components/CancellationBanner';
 
 const { width, height } = Dimensions.get('window');
 
@@ -802,6 +803,8 @@ const EarningsScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      
+      <CancellationBanner />
       
       {/* Updated Header with matching background */}
       <View style={styles.header}>

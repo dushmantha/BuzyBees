@@ -18,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount, useAuth } from '../../navigation/AppNavigator';
 import { usePremium } from '../../contexts/PremiumContext';
 import UpgradeModal from '../../components/UpgradeModal';
+import { CancellationBanner } from '../../components/CancellationBanner';
 import { authService } from '../../lib/supabase/index';
 import { normalizedShopService } from '../../lib/supabase/normalized';
 
@@ -1428,6 +1429,8 @@ const ProviderHomeScreen: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
       
       {renderHeader()}
+      
+      <CancellationBanner />
       
       <ScrollView 
         style={styles.content}

@@ -21,6 +21,7 @@ import { useAccount } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
 import { normalizedShopService, Payment } from '../../lib/supabase/normalized';
 import { usePremium } from '../../contexts/PremiumContext';
+import { CancellationBanner } from '../../components/CancellationBanner';
 
 // Types
 interface QueueItem {
@@ -1290,6 +1291,8 @@ const ServiceQueueScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      
+      <CancellationBanner />
       
       {/* Header */}
       <View style={styles.header}>

@@ -25,6 +25,7 @@ import { authService } from '../lib/supabase/index';
 import { normalizedShopService } from '../lib/supabase/normalized';
 import { usePremium } from '../contexts/PremiumContext';
 import { stripeService } from '../lib/stripe/stripeService';
+import { CancellationBanner } from '../components/CancellationBanner';
 
 interface ProfileData {
   id: string;
@@ -144,6 +145,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [showSkillModal, setShowSkillModal] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
   const [isCancelingSubscription, setIsCancelingSubscription] = useState(false);
+  const [isReactivatingSubscription, setIsReactivatingSubscription] = useState(false);
   const [providerSkills, setProviderSkills] = useState<any[]>([]);
   const [providerCertifications, setProviderCertifications] = useState<any[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -521,6 +523,72 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 );
               } finally {
                 setIsCancelingSubscription(false);
+              }
+            })();
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle reactivate subscription
+  const handleReactivateSubscription = async () => {
+    console.log('📱 Reactivate subscription button pressed');
+    console.log('📊 Current subscription status:', subscription?.subscription_status);
+    
+    Alert.alert(
+      'Continue Subscription',
+      'Would you like to continue your premium subscription? This will reactivate your subscription and you will be charged according to your previous plan.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue Subscription',
+          style: 'default',
+          onPress: () => {
+            // Use immediate function to handle async properly
+            (async () => {
+              try {
+                console.log('🔄 Starting subscription reactivation...');
+                console.log('📊 User subscription data:', subscription);
+                setIsReactivatingSubscription(true);
+                
+                // Reactivate subscription through Stripe
+                console.log('📞 Calling stripeService.reactivateSubscription()');
+                await stripeService.reactivateSubscription();
+                console.log('✅ Stripe reactivation successful');
+                
+                // Wait for database to update
+                console.log('⏳ Waiting for database update...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Refresh subscription status
+                console.log('🔄 Refreshing subscription status...');
+                await refreshSubscription();
+                
+                console.log('✅ Subscription reactivation completed');
+                
+                Alert.alert(
+                  'Subscription Reactivated',
+                  'Your subscription has been successfully reactivated. Welcome back to premium!',
+                  [{ text: 'OK' }]
+                );
+                
+              } catch (error: any) {
+                console.error('❌ Error reactivating subscription:', error);
+                console.error('Error details:', {
+                  message: error.message,
+                  stack: error.stack,
+                  response: error.response,
+                  name: error.name
+                });
+                
+                Alert.alert(
+                  'Reactivation Error',
+                  `Failed to reactivate subscription: ${error.message || 'Unknown error'}. Please check your internet connection and try again.`,
+                  [{ text: 'OK' }]
+                );
+              } finally {
+                setIsReactivatingSubscription(false);
               }
             })();
           }
@@ -1311,7 +1379,13 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Text style={styles.premiumStatusTitle}>Premium Active</Text>
               <Text style={styles.premiumStatusSubtitle}>
                 {subscription?.subscription_status === 'cancelled' 
-                  ? 'Cancelled - access until period end' 
+                  ? `Cancelled - access until ${subscription?.subscription_end_date 
+                      ? new Date(subscription.subscription_end_date).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })
+                      : 'period end'}`
                   : 'All premium features unlocked'
                 }
               </Text>
@@ -1355,8 +1429,8 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           </TouchableOpacity>
         )}
 
-        {/* Cancel subscription button */}
-        {subscription?.subscription_status !== 'cancel_at_period_end' && (
+        {/* Cancel subscription button - only show if not cancelled */}
+        {subscription?.subscription_status !== 'cancel_at_period_end' && subscription?.subscription_status !== 'cancelled' && (
           <TouchableOpacity 
             style={styles.cancelSubscriptionButton}
             onPress={handleCancelSubscription}
@@ -1370,6 +1444,25 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             )}
             <Text style={styles.cancelSubscriptionText}>
               {isCancelingSubscription ? 'Processing...' : 'Cancel Subscription'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Reactivate subscription button - only show if cancelled */}
+        {subscription?.subscription_status === 'cancelled' && (
+          <TouchableOpacity 
+            style={styles.reactivateSubscriptionButton}
+            onPress={handleReactivateSubscription}
+            disabled={isReactivatingSubscription}
+            activeOpacity={0.8}
+          >
+            {isReactivatingSubscription ? (
+              <ActivityIndicator size="small" color="#059669" />
+            ) : (
+              <Ionicons name="refresh-circle-outline" size={20} color="#059669" />
+            )}
+            <Text style={styles.reactivateSubscriptionText}>
+              {isReactivatingSubscription ? 'Processing...' : 'Continue Subscription'}
             </Text>
           </TouchableOpacity>
         )}
@@ -1433,6 +1526,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      <CancellationBanner />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
         <TouchableOpacity
@@ -3129,6 +3223,24 @@ const styles = StyleSheet.create({
   cancelSubscriptionText: {
     fontSize: 16,
     color: '#EF4444',
+    fontWeight: '500',
+  },
+  reactivateSubscriptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#059669',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    gap: 8,
+  },
+  reactivateSubscriptionText: {
+    fontSize: 16,
+    color: '#059669',
     fontWeight: '500',
   },
   upgradePlanButton: {
