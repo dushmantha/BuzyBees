@@ -26,6 +26,12 @@ import ServiceManagementAPI, {
 } from '../../services/ServiceManagementAPI';
 import { useAuth } from '../../navigation/AppNavigator';
 import { CancellationBanner } from '../../components/CancellationBanner';
+import { 
+  generateStaffTimeSlots, 
+  generateStaffCalendarMarks,
+  getStaffAvailabilityForDate,
+  StaffMember 
+} from '../../utils/staffAvailability';
 
 const { width } = Dimensions.get('window');
 
@@ -213,6 +219,16 @@ const QuickBookingModal = ({
       if (response.success && response.data) {
         setShopStaff(response.data);
         console.log('📋 Service staff loaded:', response.data.length, 'staff members assigned to service');
+        
+        // Debug: Check if staff data includes scheduling fields
+        response.data.forEach((staff, index) => {
+          console.log(`👤 Staff ${index + 1}: ${staff.name}`);
+          console.log('  - Has work_schedule:', !!staff.work_schedule);
+          console.log('  - Has leave_dates:', !!staff.leave_dates);
+          console.log('  - Work schedule:', staff.work_schedule);
+          console.log('  - Leave dates:', staff.leave_dates);
+          console.log('---');
+        });
       } else {
         console.warn('⚠️ Failed to load service staff:', response.message);
         setShopStaff([]);
@@ -272,32 +288,92 @@ const QuickBookingModal = ({
     const marks = {};
     const today = new Date();
     
+    // Get selected staff member for availability checking
+    const selectedStaffMember = selectedStaffId ? 
+      shopStaff.find(staff => staff.id === selectedStaffId) : null;
+    
+    console.log('🎯 Calendar calculation:', {
+      selectedStaffId,
+      hasSelectedStaff: !!selectedStaffMember,
+      selectedStaffName: selectedStaffMember?.name,
+      hasWorkSchedule: !!selectedStaffMember?.work_schedule,
+      hasLeaveDates: selectedStaffMember?.leave_dates !== undefined,
+      shopStaffCount: shopStaff.length
+    });
+    
+    
     for (let i = 0; i < 60; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       
-      const status = getDateStatus(dateStr, serviceAvailability, selectedService.duration_minutes);
+      let status = getDateStatus(dateStr, serviceAvailability, selectedService.duration_minutes);
+      
+      // If specific staff is selected, check their availability
+      if (selectedStaffMember && selectedStaffMember.work_schedule && selectedStaffMember.leave_dates !== undefined) {
+        const staffMember: StaffMember = {
+          id: selectedStaffMember.id,
+          name: selectedStaffMember.name,
+          work_schedule: selectedStaffMember.work_schedule,
+          leave_dates: selectedStaffMember.leave_dates || []
+        };
+        
+        const staffAvailability = getStaffAvailabilityForDate(dateStr, staffMember);
+        if (!staffAvailability.isAvailable) {
+          // Override status if staff is not available
+          status = staffAvailability.reason?.includes('leave') ? 'staff_leave' : 'staff_unavailable';
+        }
+      }
       
       switch (status) {
         case 'closed':
           marks[dateStr] = {
+            marked: true,
+            dotColor: '#4B5563',
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
-              container: { backgroundColor: '#6B6B6B' },
-              text: { color: 'white', fontWeight: 'bold' }
+              container: { backgroundColor: '#F3F4F6' },
+              text: { color: '#4B5563', fontWeight: 'bold' }
+            }
+          };
+          break;
+          
+        case 'staff_leave':
+          marks[dateStr] = {
+            marked: true,
+            dotColor: '#DC2626',
+            disabled: true,
+            disableTouchEvent: true,
+            customStyles: {
+              container: { backgroundColor: '#FEE2E2' },
+              text: { color: '#DC2626', fontWeight: 'bold' }
+            }
+          };
+          break;
+          
+        case 'staff_unavailable':
+          marks[dateStr] = {
+            marked: true,
+            dotColor: '#9CA3AF',
+            disabled: true,
+            disableTouchEvent: true,
+            customStyles: {  
+              container: { backgroundColor: '#E5E7EB' },
+              text: { color: '#9CA3AF', fontWeight: 'bold' }
             }
           };
           break;
           
         case 'fully_booked':
           marks[dateStr] = {
+            marked: true,
+            dotColor: '#EF4444',
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
-              container: { backgroundColor: '#FECACA' },
-              text: { color: '#991B1B', fontWeight: 'bold' }
+              container: { backgroundColor: '#FEE2E2' },
+              text: { color: '#EF4444', fontWeight: 'bold' }
             }
           };
           break;
@@ -329,7 +405,7 @@ const QuickBookingModal = ({
     }
     
     return marks;
-  }, [selectedService, serviceAvailability, selectedDate, visible]);
+  }, [selectedService, serviceAvailability, selectedDate, selectedStaffId, shopStaff, visible]);
 
   // Update markedDates when calculation changes
   useEffect(() => {
@@ -342,24 +418,85 @@ const QuickBookingModal = ({
       setLoading(true);
       
       const timeoutId = setTimeout(() => {
-        const slots = generateTimeSlotsForDate(
-          selectedDate, 
-          serviceAvailability, 
-          selectedService.duration_minutes
-        );
+        let slots = [];
+        
+        // If specific staff is selected, use staff-aware time slot generation
+        if (selectedStaffId) {
+          const selectedStaffMember = shopStaff.find(staff => staff.id === selectedStaffId);
+          if (selectedStaffMember && selectedStaffMember.work_schedule && selectedStaffMember.leave_dates !== undefined) {
+            const staffMember: StaffMember = {
+              id: selectedStaffMember.id,
+              name: selectedStaffMember.name,
+              work_schedule: selectedStaffMember.work_schedule,
+              leave_dates: selectedStaffMember.leave_dates || []
+            };
+            
+            // Get existing bookings for this date
+            const bookedSlots = serviceAvailability.booked_slots?.[selectedDate] || [];
+            const bookedSlotsFormatted = bookedSlots.map(slot => ({
+              start: slot.start,
+              end: slot.end
+            }));
+            
+            slots = generateStaffTimeSlots(
+              selectedDate,
+              staffMember,
+              selectedService.duration_minutes,
+              bookedSlotsFormatted
+            );
+          } else {
+            // Fallback to regular time slot generation if staff data is incomplete
+            slots = generateTimeSlotsForDate(
+              selectedDate, 
+              serviceAvailability, 
+              selectedService.duration_minutes
+            );
+          }
+        } else {
+          // No specific staff selected, use regular availability
+          slots = generateTimeSlotsForDate(
+            selectedDate, 
+            serviceAvailability, 
+            selectedService.duration_minutes
+          );
+        }
+        
         setAvailableSlots(slots);
         setLoading(false);
       }, 300);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedDate, selectedService, serviceAvailability, visible]);
+  }, [selectedDate, selectedService, serviceAvailability, visible, selectedStaffId, shopStaff]);
 
   const handleDatePress = useCallback((day) => {
+    // Check staff availability if specific staff is selected
+    if (selectedStaffId) {
+      const selectedStaffMember = shopStaff.find(staff => staff.id === selectedStaffId);
+      if (selectedStaffMember && selectedStaffMember.work_schedule && selectedStaffMember.leave_dates !== undefined) {
+        const staffMember: StaffMember = {
+          id: selectedStaffMember.id,
+          name: selectedStaffMember.name,
+          work_schedule: selectedStaffMember.work_schedule,
+          leave_dates: selectedStaffMember.leave_dates || []
+        };
+        
+        const staffAvailability = getStaffAvailabilityForDate(day.dateString, staffMember);
+        if (!staffAvailability.isAvailable) {
+          Alert.alert(
+            'Staff Not Available',
+            `${selectedStaffMember.name} is not available on this date.\n\n${staffAvailability.reason}`,
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+      }
+    }
+    
     setSelectedDate(day.dateString);
     setSelectedTime('');
     setShowCalendar(false);
-  }, []);
+  }, [selectedStaffId, shopStaff]);
 
   const handleTimePress = useCallback((time) => {
     setSelectedTime(time);
@@ -594,7 +731,12 @@ const QuickBookingModal = ({
           {/* Staff Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Assign Staff Member</Text>
-            <Text style={styles.inputSubLabel}>Only staff assigned to this service are shown</Text>
+            <Text style={styles.inputSubLabel}>
+              {shopStaff.length > 0 
+                ? "Select a specific staff member to view their availability calendar" 
+                : "Only staff assigned to this service are shown"
+              }
+            </Text>
             {loadingStaff ? (
               <View style={styles.staffLoadingContainer}>
                 <ActivityIndicator size="small" color="#F59E0B" />
@@ -733,19 +875,43 @@ const QuickBookingModal = ({
 
             {/* Calendar Legend */}
             <View style={styles.calendarLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-                <Text style={styles.legendText}>Available</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-                <Text style={styles.legendText}>Fully Booked</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#4B5563' }]} />
-                <Text style={styles.legendText}>Closed</Text>
+              <Text style={styles.legendTitle}>Calendar Guide</Text>
+              <View style={styles.legendGrid}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                  <Text style={styles.legendText}>Available</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                  <Text style={styles.legendText}>Fully Booked</Text>
+                </View>
+                {selectedStaffId && (
+                  <>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#DC2626' }]} />
+                      <Text style={styles.legendText}>Staff on Leave</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
+                      <Text style={styles.legendText}>Staff Not Working</Text>
+                    </View>
+                  </>
+                )}
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#4B5563' }]} />
+                  <Text style={styles.legendText}>Closed</Text>
+                </View>
               </View>
             </View>
+            
+            {!selectedStaffId && shopStaff.length > 0 && (
+              <View style={styles.staffAvailabilityHint}>
+                <Ionicons name="information-circle-outline" size={16} color="#F59E0B" />
+                <Text style={styles.staffAvailabilityHintText}>
+                  Select a specific staff member above to see their personal schedule and leave dates
+                </Text>
+              </View>
+            )}
 
             {showCalendar && serviceAvailability && (
               <View style={styles.calendarContainer}>
@@ -757,13 +923,14 @@ const QuickBookingModal = ({
                   hideExtraDays={true}
                   disableAllTouchEventsForDisabledDays={true}
                   enableSwipeMonths={true}
+                  markingType={'custom'}
                   theme={{
                     selectedDayBackgroundColor: '#F59E0B',
                     selectedDayTextColor: '#FFFFFF',
                     todayTextColor: '#F59E0B',
                     dayTextColor: '#1F2937',
                     textDisabledColor: '#D1D5DB',
-                    dotColor: '#10B981',
+                    // Removed hardcoded dotColor to allow individual date colors
                     selectedDotColor: '#FFFFFF',
                     arrowColor: '#F59E0B',
                     monthTextColor: '#1F2937',
@@ -1875,29 +2042,53 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   calendarLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#FEFCE8',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  legendTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: '30%',
+    gap: 6,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   legendText: {
-    fontSize: 10,
-    color: '#4B5563',
+    fontSize: 11,
+    color: '#374151',
     fontWeight: '500',
+    flex: 1,
   },
   calendarContainer: {
     borderRadius: 8,
@@ -2118,6 +2309,25 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#6B7280',
+  },
+  staffAvailabilityHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  staffAvailabilityHintText: {
+    fontSize: 12,
+    color: '#92400E',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 16,
+    fontWeight: '500',
   },
 });
 

@@ -133,6 +133,61 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
   );
 };
 
+// Staff Selection Component
+const StaffSelectionSection: React.FC<{
+  staffMembers: any[];
+  selectedStaff: string | null;
+  onSelectStaff: (staffId: string) => void;
+}> = ({ staffMembers, selectedStaff, onSelectStaff }) => (
+  <View style={styles.staffSection}>
+    <View style={styles.sectionHeader}>
+      <Ionicons name="people-outline" size={20} color="#666" />
+      <Text style={styles.sectionTitle}>Select Staff Member</Text>
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.staffScroll}>
+      {staffMembers.map((staff) => (
+        <TouchableOpacity
+          key={staff.id}
+          style={[
+            styles.staffCard,
+            selectedStaff === staff.id && styles.selectedStaffCard
+          ]}
+          onPress={() => onSelectStaff(staff.id)}
+        >
+          <View style={styles.staffAvatar}>
+            {staff.avatar_url ? (
+              <Image source={{ uri: staff.avatar_url }} style={styles.staffImage} />
+            ) : (
+              <View style={styles.staffPlaceholder}>
+                <Ionicons name="person" size={30} color="#9CA3AF" />
+              </View>
+            )}
+            {selectedStaff === staff.id && (
+              <View style={styles.staffCheckmark}>
+                <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+              </View>
+            )}
+          </View>
+          <Text style={[styles.staffName, selectedStaff === staff.id && styles.selectedStaffName]}>
+            {staff.name}
+          </Text>
+          {staff.rating > 0 && (
+            <View style={styles.staffRating}>
+              <Ionicons name="star" size={12} color="#FFC107" />
+              <Text style={styles.staffRatingText}>{staff.rating}</Text>
+            </View>
+          )}
+          {staff.specialties.length > 0 && (
+            <Text style={styles.staffSpecialty} numberOfLines={1}>
+              {staff.specialties[0]}
+            </Text>
+          )}
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+);
+
 // Tab components
 const AboutTab: React.FC<ServiceTabProps> = ({ service }) => (
   <View style={styles.tabContent}>
@@ -185,6 +240,8 @@ const ServiceDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(!routeService);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('options');
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
 
   // Load service data if not passed directly
   useEffect(() => {
@@ -224,6 +281,71 @@ const ServiceDetailScreen: React.FC = () => {
 
     loadService();
   }, [routeServiceId, service]);
+
+  // Mock staff members data
+  useEffect(() => {
+    // Simulate loading staff members for the service
+    if (service) {
+      setStaffMembers([
+        {
+          id: 'staff1',
+          name: 'Anna Anderson',
+          avatar_url: 'https://i.pravatar.cc/150?img=1',
+          specialties: ['Manicure', 'Pedicure', 'Nail Art'],
+          experience_years: 5,
+          rating: 4.8,
+          work_schedule: {
+            monday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
+            tuesday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
+            wednesday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
+            thursday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
+            friday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
+            saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+            sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+          },
+          leave_dates: [
+            { title: 'Vacation', startDate: '2025-08-15', endDate: '2025-08-20', type: 'leave' }
+          ]
+        },
+        {
+          id: 'staff2',
+          name: 'Maria Johansson',
+          avatar_url: 'https://i.pravatar.cc/150?img=2',
+          specialties: ['Gel Nails', 'Nail Extensions'],
+          experience_years: 3,
+          rating: 4.6,
+          work_schedule: {
+            monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+            tuesday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
+            wednesday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
+            thursday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
+            friday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
+            saturday: { isWorking: true, startTime: '10:00', endTime: '15:00' },
+            sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+          },
+          leave_dates: []
+        },
+        {
+          id: 'any',
+          name: 'Any Available Staff',
+          avatar_url: null,
+          specialties: [],
+          experience_years: 0,
+          rating: 0,
+          work_schedule: {
+            monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+          },
+          leave_dates: []
+        }
+      ]);
+    }
+  }, [service]);
 
   // Get the service ID for the hook - either from the loaded service or the route param
   const serviceId = service?.id || routeServiceId;
@@ -284,11 +406,18 @@ const ServiceDetailScreen: React.FC = () => {
       return;
     }
 
+    if (!selectedStaff) {
+      Alert.alert('No Staff Selected', 'Please select a staff member to continue.');
+      return;
+    }
+
     const selectedServices = ServiceUtils.prepareSelectedServicesForBooking(options);
+    const selectedStaffMember = staffMembers.find(staff => staff.id === selectedStaff);
     
     navigation.navigate('BookingSummary', {
       selectedServices,
-      totalPrice
+      totalPrice,
+      selectedStaff: selectedStaffMember
     });
   };
 
@@ -410,6 +539,13 @@ const ServiceDetailScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* Staff Selection */}
+          <StaffSelectionSection 
+            staffMembers={staffMembers}
+            selectedStaff={selectedStaff}
+            onSelectStaff={setSelectedStaff}
+          />
+
           {/* Tabs */}
           <View style={styles.tabsContainer}>
             <TouchableOpacity 
@@ -452,16 +588,24 @@ const ServiceDetailScreen: React.FC = () => {
           <TouchableOpacity 
             style={[
               styles.bookButton, 
-              (!hasSelections || optionsLoading) && styles.bookButtonDisabled
+              (!hasSelections || !selectedStaff || optionsLoading) && styles.bookButtonDisabled
             ]}
             onPress={handleBookNow}
-            disabled={!hasSelections || optionsLoading}
+            disabled={!hasSelections || !selectedStaff || optionsLoading}
           >
             <View style={styles.bookButtonContent}>
               <Text style={styles.bookButtonText}>
-                {optionsLoading ? 'Loading...' : hasSelections ? `Book Now • ${ServiceUtils.formatPrice(totalPrice)}` : 'Select Options to Continue'}
+                {optionsLoading 
+                  ? 'Loading...' 
+                  : (!hasSelections 
+                    ? 'Select Options to Continue'
+                    : !selectedStaff 
+                      ? 'Select Staff to Continue'
+                      : `Book Now • ${ServiceUtils.formatPrice(totalPrice)}`
+                  )
+                }
               </Text>
-              {hasSelections && !optionsLoading && (
+              {hasSelections && selectedStaff && !optionsLoading && (
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               )}
             </View>
@@ -874,6 +1018,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginRight: 8,
+  },
+  // Staff Selection Styles
+  staffSection: {
+    marginVertical: 16,
+  },
+  staffScroll: {
+    marginTop: 12,
+  },
+  staffCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+    minWidth: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  selectedStaffCard: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+  },
+  staffAvatar: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  staffImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  staffPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  staffCheckmark: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+  },
+  staffName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  selectedStaffName: {
+    color: '#F59E0B',
+  },
+  staffRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  staffRatingText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 2,
+  },
+  staffSpecialty: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });
 

@@ -23,6 +23,23 @@ export interface ServiceResponse<T = any> {
   message?: string;
 }
 
+export interface WorkSchedule {
+  monday: { isWorking: boolean; startTime: string; endTime: string; };
+  tuesday: { isWorking: boolean; startTime: string; endTime: string; };
+  wednesday: { isWorking: boolean; startTime: string; endTime: string; };
+  thursday: { isWorking: boolean; startTime: string; endTime: string; };
+  friday: { isWorking: boolean; startTime: string; endTime: string; };
+  saturday: { isWorking: boolean; startTime: string; endTime: string; };
+  sunday: { isWorking: boolean; startTime: string; endTime: string; };
+}
+
+export interface LeaveDate {
+  title: string;
+  startDate: string;
+  endDate: string;
+  type: string;
+}
+
 export interface ShopStaff {
   id?: string;
   shop_id?: string;
@@ -36,6 +53,8 @@ export interface ShopStaff {
   experience_years?: number;
   avatar_url?: string;
   is_active?: boolean;
+  work_schedule?: WorkSchedule;
+  leave_dates?: LeaveDate[];
   created_at?: string;
   updated_at?: string;
 }
@@ -835,7 +854,8 @@ class NormalizedShopService {
         };
       }
 
-      const insertData = {
+      // Start with basic required fields
+      const insertData: any = {
         shop_id: shopId,
         provider_id: user.id,
         name: staffData.name,
@@ -848,6 +868,24 @@ class NormalizedShopService {
         avatar_url: staffData.avatar_url,
         is_active: staffData.is_active ?? true
       };
+
+      // Only add work_schedule and leave_dates if they're defined
+      // This prevents errors if columns don't exist in DB yet
+      if (staffData.work_schedule !== undefined) {
+        insertData.work_schedule = staffData.work_schedule || {
+          monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+        };
+      }
+      
+      if (staffData.leave_dates !== undefined) {
+        insertData.leave_dates = staffData.leave_dates || [];
+      }
 
       console.log('👤 Inserting staff data:', JSON.stringify(insertData, null, 2));
 
@@ -904,12 +942,32 @@ class NormalizedShopService {
         };
       }
 
+      // Prepare update data, excluding fields that might not exist in DB yet
+      const updateData: any = {
+        name: staffData.name,
+        email: staffData.email,
+        phone: staffData.phone,
+        role: staffData.role,
+        specialties: staffData.specialties,
+        bio: staffData.bio,
+        experience_years: staffData.experience_years,
+        avatar_url: staffData.avatar_url,
+        is_active: staffData.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only include work_schedule and leave_dates if they exist in the data
+      // This prevents errors if columns don't exist yet
+      if (staffData.work_schedule !== undefined) {
+        updateData.work_schedule = staffData.work_schedule;
+      }
+      if (staffData.leave_dates !== undefined) {
+        updateData.leave_dates = staffData.leave_dates;
+      }
+
       const { data, error } = await this.client
         .from('shop_staff')
-        .update({
-          ...staffData,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', staffId)
         .eq('provider_id', user.id)
         .select()
@@ -934,6 +992,50 @@ class NormalizedShopService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getStaffByShopId(shopId: string): Promise<ServiceResponse<ShopStaff[]>> {
+    try {
+      console.log('👥 Fetching all staff for shop:', shopId);
+
+      const { data, error } = await this.client
+        .from('shop_staff')
+        .select('*')
+        .eq('shop_id', shopId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Get staff error:', error);
+        return {
+          success: false,
+          error: `Failed to fetch staff: ${error.message}`
+        };
+      }
+
+      console.log('✅ Staff fetched successfully:', data?.length || 0, 'members');
+      // Log the first staff member to check if new fields are included
+      if (data && data.length > 0) {
+        console.log('📋 Sample staff data:', {
+          name: data[0].name,
+          hasWorkSchedule: !!data[0].work_schedule,
+          hasLeaveDates: !!data[0].leave_dates,
+          workSchedule: data[0].work_schedule,
+          leaveDates: data[0].leave_dates
+        });
+      }
+
+      return {
+        success: true,
+        data: data as ShopStaff[]
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected get staff error:', error);
+      return {
+        success: false,
+        error: 'Failed to fetch staff members'
       };
     }
   }

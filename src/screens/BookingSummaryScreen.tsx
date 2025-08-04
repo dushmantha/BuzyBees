@@ -14,8 +14,9 @@ type RootStackParamList = {
       duration: string;
     }>;
     totalPrice: number;
+    selectedStaff?: any;
   };
-  BookingDateTime: {
+  BookingDateTimeEnhanced: {
     selectedServices: Array<{
       id: string;
       name: string;
@@ -23,6 +24,7 @@ type RootStackParamList = {
       duration: string;
     }>;
     totalPrice: number;
+    selectedStaff: any;
   };
   // Add other screen params as needed
   [key: string]: any;
@@ -41,7 +43,7 @@ interface ApiResponse<T> {
 const BookingSummaryScreen = () => {
   const navigation = useNavigation<BookingSummaryScreenNavigationProp>();
   const route = useRoute<BookingSummaryScreenRouteProp>();
-  const { selectedServices, totalPrice } = route.params;
+  const { selectedServices, totalPrice, selectedStaff } = route.params;
 
   // Single API service function for booking data
   const apiService = {
@@ -105,9 +107,10 @@ const BookingSummaryScreen = () => {
       }
 
       if (navigation?.navigate) {
-        navigation.navigate('BookingDateTime', {
+        navigation.navigate('BookingDateTimeEnhanced', {
           selectedServices,
-          totalPrice
+          totalPrice,
+          selectedStaff
         });
       } else {
         Alert.alert('Navigation', 'Continue to Date & Time selection');

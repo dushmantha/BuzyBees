@@ -33,9 +33,11 @@ import { compressLogoImage, compressShopImage, compressAvatarImage } from '../..
 
 // Import our Supabase service and auth context
 import { authService } from '../../lib/supabase/index';
-import normalizedShopService, { supabase } from '../../lib/supabase/normalized';
+import normalizedShopService, { supabase, ShopStaff, WorkSchedule, LeaveDate } from '../../lib/supabase/normalized';
 import integratedShopService from '../../lib/supabase/integrated';
 import { useAuth } from '../../navigation/AppNavigator';
+import { FriendlyScheduleDisplay } from '../../components/shop/FriendlyScheduleDisplay';
+import { TimePickerModal } from '../../components/shop/TimePickerModal';
 
 const { width } = Dimensions.get('window');
 
@@ -53,19 +55,8 @@ type ProviderStackParamList = {
 type ShopDetailsRouteProp = RouteProp<ProviderStackParamList, 'ShopDetails'>;
 type ShopDetailsNavigationProp = StackNavigationProp<ProviderStackParamList, 'ShopDetails'>;
 
-export interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-  specialties: string[];
-  avatar_url?: string;
-  bio?: string;
-  experience_years?: number;
-  is_active: boolean;
-  created_at?: string;
-}
+// Using ShopStaff interface from normalized service
+export type Staff = ShopStaff;
 
 export interface Service {
   id: string;
@@ -287,6 +278,15 @@ const ShopDetailsScreen: React.FC = () => {
     try {
         // Try to get shop data using the normalized service
         const result = await normalizedShopService.getShopById(existingShop.id);
+        
+        // Always fetch staff separately to ensure we get the latest data
+        if (result.success && result.data) {
+          const staffResponse = await normalizedShopService.getStaffByShopId(existingShop.id);
+          if (staffResponse.success && staffResponse.data) {
+            console.log('🔄 REFRESH: Staff data fetched:', staffResponse.data);
+            result.data.staff = staffResponse.data;
+          }
+        }
         
         // If normalized service fails, try direct queries for each data type
         if (!result.success) {
@@ -517,7 +517,17 @@ const ShopDetailsScreen: React.FC = () => {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [showCustomTimePicker, setShowCustomTimePicker] = useState(false);
+  const [showSpecialDayTimePicker, setShowSpecialDayTimePicker] = useState(false);
+  const [specialDayTimeType, setSpecialDayTimeType] = useState<'open' | 'close' | null>(null);
+  const [isPickingForSpecialDay, setIsPickingForSpecialDay] = useState(false);
+  
+  // Staff scheduling states
+  const [selectedStaffTimeField, setSelectedStaffTimeField] = useState<string | null>(null);
+  const [showStaffLeaveCalendar, setShowStaffLeaveCalendar] = useState(false);
+  const [selectedLeaveStartDate, setSelectedLeaveStartDate] = useState<string | null>(null);
+  const [selectedLeaveEndDate, setSelectedLeaveEndDate] = useState<string | null>(null);
+  const [isDraggingCalendar, setIsDraggingCalendar] = useState(false);
+  const [expandedLeaveSection, setExpandedLeaveSection] = useState(false);
   
   // Form states
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -562,7 +572,17 @@ const ShopDetailsScreen: React.FC = () => {
     bio: '', 
     experience_years: 0, 
     is_active: true,
-    avatar_url: undefined
+    avatar_url: undefined,
+    work_schedule: {
+      monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+      sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+    },
+    leave_dates: []
   });
   
   // Staff specialty input
@@ -616,6 +636,12 @@ const ShopDetailsScreen: React.FC = () => {
             console.log('🚨 FETCHED: Complete shop data:', completeShop);
             console.log('🚨 FETCHED: Business hours from DB:', completeShop.business_hours);
             
+            // Also fetch staff separately to ensure we get the latest data with new fields
+            const staffResponse = await normalizedShopService.getStaffByShopId(existingShop.id);
+            if (staffResponse.success && staffResponse.data) {
+              console.log('🚨 FETCHED: Staff data separately:', staffResponse.data);
+              completeShop.staff = staffResponse.data;
+            }
             
             if (completeShop) {
               // Map the complete shop data to our expected format
@@ -1562,6 +1588,62 @@ const ShopDetailsScreen: React.FC = () => {
   };
 
   // Business hours management
+  // Helper function to format time in user-friendly way
+  const formatTimeDisplay = (time: string): string => {
+    if (!time) return '';
+    
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    
+    // Remove :00 for on-the-hour times
+    if (minutes === '00') {
+      return `${displayHour} ${ampm}`;
+    }
+    
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Helper function to format special day date in user-friendly way
+  const formatSpecialDayDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Check if it's today
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    }
+    
+    // Check if it's tomorrow
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    }
+    
+    // Check if it's within the next 7 days
+    const daysFromNow = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysFromNow > 0 && daysFromNow <= 7) {
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+    
+    // For past dates, show relative time
+    if (daysFromNow < 0) {
+      const daysAgo = Math.abs(daysFromNow);
+      if (daysAgo === 1) return 'Yesterday';
+      if (daysAgo < 7) return `${daysAgo} days ago`;
+    }
+    
+    // Otherwise show full date
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    });
+  };
+
   const updateBusinessHours = (day: string, field: keyof BusinessHours, value: any) => {
     console.log('🚨 updateBusinessHours called:', { day, field, value });
     
@@ -1591,29 +1673,10 @@ const ShopDetailsScreen: React.FC = () => {
       const [hours, minutes] = time.split(':').map(Number);
       setTempDate(new Date(2024, 0, 1, hours, minutes));
       setEditingTimeSlot({ day, type });
-      setShowCustomTimePicker(true);
+      setShowTimePicker(true); // Use native time picker instead of custom
     }
   };
 
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
-      }
-    }
-    return slots;
-  };
-
-  const selectTime = (timeString: string) => {
-    if (editingTimeSlot) {
-      const field = editingTimeSlot.type === 'open' ? 'openTime' : 'closeTime';
-      updateBusinessHours(editingTimeSlot.day, field, timeString);
-    }
-    setShowCustomTimePicker(false);
-    setEditingTimeSlot(null);
-  };
 
   const handleTimeChange = (event: any, selectedDate?: Date) => {
     setShowTimePicker(false);
@@ -2028,7 +2091,17 @@ const ShopDetailsScreen: React.FC = () => {
       bio: '', 
       experience_years: 0, 
       is_active: true,
-      avatar_url: undefined
+      avatar_url: undefined,
+      work_schedule: {
+        monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+      },
+      leave_dates: []
     });
     setAvatarRefresh(prev => prev + 1);
     setNewSpecialty('');
@@ -2048,9 +2121,21 @@ const ShopDetailsScreen: React.FC = () => {
       
       const formData = {
         ...staff,
-        avatar_url: avatar_url
+        avatar_url: avatar_url,
+        leave_dates: staff.leave_dates || [],
+        work_schedule: staff.work_schedule || {
+          monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+        }
       };
       console.log('📝 Setting staff form to:', formData);
+      console.log('📝 Work schedule:', formData.work_schedule);
+      console.log('📝 Leave dates:', formData.leave_dates);
       setStaffForm(formData);
     } else {
       setEditingStaff(null);
@@ -2063,7 +2148,17 @@ const ShopDetailsScreen: React.FC = () => {
         bio: '', 
         experience_years: 0, 
         is_active: true,
-        avatar_url: undefined
+        avatar_url: undefined,
+        work_schedule: {
+          monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+          sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+        },
+        leave_dates: []
       };
       console.log('📝 Setting empty staff form:', emptyForm);
       setStaffForm(emptyForm);
@@ -2099,7 +2194,17 @@ const ShopDetailsScreen: React.FC = () => {
       avatar_url: avatar_url,
       bio: staffForm.bio?.trim() || '',
       experience_years: staffForm.experience_years || 0,
-      is_active: staffForm.is_active ?? true
+      is_active: staffForm.is_active ?? true,
+      work_schedule: staffForm.work_schedule || {
+        monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        tuesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        wednesday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        thursday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        friday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
+        sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
+      },
+      leave_dates: staffForm.leave_dates || []
     };
 
     if (isEditing && shop.id) {
@@ -2499,9 +2604,18 @@ const ShopDetailsScreen: React.FC = () => {
 
   const renderScheduleTab = () => (
     <View style={styles.section}>
-      {/* Business Hours */}
+      {/* Friendly Schedule Display */}
       <View style={styles.formSection}>
-        <Text style={styles.sectionTitle}>Regular Business Hours</Text>
+        <Text style={styles.sectionTitle}>Current Schedule Overview</Text>
+        <FriendlyScheduleDisplay 
+          businessHours={shop.business_hours || []}
+          specialDays={shop.special_days || []}
+        />
+      </View>
+
+      {/* Business Hours Editor */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Edit Business Hours</Text>
         
         {(shop.business_hours || [])
           .filter((hours, index, self) => 
@@ -2527,7 +2641,7 @@ const ShopDetailsScreen: React.FC = () => {
                   onPress={() => openTimePicker(hours.day, 'open')}
                 >
                   <Ionicons name="time-outline" size={16} color="#6B7280" />
-                  <Text style={styles.timeText}>{hours.openTime}</Text>
+                  <Text style={styles.timeText}>{formatTimeDisplay(hours.openTime)}</Text>
                 </TouchableOpacity>
                 
                 <Text style={styles.timeSeparator}>to</Text>
@@ -2537,7 +2651,7 @@ const ShopDetailsScreen: React.FC = () => {
                   onPress={() => openTimePicker(hours.day, 'close')}
                 >
                   <Ionicons name="time-outline" size={16} color="#6B7280" />
-                  <Text style={styles.timeText}>{hours.closeTime}</Text>
+                  <Text style={styles.timeText}>{formatTimeDisplay(hours.closeTime)}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -2581,7 +2695,7 @@ const ShopDetailsScreen: React.FC = () => {
                     <View style={styles.specialDayInfo}>
                       <Text style={styles.specialDayName}>{item.name}</Text>
                       <Text style={styles.specialDayDate}>
-                        {new Date(item.date).toLocaleDateString()}
+                        {formatSpecialDayDate(item.date)}
                         {item.recurring !== 'none' && ` • ${RECURRING_OPTIONS.find(r => r.id === item.recurring)?.name}`}
                       </Text>
                       <Text style={styles.specialDayType}>{typeConfig?.name}</Text>
@@ -2606,7 +2720,7 @@ const ShopDetailsScreen: React.FC = () => {
                     <View style={styles.specialDayHours}>
                       <Ionicons name="time-outline" size={14} color="#6B7280" />
                       <Text style={styles.specialDayHoursText}>
-                        {item.openTime} - {item.closeTime}
+                        {formatTimeDisplay(item.openTime || '')} - {formatTimeDisplay(item.closeTime || '')}
                       </Text>
                     </View>
                   )}
@@ -3080,16 +3194,11 @@ const ShopDetailsScreen: React.FC = () => {
   const renderSpecialDayModal = () => (
     <Modal
       visible={showSpecialDayModal}
-      transparent
       animationType="slide"
       onRequestClose={() => setShowSpecialDayModal(false)}
     >
-      <View style={styles.modalOverlay}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
-        >
-          <View style={styles.modalContent}>
+      <SafeAreaView style={styles.fullScreenModalContainer}>
+        <View style={styles.fullScreenModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingSpecialDay ? 'Edit Special Day' : 'Add Special Day'}
@@ -3118,9 +3227,55 @@ const ShopDetailsScreen: React.FC = () => {
                   onPress={() => setShowDatePicker(true)}
                 >
                   <Text style={styles.selectInputText}>
-                    {specialDayForm.date ? new Date(specialDayForm.date).toLocaleDateString() : 'Select Date'}
+                    {specialDayForm.date ? formatSpecialDayDate(specialDayForm.date) : 'Select Date'}
                   </Text>
                 </TouchableOpacity>
+                
+                {/* Inline Date Picker */}
+                {showDatePicker && (
+                  <View style={styles.inlinePicker}>
+                    {Platform.OS === 'ios' ? (
+                      <DateTimePicker
+                        value={specialDayForm.date ? new Date(specialDayForm.date) : new Date()}
+                        mode="date"
+                        display="compact"
+                        onChange={(event, selectedDate) => {
+                          if (selectedDate) {
+                            const dateString = selectedDate.toISOString().split('T')[0];
+                            setSpecialDayForm(prev => ({ ...prev, date: dateString }));
+                          }
+                          setShowDatePicker(false);
+                        }}
+                        style={styles.inlineDatePicker}
+                      />
+                    ) : Platform.OS === 'android' ? (
+                      <DateTimePicker
+                        value={specialDayForm.date ? new Date(specialDayForm.date) : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          if (selectedDate) {
+                            const dateString = selectedDate.toISOString().split('T')[0];
+                            setSpecialDayForm(prev => ({ ...prev, date: dateString }));
+                          }
+                          setShowDatePicker(false);
+                        }}
+                      />
+                    ) : (
+                      <View style={styles.webInlinePicker}>
+                        <input
+                          type="date"
+                          value={specialDayForm.date || new Date().toISOString().split('T')[0]}
+                          onChange={(e) => {
+                            setSpecialDayForm(prev => ({ ...prev, date: e.target.value }));
+                            setShowDatePicker(false);
+                          }}
+                          style={styles.webDateInput}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
 
               <View style={styles.inputGroup}>
@@ -3167,91 +3322,222 @@ const ShopDetailsScreen: React.FC = () => {
               </View>
 
               {specialDayForm.isOpen && (
-                <View style={styles.row}>
-                  <View style={[styles.inputGroup, styles.flex1]}>
-                    <Text style={styles.label}>Open Time</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={specialDayForm.openTime}
-                      onChangeText={(text) => setSpecialDayForm(prev => ({ ...prev, openTime: text }))}
-                      placeholder="09:00"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+                <View style={styles.timePickerSection}>
+                  <View style={styles.timePickerRow}>
+                    <View style={styles.timePickerColumn}>
+                      <Text style={styles.timePickerLabel}>Opening Time</Text>
+                      <TouchableOpacity
+                        style={styles.timePickerButton}
+                        onPress={() => {
+                          setSpecialDayTimeType('open');
+                          setShowSpecialDayTimePicker(true);
+                        }}
+                      >
+                        <Ionicons name="time-outline" size={20} color="#10B981" style={styles.timePickerIcon} />
+                        <Text style={specialDayForm.openTime ? styles.timePickerText : styles.timePickerPlaceholder}>
+                          {specialDayForm.openTime ? formatTimeDisplay(specialDayForm.openTime) : 'Select Time'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                      </TouchableOpacity>
+                      
+                      {/* Inline Opening Time Picker */}
+                      {showSpecialDayTimePicker && specialDayTimeType === 'open' && (
+                        <View style={styles.inlineTimePickerContainer}>
+                          {Platform.OS === 'ios' ? (
+                            <DateTimePicker
+                              value={specialDayForm.openTime ? new Date(`1970-01-01T${specialDayForm.openTime}:00`) : new Date(`1970-01-01T09:00:00`)}
+                              mode="time"
+                              display="compact"
+                              onChange={(event, selectedTime) => {
+                                if (selectedTime) {
+                                  const timeString = selectedTime.toTimeString().slice(0, 5);
+                                  setSpecialDayForm(prev => ({ ...prev, openTime: timeString }));
+                                }
+                                setShowSpecialDayTimePicker(false);
+                                setSpecialDayTimeType(null);
+                              }}
+                              style={styles.inlineTimePickerStyle}
+                            />
+                          ) : Platform.OS === 'android' ? (
+                            <DateTimePicker
+                              value={specialDayForm.openTime ? new Date(`1970-01-01T${specialDayForm.openTime}:00`) : new Date(`1970-01-01T09:00:00`)}
+                              mode="time"
+                              display="default"
+                              onChange={(event, selectedTime) => {
+                                if (selectedTime) {
+                                  const timeString = selectedTime.toTimeString().slice(0, 5);
+                                  setSpecialDayForm(prev => ({ ...prev, openTime: timeString }));
+                                }
+                                setShowSpecialDayTimePicker(false);
+                                setSpecialDayTimeType(null);
+                              }}
+                            />
+                          ) : (
+                            <View style={styles.webInlineTimePicker}>
+                              <input
+                                type="time"
+                                value={specialDayForm.openTime || '09:00'}
+                                onChange={(e) => {
+                                  setSpecialDayForm(prev => ({ ...prev, openTime: e.target.value }));
+                                  setShowSpecialDayTimePicker(false);
+                                  setSpecialDayTimeType(null);
+                                }}
+                                style={styles.webTimeInput}
+                              />
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
 
-                  <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
-                    <Text style={styles.label}>Close Time</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={specialDayForm.closeTime}
-                      onChangeText={(text) => setSpecialDayForm(prev => ({ ...prev, closeTime: text }))}
-                      placeholder="17:00"
-                      placeholderTextColor="#9CA3AF"
-                    />
+                    <View style={styles.timePickerColumn}>
+                      <Text style={styles.timePickerLabel}>Closing Time</Text>
+                      <TouchableOpacity
+                        style={styles.timePickerButton}
+                        onPress={() => {
+                          setSpecialDayTimeType('close');
+                          setShowSpecialDayTimePicker(true);
+                        }}
+                      >
+                        <Ionicons name="time-outline" size={20} color="#EF4444" style={styles.timePickerIcon} />
+                        <Text style={specialDayForm.closeTime ? styles.timePickerText : styles.timePickerPlaceholder}>
+                          {specialDayForm.closeTime ? formatTimeDisplay(specialDayForm.closeTime) : 'Select Time'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                      </TouchableOpacity>
+                      
+                      {/* Inline Closing Time Picker */}
+                      {showSpecialDayTimePicker && specialDayTimeType === 'close' && (
+                        <View style={styles.inlineTimePickerContainer}>
+                          {Platform.OS === 'ios' ? (
+                            <DateTimePicker
+                              value={specialDayForm.closeTime ? new Date(`1970-01-01T${specialDayForm.closeTime}:00`) : new Date(`1970-01-01T17:00:00`)}
+                              mode="time"
+                              display="compact"
+                              onChange={(event, selectedTime) => {
+                                if (selectedTime) {
+                                  const timeString = selectedTime.toTimeString().slice(0, 5);
+                                  setSpecialDayForm(prev => ({ ...prev, closeTime: timeString }));
+                                }
+                                setShowSpecialDayTimePicker(false);
+                                setSpecialDayTimeType(null);
+                              }}
+                              style={styles.inlineTimePickerStyle}
+                            />
+                          ) : Platform.OS === 'android' ? (
+                            <DateTimePicker
+                              value={specialDayForm.closeTime ? new Date(`1970-01-01T${specialDayForm.closeTime}:00`) : new Date(`1970-01-01T17:00:00`)}
+                              mode="time"
+                              display="default"
+                              onChange={(event, selectedTime) => {
+                                if (selectedTime) {
+                                  const timeString = selectedTime.toTimeString().slice(0, 5);
+                                  setSpecialDayForm(prev => ({ ...prev, closeTime: timeString }));
+                                }
+                                setShowSpecialDayTimePicker(false);
+                                setSpecialDayTimeType(null);
+                              }}
+                            />
+                          ) : (
+                            <View style={styles.webInlineTimePicker}>
+                              <input
+                                type="time"
+                                value={specialDayForm.closeTime || '17:00'}
+                                onChange={(e) => {
+                                  setSpecialDayForm(prev => ({ ...prev, closeTime: e.target.value }));
+                                  setShowSpecialDayTimePicker(false);
+                                  setSpecialDayTimeType(null);
+                                }}
+                                style={styles.webTimeInput}
+                              />
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Recurring</Text>
-                <FlatList
-                  data={RECURRING_OPTIONS}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
+              <View style={styles.specialDaySection}>
+                <Text style={styles.specialDaySectionTitle}>Recurrence</Text>
+                <View style={styles.recurringOptionsContainer}>
+                  {RECURRING_OPTIONS.map((item) => (
                     <TouchableOpacity
+                      key={item.id}
                       style={[
-                        styles.recurringOption,
-                        specialDayForm.recurring === item.id && styles.selectedRecurringOption
+                        styles.recurringOptionCard,
+                        specialDayForm.recurring === item.id && styles.selectedRecurringCard
                       ]}
                       onPress={() => setSpecialDayForm(prev => ({ ...prev, recurring: item.id as any }))}
                     >
+                      <View style={[
+                        styles.recurringIconContainer,
+                        specialDayForm.recurring === item.id && styles.selectedRecurringIcon
+                      ]}>
+                        <Ionicons 
+                          name={item.id === 'once' ? 'calendar-outline' : 
+                               item.id === 'weekly' ? 'repeat-outline' :
+                               item.id === 'monthly' ? 'calendar-clear-outline' : 'infinite-outline'} 
+                          size={20} 
+                          color={specialDayForm.recurring === item.id ? '#F59E0B' : '#6B7280'} 
+                        />
+                      </View>
                       <Text style={[
-                        styles.recurringOptionText,
-                        specialDayForm.recurring === item.id && styles.selectedRecurringOptionText
+                        styles.recurringOptionTitle,
+                        specialDayForm.recurring === item.id && styles.selectedRecurringTitle
                       ]}>
                         {item.name}
                       </Text>
                     </TouchableOpacity>
-                  )}
-                />
+                  ))}
+                </View>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Description (Optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={specialDayForm.description}
-                  onChangeText={(text) => setSpecialDayForm(prev => ({ ...prev, description: text }))}
-                  placeholder="Additional notes or details"
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
-                />
+              <View style={styles.specialDaySection}>
+                <Text style={styles.specialDaySectionTitle}>Additional Details</Text>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Description (Optional)</Text>
+                  <View style={styles.textAreaContainer}>
+                    <Ionicons name="document-text-outline" size={20} color="#9CA3AF" style={styles.textAreaIcon} />
+                    <TextInput
+                      style={styles.textAreaWithIcon}
+                      value={specialDayForm.description}
+                      onChangeText={(text) => setSpecialDayForm(prev => ({ ...prev, description: text }))}
+                      placeholder="Additional notes or details about this special day"
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </View>
+                </View>
               </View>
             </ScrollView>
 
-            <View style={styles.modalActions}>
+            <View style={styles.specialDayModalActions}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={styles.specialDayCancelButton}
                 onPress={() => setShowSpecialDayModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.specialDayCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.saveModalButton}
+                style={[
+                  styles.specialDaySaveButton,
+                  (!specialDayForm.name || !specialDayForm.date) && styles.disabledSaveButton
+                ]}
                 onPress={saveSpecialDay}
+                disabled={!specialDayForm.name || !specialDayForm.date}
               >
-                <Text style={styles.saveModalButtonText}>
-                  {editingSpecialDay ? 'Update' : 'Add'} Special Day
+                <Ionicons name="checkmark" size={20} color="#FFFFFF" style={styles.saveButtonIcon} />
+                <Text style={styles.specialDaySaveText}>
+                  {editingSpecialDay ? 'Update Special Day' : 'Add Special Day'}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
   );
 
   // Keep existing modals but add new ones
@@ -3734,16 +4020,11 @@ const ShopDetailsScreen: React.FC = () => {
   const renderStaffModal = () => (
     <Modal
       visible={showStaffModal}
-      transparent
       animationType="slide"
       onRequestClose={closeStaffModal}
     >
-      <View style={styles.modalOverlay}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
-        >
-          <View style={styles.modalContent}>
+      <SafeAreaView style={styles.fullScreenModalContainer}>
+        <View style={styles.fullScreenModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
@@ -3938,6 +4219,448 @@ const ShopDetailsScreen: React.FC = () => {
                 />
               </View>
 
+              {/* Work Schedule Section */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Work Schedule</Text>
+                <Text style={styles.inputHint}>Set the staff member's regular working hours</Text>
+                
+                <View style={styles.workScheduleContainer}>
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+                    const dayKey = day.toLowerCase();
+                    const daySchedule = staffForm.work_schedule?.[dayKey] || { 
+                      isWorking: false, 
+                      startTime: '09:00', 
+                      endTime: '17:00' 
+                    };
+                    
+                    // Debug logging for first day only to avoid spam
+                    if (day === 'Monday') {
+                      console.log('🗓️ Rendering work schedule for Monday:', {
+                        staffFormExists: !!staffForm,
+                        workScheduleExists: !!staffForm.work_schedule,
+                        workScheduleValue: staffForm.work_schedule,
+                        mondaySchedule: daySchedule
+                      });
+                    }
+                    
+                    return (
+                      <View key={day} style={styles.dayScheduleRow}>
+                        <View style={styles.dayScheduleHeader}>
+                          <Text style={styles.dayScheduleName}>{day}</Text>
+                          <Switch
+                            value={daySchedule.isWorking}
+                            onValueChange={(value) => {
+                              setStaffForm(prev => ({
+                                ...prev,
+                                work_schedule: {
+                                  ...prev.work_schedule,
+                                  [day.toLowerCase()]: {
+                                    ...daySchedule,
+                                    isWorking: value
+                                  }
+                                }
+                              }));
+                            }}
+                            trackColor={{ false: '#E5E7EB', true: '#D1FAE5' }}
+                            thumbColor={daySchedule.isWorking ? '#10B981' : '#9CA3AF'}
+                            style={styles.daySwitch}
+                          />
+                        </View>
+                        
+                        {daySchedule.isWorking && (
+                          <View style={styles.dayTimeRow}>
+                            <TouchableOpacity
+                              style={styles.timeSlotButton}
+                              onPress={() => {
+                                setSelectedStaffTimeField(`${day.toLowerCase()}_start`);
+                              }}
+                            >
+                              <Ionicons name="time-outline" size={16} color="#10B981" />
+                              <Text style={styles.timeSlotText}>
+                                {formatTimeDisplay(daySchedule.startTime)}
+                              </Text>
+                            </TouchableOpacity>
+                            
+                            {/* Inline Start Time Picker */}
+                            {selectedStaffTimeField === `${day.toLowerCase()}_start` && (
+                              <View style={styles.inlineStaffTimePicker}>
+                                {Platform.OS === 'ios' ? (
+                                  <DateTimePicker
+                                    value={new Date(`1970-01-01T${daySchedule.startTime}:00`)}
+                                    mode="time"
+                                    display="compact"
+                                    onChange={(event, selectedTime) => {
+                                      if (selectedTime) {
+                                        const timeString = selectedTime.toTimeString().slice(0, 5);
+                                        setStaffForm(prev => ({
+                                          ...prev,
+                                          work_schedule: {
+                                            ...prev.work_schedule,
+                                            [day.toLowerCase()]: {
+                                              ...prev.work_schedule?.[day.toLowerCase()],
+                                              startTime: timeString
+                                            }
+                                          }
+                                        }));
+                                      }
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                    style={styles.compactTimePicker}
+                                  />
+                                ) : Platform.OS === 'android' ? (
+                                  <DateTimePicker
+                                    value={new Date(`1970-01-01T${daySchedule.startTime}:00`)}
+                                    mode="time"
+                                    display="default"
+                                    onChange={(event, selectedTime) => {
+                                      if (selectedTime) {
+                                        const timeString = selectedTime.toTimeString().slice(0, 5);
+                                        setStaffForm(prev => ({
+                                          ...prev,
+                                          work_schedule: {
+                                            ...prev.work_schedule,
+                                            [day.toLowerCase()]: {
+                                              ...prev.work_schedule?.[day.toLowerCase()],
+                                              startTime: timeString
+                                            }
+                                          }
+                                        }));
+                                      }
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <input
+                                    type="time"
+                                    value={daySchedule.startTime}
+                                    onChange={(e) => {
+                                      setStaffForm(prev => ({
+                                        ...prev,
+                                        work_schedule: {
+                                          ...prev.work_schedule,
+                                          [day.toLowerCase()]: {
+                                            ...prev.work_schedule?.[day.toLowerCase()],
+                                            startTime: e.target.value
+                                          }
+                                        }
+                                      }));
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                    style={styles.webTimeInput}
+                                  />
+                                )}
+                              </View>
+                            )}
+                            
+                            <Text style={styles.timeToText}>to</Text>
+                            
+                            <TouchableOpacity
+                              style={styles.timeSlotButton}
+                              onPress={() => {
+                                setSelectedStaffTimeField(`${day.toLowerCase()}_end`);
+                              }}
+                            >
+                              <Ionicons name="time-outline" size={16} color="#EF4444" />
+                              <Text style={styles.timeSlotText}>
+                                {formatTimeDisplay(daySchedule.endTime)}
+                              </Text>
+                            </TouchableOpacity>
+                            
+                            {/* Inline End Time Picker */}
+                            {selectedStaffTimeField === `${day.toLowerCase()}_end` && (
+                              <View style={styles.inlineStaffTimePicker}>
+                                {Platform.OS === 'ios' ? (
+                                  <DateTimePicker
+                                    value={new Date(`1970-01-01T${daySchedule.endTime}:00`)}
+                                    mode="time"
+                                    display="compact"
+                                    onChange={(event, selectedTime) => {
+                                      if (selectedTime) {
+                                        const timeString = selectedTime.toTimeString().slice(0, 5);
+                                        setStaffForm(prev => ({
+                                          ...prev,
+                                          work_schedule: {
+                                            ...prev.work_schedule,
+                                            [day.toLowerCase()]: {
+                                              ...prev.work_schedule?.[day.toLowerCase()],
+                                              endTime: timeString
+                                            }
+                                          }
+                                        }));
+                                      }
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                    style={styles.compactTimePicker}
+                                  />
+                                ) : Platform.OS === 'android' ? (
+                                  <DateTimePicker
+                                    value={new Date(`1970-01-01T${daySchedule.endTime}:00`)}
+                                    mode="time"
+                                    display="default"
+                                    onChange={(event, selectedTime) => {
+                                      if (selectedTime) {
+                                        const timeString = selectedTime.toTimeString().slice(0, 5);
+                                        setStaffForm(prev => ({
+                                          ...prev,
+                                          work_schedule: {
+                                            ...prev.work_schedule,
+                                            [day.toLowerCase()]: {
+                                              ...prev.work_schedule?.[day.toLowerCase()],
+                                              endTime: timeString
+                                            }
+                                          }
+                                        }));
+                                      }
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <input
+                                    type="time"
+                                    value={daySchedule.endTime}
+                                    onChange={(e) => {
+                                      setStaffForm(prev => ({
+                                        ...prev,
+                                        work_schedule: {
+                                          ...prev.work_schedule,
+                                          [day.toLowerCase()]: {
+                                            ...prev.work_schedule?.[day.toLowerCase()],
+                                            endTime: e.target.value
+                                          }
+                                        }
+                                      }));
+                                      setSelectedStaffTimeField(null);
+                                    }}
+                                    style={styles.webTimeInput}
+                                  />
+                                )}
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Leave & Special Days - Always Expanded */}
+              <View style={styles.inputGroup}>
+                <View style={styles.leaveHeaderFixed}>
+                  <Ionicons name="calendar-outline" size={20} color="#F59E0B" />
+                  <View style={styles.leaveHeaderTextContainer}>
+                    <Text style={styles.label}>Leave & Special Days</Text>
+                    <Text style={styles.inputHint}>Tap dates to select leave periods (drag between dates for ranges)</Text>
+                  </View>
+                </View>
+
+                {/* Inline Calendar */}
+                <View style={styles.inlineLeaveCalendar}>
+                  {(() => {
+                    const currentMonth = new Date();
+                    const year = currentMonth.getFullYear();
+                    const month = currentMonth.getMonth();
+                    
+                    // Generate calendar days for current month
+                    const firstDay = new Date(year, month, 1);
+                    const lastDay = new Date(year, month + 1, 0);
+                    const startDate = new Date(firstDay);
+                    startDate.setDate(startDate.getDate() - firstDay.getDay());
+                    
+                    const calendar = [];
+                    const currentDate = new Date(startDate);
+                    
+                    for (let week = 0; week < 6; week++) {
+                      const weekDays = [];
+                      for (let day = 0; day < 7; day++) {
+                        weekDays.push(new Date(currentDate));
+                        currentDate.setDate(currentDate.getDate() + 1);
+                      }
+                      calendar.push(weekDays);
+                      if (currentDate.getMonth() !== month && weekDays[6].getMonth() !== month) {
+                        break;
+                      }
+                    }
+
+                    const handleDayPress = (date: Date) => {
+                      const dateString = date.toISOString().split('T')[0];
+                      
+                      if (!selectedLeaveStartDate) {
+                        setSelectedLeaveStartDate(dateString);
+                        setSelectedLeaveEndDate(null);
+                      } else if (!selectedLeaveEndDate) {
+                        const startDate = new Date(selectedLeaveStartDate);
+                        if (date >= startDate) {
+                          setSelectedLeaveEndDate(dateString);
+                        } else {
+                          setSelectedLeaveStartDate(dateString);
+                          setSelectedLeaveEndDate(null);
+                        }
+                      } else {
+                        // Reset and start new selection
+                        setSelectedLeaveStartDate(dateString);
+                        setSelectedLeaveEndDate(null);
+                      }
+                    };
+
+                    const isDateInRange = (date: Date) => {
+                      if (!selectedLeaveStartDate || !selectedLeaveEndDate) return false;
+                      const dateString = date.toISOString().split('T')[0];
+                      return dateString >= selectedLeaveStartDate && dateString <= selectedLeaveEndDate;
+                    };
+
+                    const isDateSelected = (date: Date) => {
+                      const dateString = date.toISOString().split('T')[0];
+                      return dateString === selectedLeaveStartDate || dateString === selectedLeaveEndDate;
+                    };
+
+                    const isDateOnLeave = (date: Date) => {
+                      const dateString = date.toISOString().split('T')[0];
+                      return staffForm.leave_dates?.some(leave => 
+                        dateString >= leave.startDate && dateString <= leave.endDate
+                      ) || false;
+                    };
+
+                    return (
+                      <View style={styles.inlineCalendarContainer}>
+                        {/* Calendar Header */}
+                        <View style={styles.inlineCalendarHeader}>
+                          <Text style={styles.inlineCalendarMonthYear}>
+                            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                          </Text>
+                        </View>
+
+                        {/* Day Names */}
+                        <View style={styles.inlineCalendarDayNames}>
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                            <Text key={day} style={styles.inlineCalendarDayName}>{day}</Text>
+                          ))}
+                        </View>
+
+                        {/* Calendar Grid */}
+                        {calendar.map((week, weekIndex) => (
+                          <View key={weekIndex} style={styles.inlineCalendarWeek}>
+                            {week.map((date, dayIndex) => {
+                              const isCurrentMonth = date.getMonth() === month;
+                              const isToday = date.toDateString() === new Date().toDateString();
+                              const isInRange = isDateInRange(date);
+                              const isSelected = isDateSelected(date);
+                              const isOnLeave = isDateOnLeave(date);
+                              
+                              return (
+                                <TouchableOpacity
+                                  key={dayIndex}
+                                  style={[
+                                    styles.inlineCalendarDay,
+                                    !isCurrentMonth && styles.inlineCalendarDayOtherMonth,
+                                    isToday && styles.inlineCalendarDayToday,
+                                    isInRange && styles.inlineCalendarDayInRange,
+                                    isSelected && styles.inlineCalendarDaySelected,
+                                    isOnLeave && styles.inlineCalendarDayOnLeave
+                                  ]}
+                                  onPress={() => isCurrentMonth && date >= new Date() && handleDayPress(date)}
+                                  disabled={!isCurrentMonth || date < new Date()}
+                                >
+                                  <Text style={[
+                                    styles.inlineCalendarDayText,
+                                    !isCurrentMonth && styles.inlineCalendarDayTextOther,
+                                    isToday && styles.inlineCalendarDayTextToday,
+                                    (isSelected || isInRange) && styles.inlineCalendarDayTextSelected,
+                                    isOnLeave && styles.inlineCalendarDayTextOnLeave
+                                  ]}>
+                                    {date.getDate()}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        ))}
+
+                        {/* Selected Range Display */}
+                        {selectedLeaveStartDate && selectedLeaveEndDate && (
+                          <View style={styles.inlineSelectedRangeDisplay}>
+                            <Text style={styles.inlineSelectedRangeTitle}>Selected Leave Period:</Text>
+                            <Text style={styles.inlineSelectedRangeText}>
+                              {selectedLeaveStartDate === selectedLeaveEndDate 
+                                ? new Date(selectedLeaveStartDate).toLocaleDateString()
+                                : `${new Date(selectedLeaveStartDate).toLocaleDateString()} - ${new Date(selectedLeaveEndDate).toLocaleDateString()}`
+                              }
+                            </Text>
+                            <TouchableOpacity
+                              style={styles.addLeaveButton}
+                              onPress={() => {
+                                if (selectedLeaveStartDate && selectedLeaveEndDate) {
+                                  const newLeave = {
+                                    title: 'Leave Period',
+                                    startDate: selectedLeaveStartDate,
+                                    endDate: selectedLeaveEndDate,
+                                    type: 'leave'
+                                  };
+                                  
+                                  setStaffForm(prev => ({
+                                    ...prev,
+                                    leave_dates: [...(prev.leave_dates || []), newLeave]
+                                  }));
+
+                                  // Reset selection
+                                  setSelectedLeaveStartDate(null);
+                                  setSelectedLeaveEndDate(null);
+                                }
+                              }}
+                            >
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                              <Text style={styles.addLeaveButtonText}>Add Leave</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
+                </View>
+
+                {/* Current Leave Dates */}
+                {staffForm.leave_dates && staffForm.leave_dates.length > 0 && (
+                  <View style={styles.currentLeaveDates}>
+                    <Text style={styles.currentLeaveDatesTitle}>Scheduled Leave Days:</Text>
+                    <View style={styles.leaveDaysList}>
+                      {staffForm.leave_dates
+                        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                        .map((leave, index) => (
+                          <View key={index} style={styles.leaveDayCard}>
+                            <View style={styles.leaveDayIconContainer}>
+                              <Ionicons 
+                                name={new Date(leave.endDate) < new Date() ? "checkmark-circle" : "time-outline"} 
+                                size={16} 
+                                color={new Date(leave.endDate) < new Date() ? "#10B981" : "#F59E0B"} 
+                              />
+                            </View>
+                            <View style={styles.leaveDayInfo}>
+                              <Text style={styles.leaveDayTitle}>{leave.title}</Text>
+                              <Text style={styles.leaveDayDates}>
+                                {leave.startDate === leave.endDate 
+                                  ? new Date(leave.startDate).toLocaleDateString()
+                                  : `${new Date(leave.startDate).toLocaleDateString()} - ${new Date(leave.endDate).toLocaleDateString()}`
+                                }
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.removeLeaveDayButton}
+                              onPress={() => {
+                                setStaffForm(prev => ({
+                                  ...prev,
+                                  leave_dates: prev.leave_dates?.filter((_, i) => i !== index) || []
+                                }));
+                              }}
+                            >
+                              <Ionicons name="close" size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+
               <View style={styles.switchRow}>
                 <View>
                   <Text style={styles.switchLabel}>Active Staff Member</Text>
@@ -3971,62 +4694,224 @@ const ShopDetailsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
   );
 
-  const renderCustomTimePicker = () => (
-    <Modal
-      visible={showCustomTimePicker}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowCustomTimePicker(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.timePickerModal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Time</Text>
-            <TouchableOpacity onPress={() => setShowCustomTimePicker(false)}>
-              <Ionicons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
+  // Staff Leave Calendar Modal with drag-to-select functionality
+  const renderStaffLeaveCalendar = () => {
+    const currentMonth = new Date();
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    // Generate calendar days for current month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const calendar = [];
+    const currentDate = new Date(startDate);
+    
+    for (let week = 0; week < 6; week++) {
+      const weekDays = [];
+      for (let day = 0; day < 7; day++) {
+        weekDays.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      calendar.push(weekDays);
+    }
+
+    const handleDayPress = (date: Date) => {
+      const dateString = date.toISOString().split('T')[0];
+      
+      if (!selectedLeaveStartDate) {
+        setSelectedLeaveStartDate(dateString);
+        setSelectedLeaveEndDate(dateString);
+      } else if (selectedLeaveStartDate && !selectedLeaveEndDate) {
+        const startDate = new Date(selectedLeaveStartDate);
+        if (date < startDate) {
+          setSelectedLeaveStartDate(dateString);
+          setSelectedLeaveEndDate(selectedLeaveStartDate);
+        } else {
+          setSelectedLeaveEndDate(dateString);
+        }
+      } else {
+        // Reset selection
+        setSelectedLeaveStartDate(dateString);
+        setSelectedLeaveEndDate(dateString);
+      }
+    };
+
+    const addLeaveRange = () => {
+      if (selectedLeaveStartDate && selectedLeaveEndDate) {
+        const leaveTitle = selectedLeaveStartDate === selectedLeaveEndDate 
+          ? 'Single Day Leave'
+          : 'Leave Period';
           
-          <FlatList
-            data={generateTimeSlots()}
-            numColumns={4}
-            style={styles.timeSlotGrid}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => {
-              const currentTime = editingTimeSlot ? 
-                (editingTimeSlot.type === 'open' ? 
-                  shop.business_hours.find(h => h.day === editingTimeSlot.day)?.openTime :
-                  shop.business_hours.find(h => h.day === editingTimeSlot.day)?.closeTime
-                ) : '';
-              
-              return (
+        const newLeave = {
+          title: leaveTitle,
+          startDate: selectedLeaveStartDate,
+          endDate: selectedLeaveEndDate,
+          type: 'leave'
+        };
+
+        setStaffForm(prev => ({
+          ...prev,
+          leave_dates: [...(prev.leave_dates || []), newLeave]
+        }));
+
+        // Reset selection
+        setSelectedLeaveStartDate(null);
+        setSelectedLeaveEndDate(null);
+        setShowStaffLeaveCalendar(false);
+      }
+    };
+
+    const isDateInRange = (date: Date) => {
+      if (!selectedLeaveStartDate || !selectedLeaveEndDate) return false;
+      const dateString = date.toISOString().split('T')[0];
+      return dateString >= selectedLeaveStartDate && dateString <= selectedLeaveEndDate;
+    };
+
+    const isDateSelected = (date: Date) => {
+      const dateString = date.toISOString().split('T')[0];
+      return dateString === selectedLeaveStartDate || dateString === selectedLeaveEndDate;
+    };
+
+    const isDateOnLeave = (date: Date) => {
+      if (!staffForm.leave_dates) return false;
+      const dateString = date.toISOString().split('T')[0];
+      return staffForm.leave_dates.some(leave => 
+        dateString >= leave.startDate && dateString <= leave.endDate
+      );
+    };
+
+    return (
+      <Modal
+        visible={showStaffLeaveCalendar}
+        animationType="slide"
+        onRequestClose={() => setShowStaffLeaveCalendar(false)}
+      >
+        <SafeAreaView style={styles.fullScreenModalContainer}>
+          <View style={styles.leaveCalendarModal}>
+              <View style={styles.leaveCalendarHeader}>
+                <View style={styles.leaveCalendarTitleContainer}>
+                  <Ionicons name="calendar" size={24} color="#F59E0B" />
+                  <Text style={styles.leaveCalendarTitle}>Staff Leave Calendar</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setShowStaffLeaveCalendar(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.leaveCalendarBody}>
+                <Text style={styles.leaveCalendarInstructions}>
+                  Tap a date to start, then tap another date to create a leave range. 
+                  Tap the same date twice for single day leave.
+                </Text>
+
+                {/* Calendar Header */}
+                <View style={styles.calendarContainer}>
+                  <View style={styles.calendarHeader}>
+                    <Text style={styles.calendarMonthYear}>
+                      {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </Text>
+                  </View>
+
+                  {/* Day Names */}
+                  <View style={styles.calendarDayNames}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <Text key={day} style={styles.calendarDayName}>{day}</Text>
+                    ))}
+                  </View>
+
+                  {/* Calendar Grid */}
+                  {calendar.map((week, weekIndex) => (
+                    <View key={weekIndex} style={styles.calendarWeek}>
+                      {week.map((date, dayIndex) => {
+                        const isCurrentMonth = date.getMonth() === month;
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const isInRange = isDateInRange(date);
+                        const isSelected = isDateSelected(date);
+                        const isOnLeave = isDateOnLeave(date);
+                        
+                        return (
+                          <TouchableOpacity
+                            key={dayIndex}
+                            style={[
+                              styles.calendarDay,
+                              !isCurrentMonth && styles.calendarDayOtherMonth,
+                              isToday && styles.calendarDayToday,
+                              isInRange && styles.calendarDayInRange,
+                              isSelected && styles.calendarDaySelected,
+                              isOnLeave && styles.calendarDayOnLeave
+                            ]}
+                            onPress={() => isCurrentMonth && date >= new Date() && handleDayPress(date)}
+                            disabled={!isCurrentMonth || date < new Date()}
+                          >
+                            <Text style={[
+                              styles.calendarDayText,
+                              !isCurrentMonth && styles.calendarDayTextOther,
+                              isToday && styles.calendarDayTextToday,
+                              (isSelected || isInRange) && styles.calendarDayTextSelected,
+                              isOnLeave && styles.calendarDayTextOnLeave
+                            ]}>
+                              {date.getDate()}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+
+                {/* Selected Range Display */}
+                {selectedLeaveStartDate && selectedLeaveEndDate && (
+                  <View style={styles.selectedRangeDisplay}>
+                    <Text style={styles.selectedRangeTitle}>Selected Leave Period:</Text>
+                    <Text style={styles.selectedRangeText}>
+                      {selectedLeaveStartDate === selectedLeaveEndDate 
+                        ? new Date(selectedLeaveStartDate).toLocaleDateString()
+                        : `${new Date(selectedLeaveStartDate).toLocaleDateString()} - ${new Date(selectedLeaveEndDate).toLocaleDateString()}`
+                      }
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={styles.leaveCalendarActions}>
+                <TouchableOpacity
+                  style={styles.leaveCalendarCancelButton}
+                  onPress={() => {
+                    setSelectedLeaveStartDate(null);
+                    setSelectedLeaveEndDate(null);
+                    setShowStaffLeaveCalendar(false);
+                  }}
+                >
+                  <Text style={styles.leaveCalendarCancelText}>Cancel</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[
-                    styles.timeSlot,
-                    currentTime === item && styles.selectedTimeSlot
+                    styles.leaveCalendarSaveButton,
+                    (!selectedLeaveStartDate || !selectedLeaveEndDate) && styles.disabledButton
                   ]}
-                  onPress={() => selectTime(item)}
+                  onPress={addLeaveRange}
+                  disabled={!selectedLeaveStartDate || !selectedLeaveEndDate}
                 >
-                  <Text style={[
-                    styles.timeSlotText,
-                    currentTime === item && styles.selectedTimeSlotText
-                  ]}>
-                    {item}
-                  </Text>
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Text style={styles.leaveCalendarSaveText}>Add Leave</Text>
                 </TouchableOpacity>
-              );
-            }
-          }
-          />
-        </View>
-      </View>
-    </Modal>
-  );
+              </View>
+            </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
 
   // Main component render
   if (isLoading) {
@@ -4096,7 +4981,7 @@ const ShopDetailsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Date Picker */}
-      {showDatePicker && (
+      {showDatePicker && Platform.OS !== 'web' && (
         <DateTimePicker
           value={tempDate}
           mode="date"
@@ -4104,24 +4989,159 @@ const ShopDetailsScreen: React.FC = () => {
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) {
+              const dateString = selectedDate.toISOString().split('T')[0];
               setSpecialDayForm(prev => ({ 
                 ...prev, 
-                date: selectedDate.toISOString().split('T')[0] 
+                date: dateString
               }));
             }
           }}
         />
       )}
 
-      {/* Time Picker */}
-      {showTimePicker && (
-        <DateTimePicker
-          value={tempDate}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
+      {/* Web Date Picker Fallback */}
+      {Platform.OS === 'web' && showDatePicker && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.webPickerContainer}>
+              <Text style={styles.modalTitle}>Select Date</Text>
+              <input
+                type="date"
+                value={specialDayForm.date || new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const dateString = e.target.value;
+                  setSpecialDayForm(prev => ({ ...prev, date: dateString }));
+                  setShowDatePicker(false);
+                }}
+                style={{
+                  padding: '12px',
+                  fontSize: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #E5E7EB',
+                  margin: '16px 0'
+                }}
+              />
+              <View style={styles.webPickerActions}>
+                <TouchableOpacity 
+                  style={styles.webPickerButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.webPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
+
+      {/* Time Picker */}
+      <TimePickerModal
+        visible={showTimePicker && Platform.OS !== 'web'}
+        onClose={() => {
+          setShowTimePicker(false);
+          setEditingTimeSlot(null);
+          setSpecialDayTimeType(null);
+        }}
+        onSelectTime={(time) => {
+          if (editingTimeSlot && editingTimeSlot.day === 'Special Day') {
+            // Handle special day time
+            if (specialDayTimeType === 'open') {
+              setSpecialDayForm(prev => ({ ...prev, openTime: time }));
+            } else if (specialDayTimeType === 'close') {
+              setSpecialDayForm(prev => ({ ...prev, closeTime: time }));
+            }
+          } else if (editingTimeSlot) {
+            // Handle regular business hours
+            const field = editingTimeSlot.type === 'open' ? 'openTime' : 'closeTime';
+            updateBusinessHours(editingTimeSlot.day, field, time);
+          }
+          setShowTimePicker(false);
+          setEditingTimeSlot(null);
+          setSpecialDayTimeType(null);
+        }}
+        currentTime={
+          editingTimeSlot && editingTimeSlot.day === 'Special Day'
+            ? specialDayTimeType === 'open' 
+              ? specialDayForm.openTime || '09:00'
+              : specialDayForm.closeTime || '17:00'
+            : editingTimeSlot && shop.business_hours.find(h => h.day === editingTimeSlot.day)
+              ? editingTimeSlot.type === 'open'
+                ? shop.business_hours.find(h => h.day === editingTimeSlot.day)?.openTime
+                : shop.business_hours.find(h => h.day === editingTimeSlot.day)?.closeTime
+              : '09:00'
+        }
+        title={editingTimeSlot ? `Select ${editingTimeSlot.type === 'open' ? 'Opening' : 'Closing'} Time for ${editingTimeSlot.day}` : 'Select Time'}
+      />
+
+
+      {/* Web Time Picker Fallback */}
+      {Platform.OS === 'web' && showTimePicker && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.webPickerContainer}>
+              <Text style={styles.modalTitle}>
+                Select {editingTimeSlot?.type === 'open' ? 'Opening' : 'Closing'} Time
+              </Text>
+              <input
+                type="time"
+                value={
+                  editingTimeSlot && editingTimeSlot.day === 'Special Day'
+                    ? specialDayTimeType === 'open' 
+                      ? specialDayForm.openTime || '09:00'
+                      : specialDayForm.closeTime || '17:00'
+                    : editingTimeSlot && shop.business_hours.find(h => h.day === editingTimeSlot.day)
+                      ? editingTimeSlot.type === 'open'
+                        ? shop.business_hours.find(h => h.day === editingTimeSlot.day)?.openTime
+                        : shop.business_hours.find(h => h.day === editingTimeSlot.day)?.closeTime
+                      : '09:00'
+                }
+                onChange={(e) => {
+                  const time = e.target.value;
+                  
+                  if (editingTimeSlot && editingTimeSlot.day === 'Special Day') {
+                    // Handle special day time
+                    if (specialDayTimeType === 'open') {
+                      setSpecialDayForm(prev => ({ ...prev, openTime: time }));
+                    } else if (specialDayTimeType === 'close') {
+                      setSpecialDayForm(prev => ({ ...prev, closeTime: time }));
+                    }
+                  } else if (editingTimeSlot) {
+                    // Handle regular business hours
+                    const field = editingTimeSlot.type === 'open' ? 'openTime' : 'closeTime';
+                    updateBusinessHours(editingTimeSlot.day, field, time);
+                  }
+                  
+                  setShowTimePicker(false);
+                  setEditingTimeSlot(null);
+                  setSpecialDayTimeType(null);
+                }}
+                style={{
+                  padding: '12px',
+                  fontSize: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #E5E7EB',
+                  margin: '16px 0'
+                }}
+              />
+              <View style={styles.webPickerActions}>
+                <TouchableOpacity 
+                  style={styles.webPickerButton}
+                  onPress={() => {
+                    setShowTimePicker(false);
+                    setEditingTimeSlot(null);
+                    setSpecialDayTimeType(null);
+                  }}
+                >
+                  <Text style={styles.webPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+
+
       {/* Modals */}
       {renderCategoryModal()}
       {renderTimezoneModal()}
@@ -4129,7 +5149,7 @@ const ShopDetailsScreen: React.FC = () => {
       {renderServiceModal()}
       {renderDiscountModal()}
       {renderStaffModal()}
-      {renderCustomTimePicker()}
+      {renderStaffLeaveCalendar()}
     </SafeAreaView>
   )
 };
@@ -4274,6 +5294,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    justifyContent: 'center',
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  webPickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  webPickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  webPickerButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  webPickerButtonText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
   textArea: {
     minHeight: 80,
@@ -4448,15 +5501,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 110,
+    justifyContent: 'center',
   },
   timeText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    letterSpacing: 0.3,
   },
   timeSeparator: {
     fontSize: 14,
@@ -4818,8 +5876,8 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   modalBody: {
+    flex: 1,
     padding: 20,
-    maxHeight: 400,
   },
   modalActions: {
     flexDirection: 'row',
@@ -5329,6 +6387,839 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#6B7280',
+  },
+
+  // Inline Date Picker Styles  
+  inlinePicker: {
+    marginTop: 8,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+  },
+  inlineDatePicker: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+  },
+  webInlinePicker: {
+    marginTop: 8,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    gap: 8,
+  },
+  webDateInput: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    fontSize: 14,
+    color: '#374151',
+    backgroundColor: '#FFFFFF',
+  },
+
+  // Inline Time Picker Styles for Special Day
+  inlineTimePickerContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  inlineTimePickerStyle: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    height: 120,
+  },
+  webInlineTimePicker: {
+    marginTop: 8,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  webTimeInput: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    fontSize: 14,
+    color: '#374151',
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+  },
+
+  // Special Day Modal Styles
+  specialDayModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FEFEFE',
+  },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalTitleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  specialDaySection: {
+    marginBottom: 24,
+    backgroundColor: '#FEFEFE',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  specialDaySectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  inputWithIconText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  datePickerPlaceholder: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  specialDayTypeCard: {
+    flex: 1,
+    minWidth: (width - 80) / 2 - 8,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 4,
+    marginVertical: 4,
+  },
+  selectedSpecialDayTypeCard: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  specialDayTypeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  specialDayTypeTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+    textAlign: 'center',
+  },
+  openStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  openStatusInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  openStatusIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  openStatusTextContainer: {
+    flex: 1,
+  },
+  openStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  openStatusDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  timePickerSection: {
+    marginTop: 16,
+  },
+  timePickerRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  timePickerColumn: {
+    flex: 1,
+  },
+  timePickerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  timePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  timePickerIcon: {
+    marginRight: 8,
+  },
+  timePickerText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  timePickerPlaceholder: {
+    flex: 1,
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  recurringOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  recurringOptionCard: {
+    flex: 1,
+    minWidth: (width - 80) / 2 - 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    gap: 10,
+  },
+  selectedRecurringCard: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+  },
+  recurringIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedRecurringIcon: {
+    backgroundColor: '#FEF3C7',
+  },
+  recurringOptionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+    flex: 1,
+  },
+  selectedRecurringTitle: {
+    color: '#92400E',
+    fontWeight: '600',
+  },
+  textAreaContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  textAreaIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  textAreaWithIcon: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  specialDayModalActions: {
+    flexDirection: 'row',
+    gap: 16,
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    backgroundColor: '#FEFEFE',
+  },
+  specialDayCancelButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  specialDayCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  specialDaySaveButton: {
+    flex: 2,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  disabledSaveButton: {
+    backgroundColor: '#D1D5DB',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  saveButtonIcon: {
+    marginRight: 4,
+  },
+  specialDaySaveText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Staff Work Schedule Styles
+  workScheduleContainer: {
+    backgroundColor: '#FEFEFE',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  dayScheduleRow: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dayScheduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dayScheduleName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  daySwitch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+  },
+  dayTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  timeSlotButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+    flex: 1,
+  },
+  timeSlotText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  timeToText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  // Staff Leave Management Styles
+  addLeaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    marginTop: 8,
+  },
+  addLeaveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#92400E',
+    flex: 1,
+    marginLeft: 12,
+  },
+  currentLeaveDays: {
+    marginTop: 16,
+    backgroundColor: '#FEFEFE',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  leaveDaysTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  leaveDaysList: {
+    gap: 8,
+  },
+  leaveDayCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  leaveDayInfo: {
+    flex: 1,
+  },
+  leaveDayTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  leaveDayDates: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  removeLeaveDayButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Full Screen Modal Container
+  fullScreenModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  
+  // Leave Calendar Modal Styles
+  leaveCalendarModal: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  leaveCalendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FEFEFE',
+  },
+  leaveCalendarTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  leaveCalendarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  leaveCalendarBody: {
+    flex: 1,
+    padding: 20,
+  },
+  leaveCalendarInstructions: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  calendarContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  calendarHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calendarMonthYear: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  calendarDayNames: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  calendarDayName: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    paddingVertical: 8,
+  },
+  calendarWeek: {
+    flexDirection: 'row',
+  },
+  calendarDay: {
+    flex: 1,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 1,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  calendarDayOtherMonth: {
+    backgroundColor: '#F9FAFB',
+  },
+  calendarDayToday: {
+    backgroundColor: '#DBEAFE',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  calendarDayInRange: {
+    backgroundColor: '#FEF3C7',
+  },
+  calendarDaySelected: {
+    backgroundColor: '#F59E0B',
+  },
+  calendarDayOnLeave: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  calendarDayText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  calendarDayTextOther: {
+    color: '#9CA3AF',
+  },
+  calendarDayTextToday: {
+    color: '#1E40AF',
+    fontWeight: '600',
+  },
+  calendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  calendarDayTextOnLeave: {
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  selectedRangeDisplay: {
+    backgroundColor: '#F0F9FF',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  selectedRangeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0C4A6E',
+    marginBottom: 4,
+  },
+  selectedRangeText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#0369A1',
+  },
+  leaveCalendarActions: {
+    flexDirection: 'row',
+    gap: 16,
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    backgroundColor: '#FEFEFE',
+  },
+  leaveCalendarCancelButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  leaveCalendarCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  leaveCalendarSaveButton: {
+    flex: 2,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  leaveCalendarSaveText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  disabledButton: {
+    backgroundColor: '#D1D5DB',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  // Full Screen Modal Styles
+  fullScreenModalContent: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+
+  // Fixed Leave Header (non-collapsible)
+  leaveHeaderFixed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+
+  // Inline Leave Calendar Styles
+  inlineLeaveCalendar: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 16,
+  },
+  inlineCalendarContainer: {
+    backgroundColor: '#FFFFFF',
+  },
+  inlineCalendarHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inlineCalendarMonthYear: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  inlineCalendarDayNames: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  inlineCalendarDayName: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    paddingVertical: 8,
+  },
+  inlineCalendarWeek: {
+    flexDirection: 'row',
+  },
+  inlineCalendarDay: {
+    flex: 1,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 1,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  inlineCalendarDayOtherMonth: {
+    backgroundColor: '#F9FAFB',
+  },
+  inlineCalendarDayToday: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  inlineCalendarDayInRange: {
+    backgroundColor: '#FEF3C7',
+  },
+  inlineCalendarDaySelected: {
+    backgroundColor: '#F59E0B',
+  },
+  inlineCalendarDayOnLeave: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  inlineCalendarDayText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  inlineCalendarDayTextOther: {
+    color: '#9CA3AF',
+  },
+  inlineCalendarDayTextToday: {
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  inlineCalendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  inlineCalendarDayTextOnLeave: {
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+
+  // Selected Range Display
+  inlineSelectedRangeDisplay: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  inlineSelectedRangeTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#059669',
+    marginBottom: 4,
+  },
+  inlineSelectedRangeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#047857',
+    marginBottom: 8,
+  },
+  addLeaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+  },
+  addLeaveButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
+  // Current Leave Dates Styles
+  currentLeaveDatesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
   },
 });
 

@@ -20,6 +20,7 @@ import ServiceListScreen from '../screens/ServiceListScreen';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen';
 import BookingSummaryScreen from '../screens/BookingSummaryScreen';
 import BookingDateTimeScreen from '../screens/BookingDateTimeScreen';
+import BookingDateTimeEnhancedScreen from '../screens/BookingDateTimeScreenEnhanced';
 import BookingsScreen from '../screens/BookingsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -555,8 +556,19 @@ export type RootStackParamList = {
       duration: string;
     }>;
     totalPrice: number;
+    selectedStaff?: any;
   };
   BookingDateTime: { serviceId: string };
+  BookingDateTimeEnhanced: {
+    selectedServices: Array<{
+      id: string;
+      name: string;
+      price: string;
+      duration: string;
+    }>;
+    totalPrice: number;
+    selectedStaff: any;
+  };
   Bookings: undefined;
   Favorites: undefined;
   Profile: undefined;
@@ -924,6 +936,15 @@ const AppNavigator = () => {
           <RootStack.Screen 
             name="BookingDateTime" 
             component={BookingDateTimeScreen}
+            options={{ 
+              title: 'Select Date & Time',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="BookingDateTimeEnhanced" 
+            component={BookingDateTimeEnhancedScreen}
             options={{ 
               title: 'Select Date & Time',
               headerShown: false,
