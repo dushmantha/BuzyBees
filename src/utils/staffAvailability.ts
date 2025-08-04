@@ -150,18 +150,48 @@ export const generateStaffTimeSlots = (
       startTime: startTimeStr,
       endTime: endTimeStr,
       available: !isBooked,
-      staffAvailable: true
+      staffAvailable: true,
+      reason: isBooked ? 'Staff member already booked during this time' : undefined
     });
   }
   
   return slots;
 };
 
+// Generate available time slots with booking conflict checking
+export const generateStaffTimeSlotsWithBookings = async (
+  date: string,
+  staff: StaffMember,
+  serviceDuration: number,
+  getStaffBookingsCallback: (staffId: string, date: string) => Promise<Array<{ start: string; end: string }>>
+): Promise<Array<{
+  id: string;
+  startTime: string;
+  endTime: string;
+  available: boolean;
+  staffAvailable: boolean;
+  reason?: string;
+}>> => {
+  try {
+    // Fetch existing bookings for this staff member on this date
+    const existingBookings = await getStaffBookingsCallback(staff.id, date);
+    console.log('📅 Existing bookings for staff', staff.name, 'on', date, ':', existingBookings);
+    
+    // Generate time slots with conflict checking
+    return generateStaffTimeSlots(date, staff, serviceDuration, existingBookings);
+  } catch (error) {
+    console.error('❌ Error fetching staff bookings, falling back to basic availability:', error);
+    // Fallback to basic availability without booking conflict checking
+    return generateStaffTimeSlots(date, staff, serviceDuration, []);
+  }
+};
+
 // Get staff availability status for calendar marking
 export const getStaffDateStatus = (
   date: string,
-  staff: StaffMember
-): 'available' | 'unavailable' | 'leave' => {
+  staff: StaffMember,
+  bookedSlots: { start: string; end: string }[] = []
+): 'available' | 'unavailable' | 'leave' | 'fully_booked' => {
   const dateObj = new Date(date);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -172,22 +202,59 @@ export const getStaffDateStatus = (
   }
   
   // Check if staff is on leave
-  if (isOnLeave(date, staff.leave_dates)) {
+  if (staff.leave_dates && isOnLeave(date, staff.leave_dates)) {
     return 'leave';
   }
   
   // Check regular work schedule
-  const dayOfWeek = DAYS_OF_WEEK[dateObj.getDay()];
-  const daySchedule = staff.work_schedule[dayOfWeek as keyof StaffWorkSchedule];
+  const availability = getStaffAvailabilityForDate(date, staff);
+  if (!availability.isAvailable || !availability.workingHours) {
+    return 'unavailable';
+  }
   
-  return daySchedule.isWorking ? 'available' : 'unavailable';
+  // Check if staff is fully booked
+  if (bookedSlots.length > 0) {
+    const workStart = timeToMinutes(availability.workingHours.start);
+    const workEnd = timeToMinutes(availability.workingHours.end);
+    const totalWorkMinutes = workEnd - workStart;
+    
+    // Calculate total booked minutes
+    const totalBookedMinutes = bookedSlots.reduce((total, slot) => {
+      const slotStart = Math.max(timeToMinutes(slot.start), workStart);
+      const slotEnd = Math.min(timeToMinutes(slot.end), workEnd);
+      return total + Math.max(0, slotEnd - slotStart);
+    }, 0);
+    
+    // Consider fully booked if more than 80% of working hours are booked
+    if (totalBookedMinutes / totalWorkMinutes > 0.8) {
+      return 'fully_booked';
+    }
+  }
+  
+  return 'available';
+};
+
+// Get staff availability status with booking information
+export const getStaffDateStatusWithBookings = async (
+  date: string,
+  staff: StaffMember,
+  getStaffBookingsCallback: (staffId: string, date: string) => Promise<Array<{ start: string; end: string }>>
+): Promise<'available' | 'unavailable' | 'leave' | 'fully_booked'> => {
+  try {
+    const existingBookings = await getStaffBookingsCallback(staff.id, date);
+    return getStaffDateStatus(date, staff, existingBookings);
+  } catch (error) {
+    console.error('❌ Error fetching staff bookings for date status:', error);
+    return getStaffDateStatus(date, staff, []);
+  }
 };
 
 // Generate calendar marked dates for a staff member
 export const generateStaffCalendarMarks = (
   staff: StaffMember,
   startDate: Date = new Date(),
-  daysAhead: number = 60
+  daysAhead: number = 60,
+  bookingsByDate: Record<string, Array<{ start: string; end: string }>> = {}
 ): Record<string, any> => {
   const marks: Record<string, any> = {};
   
@@ -196,7 +263,8 @@ export const generateStaffCalendarMarks = (
     date.setDate(startDate.getDate() + i);
     const dateStr = date.toISOString().split('T')[0];
     
-    const status = getStaffDateStatus(dateStr, staff);
+    const bookedSlots = bookingsByDate[dateStr] || [];
+    const status = getStaffDateStatus(dateStr, staff, bookedSlots);
     
     switch (status) {
       case 'unavailable':
@@ -225,6 +293,19 @@ export const generateStaffCalendarMarks = (
         };
         break;
         
+      case 'fully_booked':
+        marks[dateStr] = {
+          disabled: true,
+          disableTouchEvent: true,
+          customStyles: {
+            container: { backgroundColor: '#FEF3C7' },
+            text: { color: '#D97706', fontWeight: '600' }
+          },
+          marked: true,
+          dotColor: '#F59E0B'
+        };
+        break;
+        
       case 'available':
         marks[dateStr] = {
           marked: true,
@@ -239,4 +320,40 @@ export const generateStaffCalendarMarks = (
   }
   
   return marks;
+};
+
+// Generate calendar marked dates with booking information
+export const generateStaffCalendarMarksWithBookings = async (
+  staff: StaffMember,
+  getStaffBookingsCallback: (staffId: string, date: string) => Promise<Array<{ start: string; end: string }>>,
+  startDate: Date = new Date(),
+  daysAhead: number = 60
+): Promise<Record<string, any>> => {
+  try {
+    const bookingsByDate: Record<string, Array<{ start: string; end: string }>> = {};
+    
+    // Fetch bookings for all dates in the range
+    const bookingPromises = [];
+    for (let i = 0; i < daysAhead; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      bookingPromises.push(
+        getStaffBookingsCallback(staff.id, dateStr).then(bookings => {
+          bookingsByDate[dateStr] = bookings;
+        }).catch(error => {
+          console.error(`❌ Error fetching bookings for ${dateStr}:`, error);
+          bookingsByDate[dateStr] = [];
+        })
+      );
+    }
+    
+    await Promise.all(bookingPromises);
+    
+    return generateStaffCalendarMarks(staff, startDate, daysAhead, bookingsByDate);
+  } catch (error) {
+    console.error('❌ Error generating calendar marks with bookings:', error);
+    return generateStaffCalendarMarks(staff, startDate, daysAhead, {});
+  }
 };

@@ -22,6 +22,7 @@ import UpgradeModal from '../../components/UpgradeModal';
 import { normalizedShopService, Payment } from '../../lib/supabase/normalized';
 import { usePremium } from '../../contexts/PremiumContext';
 import { CancellationBanner } from '../../components/CancellationBanner';
+import { useQueueBadge } from '../../contexts/QueueBadgeContext';
 
 // Types
 interface QueueItem {
@@ -76,6 +77,7 @@ interface ApiResponse<T> {
 const ServiceQueueScreen = ({ navigation }) => {
   const { user } = useAccount();
   const { isPremium } = usePremium();
+  const { hideBadge } = useQueueBadge();
   const [selectedFilter, setSelectedFilter] = useState('all');
 
   // Helper function to format booking ID
@@ -320,12 +322,14 @@ const ServiceQueueScreen = ({ navigation }) => {
     };
   }, [loadQueueData]);
 
-  // Refresh data when screen comes into focus
+  // Refresh data when screen comes into focus and clear badge
   useFocusEffect(
     useCallback(() => {
       console.log('📋 Screen focused, refreshing booking queue...');
+      // Clear the badge when user views the queue
+      hideBadge();
       loadQueueData(false); // Background refresh without loading indicator
-    }, [loadQueueData])
+    }, [loadQueueData, hideBadge])
   );
 
   const handleRefresh = useCallback(async () => {

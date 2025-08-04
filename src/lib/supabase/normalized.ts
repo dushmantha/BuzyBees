@@ -1943,6 +1943,49 @@ class NormalizedShopService {
     }
   }
 
+  // Get bookings for a specific staff member on a specific date
+  async getStaffBookingsForDate(staffId: string, date: string): Promise<ServiceResponse<Array<{ start: string; end: string }>>> {
+    try {
+      console.log('📅 Getting staff bookings for:', staffId, 'on', date);
+
+      const { data, error } = await this.client
+        .from('shop_bookings')
+        .select('start_time, end_time, status')
+        .eq('assigned_staff_id', staffId)
+        .eq('booking_date', date)
+        .in('status', ['confirmed', 'in_progress', 'pending']) // Exclude cancelled/completed
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error getting staff bookings:', error);
+        return {
+          success: false,
+          error: `Failed to get staff bookings: ${error.message}`
+        };
+      }
+
+      const bookedSlots = data?.map(booking => ({
+        start: booking.start_time,
+        end: booking.end_time
+      })) || [];
+
+      console.log('📅 Found', bookedSlots.length, 'existing bookings for staff on', date);
+
+      return {
+        success: true,
+        data: bookedSlots,
+        message: 'Staff bookings retrieved successfully'
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error getting staff bookings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
   // Update booking status specifically
   async updateBookingStatus(
     bookingId: string,

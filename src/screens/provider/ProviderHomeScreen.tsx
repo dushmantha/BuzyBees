@@ -169,6 +169,24 @@ const ProviderHomeScreen: React.FC = () => {
   const route = useRoute<ProviderHomeRouteProp>();
   const { isPremium } = usePremium();
   const { user } = useAuth();
+  const { userProfile } = useAccount();
+  
+  // Debug user data
+  useEffect(() => {
+    console.log('🔍 ProviderHomeScreen - User data:', {
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata
+      } : null,
+      userProfile: userProfile ? {
+        full_name: userProfile.full_name,
+        first_name: userProfile.first_name,
+        last_name: userProfile.last_name,
+        avatar_url: userProfile.avatar_url
+      } : null
+    });
+  }, [user, userProfile]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1068,13 +1086,29 @@ const ProviderHomeScreen: React.FC = () => {
     <View style={styles.header}>
       <View style={styles.headerLeft}>
         <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {user?.name?.charAt(0)?.toUpperCase() || 'P'}
-          </Text>
+          {userProfile?.avatar_url ? (
+            <Image
+              source={{ uri: userProfile.avatar_url }}
+              style={styles.avatarImage}
+              onError={() => console.log('Avatar image failed to load')}
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {(userProfile?.full_name || userProfile?.first_name || user?.email)?.charAt(0)?.toUpperCase() || 'P'}
+            </Text>
+          )}
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.welcomeText}>Welcome back</Text>
-          <Text style={styles.userName}>{user?.name || 'Provider'}</Text>
+          <Text style={styles.userName}>
+            {userProfile?.full_name || 
+             (userProfile?.first_name && userProfile?.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : '') ||
+             userProfile?.first_name || 
+             user?.user_metadata?.full_name ||
+             user?.user_metadata?.first_name ||
+             user?.email?.split('@')[0] || 
+             'Provider'}
+          </Text>
         </View>
       </View>
       
@@ -1505,6 +1539,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
   },
   avatarText: {
     fontSize: 18,

@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, authService } from '../lib/supabase/index';
 import type { User, Session } from '@supabase/supabase-js';
 import { usePremium } from '../contexts/PremiumContext';
+import { QueueBadgeProvider, useQueueBadge } from '../contexts/QueueBadgeContext';
 import SplashScreen from '../screens/SplashScreen';
 
 // Import Screens
@@ -740,6 +741,7 @@ const ConsumerTabs = () => {
 // Provider Tab Navigator
 const ProviderTabs = () => {
   const { notificationCount } = useNotifications();
+  const { hasNewBooking } = useQueueBadge();
   const insets = useSafeAreaInsets();
   
   return (
@@ -765,6 +767,21 @@ const ProviderTabs = () => {
               <Ionicons name={iconName} size={size} color={color} />
               {route.name === 'ProfileTab' && notificationCount > 0 && (
                 <NotificationBadge count={notificationCount} />
+              )}
+              {route.name === 'QueueTab' && hasNewBooking && (
+                <View style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -3,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 6,
+                  width: 12,
+                  height: 12,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }} />
               )}
             </View>
           );
@@ -1061,8 +1078,10 @@ const RootNavigator = () => {
   return (
     <AccountProvider>
       <NotificationProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
-        {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+        <QueueBadgeProvider>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+          {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+        </QueueBadgeProvider>
       </NotificationProvider>
     </AccountProvider>
   );

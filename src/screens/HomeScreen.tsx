@@ -561,7 +561,9 @@ const HomeScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerGreeting}>Hej{user ? ` ${user.full_name}` : ''}! 👋</Text>
+          <Text style={styles.headerGreeting}>
+            Hej{user ? ` ${user.full_name || user.first_name || user.email?.split('@')[0] || 'there'}` : ''}! 👋
+          </Text>
           <Text style={styles.headerTitle}>Vad vill du boka?</Text>
           {__DEV__ && (
             <Text style={styles.debugText}>

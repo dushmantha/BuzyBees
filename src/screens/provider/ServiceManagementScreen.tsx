@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useQueueBadge } from '../../contexts/QueueBadgeContext';
 import ServiceManagementAPI, { 
   Shop, 
   Service, 
@@ -29,9 +30,13 @@ import { CancellationBanner } from '../../components/CancellationBanner';
 import { 
   generateStaffTimeSlots, 
   generateStaffCalendarMarks,
+  generateStaffTimeSlotsWithBookings,
+  generateStaffCalendarMarksWithBookings,
   getStaffAvailabilityForDate,
+  getStaffDateStatus,
   StaffMember 
 } from '../../utils/staffAvailability';
+import { normalizedShopService } from '../../lib/supabase/normalized';
 
 const { width } = Dimensions.get('window');
 
@@ -309,7 +314,7 @@ const QuickBookingModal = ({
       
       let status = getDateStatus(dateStr, serviceAvailability, selectedService.duration_minutes);
       
-      // If specific staff is selected, check their availability
+      // If specific staff is selected, check their availability with booking conflicts
       if (selectedStaffMember && selectedStaffMember.work_schedule && selectedStaffMember.leave_dates !== undefined) {
         const staffMember: StaffMember = {
           id: selectedStaffMember.id,
@@ -318,10 +323,15 @@ const QuickBookingModal = ({
           leave_dates: selectedStaffMember.leave_dates || []
         };
         
+        // Get basic staff availability first
         const staffAvailability = getStaffAvailabilityForDate(dateStr, staffMember);
         if (!staffAvailability.isAvailable) {
           // Override status if staff is not available
           status = staffAvailability.reason?.includes('leave') ? 'staff_leave' : 'staff_unavailable';
+        } else {
+          // Check for booking conflicts asynchronously
+          // For now, use basic availability - we'll add async booking checks in useEffect
+          status = 'available';
         }
       }
       
@@ -368,12 +378,12 @@ const QuickBookingModal = ({
         case 'fully_booked':
           marks[dateStr] = {
             marked: true,
-            dotColor: '#EF4444',
+            dotColor: '#F59E0B',
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
-              container: { backgroundColor: '#FEE2E2' },
-              text: { color: '#EF4444', fontWeight: 'bold' }
+              container: { backgroundColor: '#FEF3C7' },
+              text: { color: '#D97706', fontWeight: 'bold' }
             }
           };
           break;
@@ -412,15 +422,15 @@ const QuickBookingModal = ({
     setMarkedDates(calculatedMarkedDates);
   }, [calculatedMarkedDates]);
 
-  // Generate time slots with debouncing
+  // Generate time slots with booking conflict checking
   useEffect(() => {
     if (selectedDate && selectedService && serviceAvailability && visible) {
       setLoading(true);
       
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
         let slots = [];
         
-        // If specific staff is selected, use staff-aware time slot generation
+        // If specific staff is selected, use staff-aware time slot generation with booking conflicts
         if (selectedStaffId) {
           const selectedStaffMember = shopStaff.find(staff => staff.id === selectedStaffId);
           if (selectedStaffMember && selectedStaffMember.work_schedule && selectedStaffMember.leave_dates !== undefined) {
@@ -431,19 +441,27 @@ const QuickBookingModal = ({
               leave_dates: selectedStaffMember.leave_dates || []
             };
             
-            // Get existing bookings for this date
-            const bookedSlots = serviceAvailability.booked_slots?.[selectedDate] || [];
-            const bookedSlotsFormatted = bookedSlots.map(slot => ({
-              start: slot.start,
-              end: slot.end
-            }));
-            
-            slots = generateStaffTimeSlots(
-              selectedDate,
-              staffMember,
-              selectedService.duration_minutes,
-              bookedSlotsFormatted
-            );
+            try {
+              // Use the new function that checks for existing bookings
+              slots = await generateStaffTimeSlotsWithBookings(
+                selectedDate,
+                staffMember,
+                selectedService.duration_minutes,
+                async (staffId: string, date: string) => {
+                  const response = await normalizedShopService.getStaffBookingsForDate(staffId, date);
+                  return response.success ? response.data || [] : [];
+                }
+              );
+            } catch (error) {
+              console.error('❌ Error generating slots with bookings:', error);
+              // Fallback to basic staff slots without booking conflicts
+              slots = generateStaffTimeSlots(
+                selectedDate,
+                staffMember,
+                selectedService.duration_minutes,
+                []
+              );
+            }
           } else {
             // Fallback to regular time slot generation if staff data is incomplete
             slots = generateTimeSlotsForDate(
@@ -557,7 +575,21 @@ const QuickBookingModal = ({
         onBookingComplete(response.data);
         resetForm();
       } else {
-        throw new Error(response.message || 'Failed to create booking');
+        // Handle specific booking conflict errors
+        if (response.message?.includes('already booked') || response.message?.includes('conflict')) {
+          Alert.alert(
+            'Time Slot Unavailable', 
+            `This time slot is already booked by another customer. Please select a different time.`,
+            [
+              { text: 'OK', onPress: () => {
+                // Clear selected time to force user to pick a different slot
+                setSelectedTime('');
+              }}
+            ]
+          );
+        } else {
+          throw new Error(response.message || 'Failed to create booking');
+        }
       }
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -632,7 +664,9 @@ const QuickBookingModal = ({
 
     return (
       <View style={styles.timeSlotsGrid}>
-        {availableSlots.map(slot => (
+        {availableSlots
+          .filter(slot => slot.available !== false) // Only show available slots
+          .map(slot => (
           <TouchableOpacity
             key={slot.id}
             style={[
@@ -647,6 +681,10 @@ const QuickBookingModal = ({
             ]}>
               {slot.startTime}
             </Text>
+            {/* Debug info - remove in production */}
+            {slot.reason && (
+              <Text style={styles.debugText}>{slot.reason}</Text>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -882,7 +920,7 @@ const QuickBookingModal = ({
                   <Text style={styles.legendText}>Available</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                  <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
                   <Text style={styles.legendText}>Fully Booked</Text>
                 </View>
                 {selectedStaffId && (
@@ -1008,6 +1046,7 @@ const QuickBookingModal = ({
 
 const ServiceManagementScreen = ({ navigation }) => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { showBadge } = useQueueBadge();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -1187,11 +1226,14 @@ const ServiceManagementScreen = ({ navigation }) => {
     );
     setShowQuickBooking(false);
     
+    // Show badge on Queue tab to indicate new booking
+    showBadge();
+    
     // Refresh services to update availability
     if (selectedShop) {
       await loadServices(selectedShop.id);
     }
-  }, [selectedShop, loadServices]);
+  }, [selectedShop, loadServices, showBadge]);
 
   // Memoized utility functions
   const formatDuration = useCallback((minutes: number) => {
@@ -2131,6 +2173,12 @@ const styles = StyleSheet.create({
   },
   selectedTimeText: {
     color: '#FFFFFF',
+  },
+  debugText: {
+    fontSize: 8,
+    color: '#EF4444',
+    marginTop: 2,
+    textAlign: 'center',
   },
   noSlotsContainer: {
     alignItems: 'center',
