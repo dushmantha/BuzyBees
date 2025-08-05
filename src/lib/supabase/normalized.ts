@@ -4288,6 +4288,155 @@ class NormalizedShopService {
       };
     }
   }
+
+  // Create a new customer in the database
+  async createCustomer(customerData: {
+    email: string;
+    full_name: string;
+    phone: string;
+    user_type?: string;
+    account_type?: string;
+    notes?: string;
+    provider_id?: string;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📝 Creating customer:', customerData);
+
+      // Create new user record in users table
+      // Note: Make sure to run fix_customer_creation_rls.sql first
+      const { data, error } = await this.client
+        .from('users')
+        .insert({
+          email: customerData.email,
+          full_name: customerData.full_name,
+          phone: customerData.phone,
+          user_type: customerData.user_type || 'customer',
+          account_type: customerData.account_type || 'consumer',
+          bio: customerData.notes || '',
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Create customer error:', error);
+        // Handle specific duplicate email error
+        if (error.code === '23505') {
+          return {
+            success: false,
+            error: 'A user with this email address already exists'
+          };
+        }
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      if (!data) {
+        return {
+          success: false,
+          error: 'Failed to create customer'
+        };
+      }
+      
+      console.log('✅ Customer created successfully:', data.id);
+      return {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      console.error('❌ Error in createCustomer:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Send emails to customers using Supabase Edge Function
+  async sendEmails(emailData: {
+    customers: Array<{ id: string; name: string; email: string }>;
+    subject: string;
+    message: string;
+    providerInfo: any;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📧 Sending emails via Edge Function:', emailData.customers.length, 'recipients');
+
+      const { data, error } = await this.client.functions.invoke('send-email', {
+        body: {
+          customers: emailData.customers,
+          subject: emailData.subject,
+          message: emailData.message,
+          providerInfo: emailData.providerInfo
+        }
+      });
+
+      if (error) {
+        console.error('❌ Email sending error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ Email sending completed:', data);
+      return {
+        success: true,
+        data: data,
+        totalSent: data?.totalSent || 0,
+        totalFailed: data?.totalFailed || 0
+      };
+    } catch (error) {
+      console.error('❌ Error in sendEmails:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Send SMS to customers using Supabase Edge Function
+  async sendSMS(smsData: {
+    customers: Array<{ id: string; name: string; phone: string }>;
+    message: string;
+    providerInfo: any;
+  }): Promise<ServiceResponse<any>> {
+    try {
+      console.log('📱 Sending SMS via Edge Function:', smsData.customers.length, 'recipients');
+
+      const { data, error } = await this.client.functions.invoke('send-sms', {
+        body: {
+          customers: smsData.customers,
+          message: smsData.message,
+          providerInfo: smsData.providerInfo
+        }
+      });
+
+      if (error) {
+        console.error('❌ SMS sending error:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      console.log('✅ SMS sending completed:', data);
+      return {
+        success: true,
+        data: data,
+        totalSent: data?.totalSent || 0,
+        totalFailed: data?.totalFailed || 0
+      };
+    } catch (error) {
+      console.error('❌ Error in sendSMS:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
 }
 
 // ==============================================

@@ -42,6 +42,13 @@ interface PromotionData {
   customerIds: string[];
 }
 
+interface NewCustomerData {
+  name: string;
+  email: string;
+  phone: string;
+  notes?: string;
+}
+
 const CustomersScreen: React.FC = () => {
   const navigation = useNavigation();
   const { userProfile } = useAccount();
@@ -60,6 +67,15 @@ const CustomersScreen: React.FC = () => {
     customerIds: []
   });
   const [isSendingPromotion, setIsSendingPromotion] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState<NewCustomerData>({
+    name: '',
+    email: '',
+    phone: '',
+    notes: ''
+  });
+  const [pressedCustomerId, setPressedCustomerId] = useState<string | null>(null);
 
   // Mock data for now - replace with real API call
   const mockCustomers: Customer[] = [
@@ -156,6 +172,18 @@ const CustomersScreen: React.FC = () => {
         customer.phone.includes(searchQuery)
       );
       setFilteredCustomers(filtered);
+      
+      // Clean up selections for customers that are no longer visible
+      const visibleIds = new Set(filtered.map(c => c.id));
+      setSelectedCustomers(prev => {
+        const newSet = new Set();
+        prev.forEach(id => {
+          if (visibleIds.has(id)) {
+            newSet.add(id);
+          }
+        });
+        return newSet;
+      });
     }
   }, [searchQuery, customers]);
 
@@ -177,17 +205,50 @@ const CustomersScreen: React.FC = () => {
   }, []);
 
   const selectAllCustomers = useCallback(() => {
+    // Only select from currently filtered/visible customers
     const allIds = new Set(filteredCustomers.map(c => c.id));
-    setSelectedCustomers(allIds);
+    setSelectedCustomers(prev => {
+      const newSet = new Set(prev);
+      allIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
   }, [filteredCustomers]);
 
   const deselectAllCustomers = useCallback(() => {
-    setSelectedCustomers(new Set());
-  }, []);
+    // Only deselect from currently filtered/visible customers
+    const visibleIds = new Set(filteredCustomers.map(c => c.id));
+    setSelectedCustomers(prev => {
+      const newSet = new Set(prev);
+      visibleIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
+  }, [filteredCustomers]);
 
   const handleSendPromotion = useCallback(() => {
     if (selectedCustomers.size === 0) {
-      Alert.alert('No Customers Selected', 'Please select at least one customer to send promotions.');
+      Alert.alert(
+        'No Customers Selected', 
+        'Please select at least one customer to send promotions.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+    
+    // Validate that selected customers still exist (in case data changed)
+    const validSelectedIds = Array.from(selectedCustomers).filter(id => 
+      customers.some(customer => customer.id === id)
+    );
+    
+    if (validSelectedIds.length === 0) {
+      Alert.alert(
+        'Invalid Selection',
+        'The selected customers are no longer available. Please select again.',
+        [{ 
+          text: 'OK', 
+          style: 'default',
+          onPress: () => setSelectedCustomers(new Set())
+        }]
+      );
       return;
     }
     
@@ -195,10 +256,104 @@ const CustomersScreen: React.FC = () => {
       type: 'email',
       subject: '',
       message: '',
-      customerIds: Array.from(selectedCustomers)
+      customerIds: validSelectedIds
     });
     setShowPromotionModal(true);
-  }, [selectedCustomers]);
+  }, [selectedCustomers, customers]);
+
+  const handleAddCustomer = useCallback(() => {
+    setNewCustomerData({
+      name: '',
+      email: '',
+      phone: '',
+      notes: ''
+    });
+    setShowAddCustomerModal(true);
+  }, []);
+
+  const createCustomer = useCallback(async () => {
+    // Validate required fields
+    if (!newCustomerData.name.trim()) {
+      Alert.alert('Validation Error', 'Customer name is required.');
+      return;
+    }
+    
+    if (!newCustomerData.email.trim()) {
+      Alert.alert('Validation Error', 'Customer email is required.');
+      return;
+    }
+    
+    if (!newCustomerData.phone.trim()) {
+      Alert.alert('Validation Error', 'Customer phone is required.');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newCustomerData.email.trim())) {
+      Alert.alert('Validation Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      setIsCreatingCustomer(true);
+      
+      // Save customer to Supabase database
+      const response = await normalizedShopService.createCustomer({
+        email: newCustomerData.email.trim(),
+        full_name: newCustomerData.name.trim(),
+        phone: newCustomerData.phone.trim(),
+        user_type: 'customer',
+        account_type: 'consumer',
+        notes: newCustomerData.notes?.trim() || '',
+        provider_id: userProfile?.id
+      });
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create customer');
+      }
+      
+      // Create new customer object for local state using real DB data
+      const newCustomer: Customer = {
+        id: response.data?.id || Date.now().toString(),
+        name: newCustomerData.name.trim(),
+        email: newCustomerData.email.trim(),
+        phone: newCustomerData.phone.trim(),
+        totalBookings: 0,
+        totalSpent: 0,
+        lastBooking: new Date().toISOString(),
+        status: 'active',
+        joinDate: response.data?.created_at || new Date().toISOString()
+      };
+      
+      // Add to customers list
+      setCustomers(prev => [newCustomer, ...prev]);
+      setFilteredCustomers(prev => [newCustomer, ...prev]);
+      
+      Alert.alert(
+        'Success!',
+        `${newCustomerData.name} has been added as a new customer.`,
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            setShowAddCustomerModal(false);
+            setNewCustomerData({
+              name: '',
+              email: '',
+              phone: '',
+              notes: ''
+            });
+          }
+        }]
+      );
+      
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      Alert.alert('Error', 'Failed to create customer. Please try again.');
+    } finally {
+      setIsCreatingCustomer(false);
+    }
+  }, [newCustomerData, userProfile?.id]);
 
   const sendPromotionToCustomers = useCallback(async () => {
     if (!promotionData.subject.trim() || !promotionData.message.trim()) {
@@ -209,15 +364,54 @@ const CustomersScreen: React.FC = () => {
     try {
       setIsSendingPromotion(true);
       
-      // TODO: Replace with real API call
-      // await normalizedShopService.sendPromotionToCustomers(promotionData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get selected customers data
+      const selectedCustomersData = customers.filter(customer => 
+        selectedCustomers.has(customer.id)
+      );
+
+      // Prepare provider info
+      const providerInfo = {
+        id: userProfile?.id,
+        name: userProfile?.full_name || userProfile?.first_name || 'BuzyBees',
+        email: userProfile?.email,
+        phone: userProfile?.phone
+      };
+
+      let response;
+      let successMessage;
+
+      if (promotionData.type === 'email') {
+        // Send emails using Supabase Edge Function
+        response = await normalizedShopService.sendEmails({
+          customers: selectedCustomersData,
+          subject: promotionData.subject.trim(),
+          message: promotionData.message.trim(),
+          providerInfo
+        });
+        successMessage = `Successfully sent ${response.totalSent || 0} emails`;
+        if (response.totalFailed > 0) {
+          successMessage += `, ${response.totalFailed} failed`;
+        }
+      } else {
+        // Send SMS using Supabase Edge Function
+        response = await normalizedShopService.sendSMS({
+          customers: selectedCustomersData,
+          message: `${promotionData.subject.trim()}\n\n${promotionData.message.trim()}`,
+          providerInfo
+        });
+        successMessage = `Successfully sent ${response.totalSent || 0} SMS messages`;
+        if (response.totalFailed > 0) {
+          successMessage += `, ${response.totalFailed} failed`;
+        }
+      }
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to send promotion');
+      }
       
       Alert.alert(
         'Promotion Sent!',
-        `Successfully sent ${promotionData.type} promotion to ${selectedCustomers.size} customers.`,
+        successMessage,
         [{ text: 'OK', onPress: () => {
           setShowPromotionModal(false);
           setSelectedCustomers(new Set());
@@ -231,11 +425,11 @@ const CustomersScreen: React.FC = () => {
       );
     } catch (error) {
       console.error('Error sending promotion:', error);
-      Alert.alert('Error', 'Failed to send promotion. Please try again.');
+      Alert.alert('Error', `Failed to send promotion: ${error.message}`);
     } finally {
       setIsSendingPromotion(false);
     }
-  }, [promotionData, selectedCustomers.size]);
+  }, [promotionData, selectedCustomers, customers, userProfile]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -265,13 +459,19 @@ const CustomersScreen: React.FC = () => {
     
     return (
       <TouchableOpacity
-        style={[styles.customerCard, isSelected && styles.selectedCustomerCard]}
+        style={[
+          styles.customerCard, 
+          isSelected && styles.selectedCustomerCard,
+          pressedCustomerId === item.id && styles.pressedCustomerCard
+        ]}
         onPress={() => toggleCustomerSelection(item.id)}
-        activeOpacity={0.7}
+        onPressIn={() => setPressedCustomerId(item.id)}
+        onPressOut={() => setPressedCustomerId(null)}
+        activeOpacity={0.9}
       >
         {/* Header: Avatar + Name + Status + Selection */}
         <View style={styles.customerHeader}>
-          <View style={styles.customerAvatar}>
+          <View style={[styles.customerAvatar, isSelected && styles.selectedAvatar]}>
             <Text style={styles.customerAvatarText}>
               {item.name.charAt(0).toUpperCase()}
             </Text>
@@ -279,14 +479,14 @@ const CustomersScreen: React.FC = () => {
           
           <View style={styles.customerMainInfo}>
             <View style={styles.customerTopRow}>
-              <Text style={styles.customerName}>{item.name}</Text>
-              <TouchableOpacity style={styles.selectionButton}>
+              <Text style={[styles.customerName, isSelected && styles.selectedCustomerName]}>{item.name}</Text>
+              <View style={styles.selectionButton}>
                 {isSelected ? (
-                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={28} color="#10B981" />
                 ) : (
                   <View style={styles.unselectedCircle} />
                 )}
-              </TouchableOpacity>
+              </View>
             </View>
             
             <View style={[styles.statusBadge, 
@@ -350,6 +550,98 @@ const CustomersScreen: React.FC = () => {
       </TouchableOpacity>
     );
   };
+
+  const renderAddCustomerModal = () => (
+    <Modal
+      visible={showAddCustomerModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowAddCustomerModal(false)}
+    >
+      <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => setShowAddCustomerModal(false)}>
+            <Ionicons name="close" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Add New Customer</Text>
+          <TouchableOpacity
+            onPress={createCustomer}
+            disabled={isCreatingCustomer}
+          >
+            <Text style={[styles.sendButton, isCreatingCustomer && styles.disabledButton]}>
+              Create
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView style={styles.modalContent}>
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Customer Name *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newCustomerData.name}
+              onChangeText={(text) => setNewCustomerData(prev => ({ ...prev, name: text }))}
+              placeholder="Enter full name..."
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="words"
+            />
+          </View>
+          
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Email Address *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newCustomerData.email}
+              onChangeText={(text) => setNewCustomerData(prev => ({ ...prev, email: text }))}
+              placeholder="Enter email address..."
+              placeholderTextColor="#9CA3AF"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+          
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Phone Number *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newCustomerData.phone}
+              onChangeText={(text) => setNewCustomerData(prev => ({ ...prev, phone: text }))}
+              placeholder="Enter phone number..."
+              placeholderTextColor="#9CA3AF"
+              keyboardType="phone-pad"
+            />
+          </View>
+          
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Notes (Optional)</Text>
+            <TextInput
+              style={[styles.textInput, styles.messageInput]}
+              value={newCustomerData.notes}
+              onChangeText={(text) => setNewCustomerData(prev => ({ ...prev, notes: text }))}
+              placeholder="Add any notes about this customer..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+          
+          <View style={styles.formNote}>
+            <Text style={styles.formNoteText}>
+              * Required fields
+            </Text>
+          </View>
+        </ScrollView>
+        
+        {isCreatingCustomer && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Creating customer...</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
 
   const renderPromotionModal = () => (
     <Modal
@@ -443,15 +735,33 @@ const CustomersScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>
               Selected Customers ({selectedCustomers.size})
             </Text>
-            {Array.from(selectedCustomers).map(customerId => {
-              const customer = customers.find(c => c.id === customerId);
-              return customer ? (
-                <View key={customerId} style={styles.selectedCustomerItem}>
-                  <Text style={styles.selectedCustomerName}>{customer.name}</Text>
-                  <Text style={styles.selectedCustomerEmail}>{customer.email}</Text>
-                </View>
-              ) : null;
-            })}
+            {selectedCustomers.size === 0 ? (
+              <View style={styles.noSelectionContainer}>
+                <Ionicons name="people-outline" size={32} color="#9CA3AF" />
+                <Text style={styles.noSelectionText}>No customers selected</Text>
+                <Text style={styles.noSelectionSubtext}>Go back and select customers to send promotions</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.selectedCustomersList} showsVerticalScrollIndicator={false}>
+                {Array.from(selectedCustomers).map(customerId => {
+                  const customer = customers.find(c => c.id === customerId);
+                  return customer ? (
+                    <View key={customerId} style={styles.selectedCustomerItem}>
+                      <View style={styles.selectedCustomerInfo}>
+                        <Text style={styles.selectedCustomerName}>{customer.name}</Text>
+                        <Text style={styles.selectedCustomerEmail}>{customer.email}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.removeCustomerButton}
+                        onPress={() => toggleCustomerSelection(customer.id)}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null;
+                })}
+              </ScrollView>
+            )}
           </View>
         </ScrollView>
         
@@ -467,28 +777,36 @@ const CustomersScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading customers...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Loading customers...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Customers</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Customers</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddCustomer}
+          >
+            <Ionicons name="add" size={24} color="#F59E0B" />
+          </TouchableOpacity>
+        </View>
       
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -515,19 +833,43 @@ const CustomersScreen: React.FC = () => {
           <Text style={styles.selectionText}>
             {selectedCustomers.size} of {filteredCustomers.length} selected
           </Text>
+          {searchQuery.length > 0 && (
+            <Text style={styles.filterNote}>
+              Showing {filteredCustomers.length} of {customers.length} customers
+            </Text>
+          )}
         </View>
         <View style={styles.selectionButtons}>
           <TouchableOpacity
-            style={styles.selectButton}
+            style={[
+              styles.selectButton, 
+              styles.selectAllButton,
+              // Show different state if all visible customers are selected
+              selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0 && styles.allSelectedButton
+            ]}
             onPress={selectAllCustomers}
+            disabled={filteredCustomers.length === 0}
           >
-            <Text style={styles.selectButtonText}>Select All</Text>
+            <Ionicons 
+              name={selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0 ? "checkmark-circle" : "checkbox"} 
+              size={16} 
+              color={filteredCustomers.length === 0 ? "#9CA3AF" : "#10B981"} 
+            />
+            <Text style={[
+              styles.selectButtonText, 
+              styles.selectAllText,
+              filteredCustomers.length === 0 && styles.disabledText
+            ]}>
+              {selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0 ? "All Selected" : "Select All"}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.selectButton}
+            style={[styles.selectButton, styles.clearButton]}
             onPress={deselectAllCustomers}
+            disabled={selectedCustomers.size === 0}
           >
-            <Text style={styles.selectButtonText}>Clear</Text>
+            <Ionicons name="close-circle" size={16} color={selectedCustomers.size === 0 ? "#9CA3AF" : "#EF4444"} />
+            <Text style={[styles.selectButtonText, styles.clearText, selectedCustomers.size === 0 && styles.disabledText]}>Clear</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -564,20 +906,26 @@ const CustomersScreen: React.FC = () => {
         </View>
       )}
       
-      {renderPromotionModal()}
-    </SafeAreaView>
+        {renderAddCustomerModal()}
+        {renderPromotionModal()}
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FEFCE8',
+  },
+  safeArea: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FEFCE8',
   },
   loadingText: {
     marginTop: 16,
@@ -590,19 +938,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FEFCE8',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
   },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    backgroundColor: '#FEFCE8',
   },
   searchBar: {
     flexDirection: 'row',
@@ -624,9 +983,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FEFCE8',
   },
   selectionInfo: {
     flex: 1,
@@ -641,19 +998,52 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     backgroundColor: '#F3F4F6',
+    gap: 6,
+  },
+  selectAllButton: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  clearButton: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  allSelectedButton: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#059669',
   },
   selectButtonText: {
     fontSize: 14,
     color: '#1F2937',
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  selectAllText: {
+    color: '#10B981',
+  },
+  clearText: {
+    color: '#EF4444',
+  },
+  disabledText: {
+    color: '#9CA3AF',
+  },
+  filterNote: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   customerList: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   // Customer Card Styles
   customerCard: {
@@ -674,6 +1064,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
     shadowColor: '#10B981',
     shadowOpacity: 0.2,
+    transform: [{ scale: 1.02 }],
+  },
+  pressedCustomerCard: {
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.05,
   },
 
   // Header Section (Avatar + Name + Status + Selection)
@@ -696,6 +1091,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  selectedAvatar: {
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+    transform: [{ scale: 1.05 }],
+  },
   customerAvatarText: {
     fontSize: 24,
     fontWeight: '800',
@@ -716,13 +1116,18 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     flex: 1,
   },
+  selectedCustomerName: {
+    color: '#059669',
+  },
   selectionButton: {
     padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   unselectedCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 3,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
@@ -815,9 +1220,8 @@ const styles = StyleSheet.create({
   },
   promotionButtonContainer: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    paddingBottom: 30,
+    backgroundColor: '#FEFCE8',
   },
   promotionButton: {
     flexDirection: 'row',
@@ -827,6 +1231,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   promotionButtonText: {
     marginLeft: 8,
@@ -925,15 +1334,45 @@ const styles = StyleSheet.create({
   selectedCustomersSection: {
     marginTop: 12,
   },
+  selectedCustomersList: {
+    maxHeight: 200,
+  },
   selectedCustomerItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  selectedCustomerInfo: {
+    flex: 1,
+  },
+  removeCustomerButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  noSelectionContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  noSelectionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  noSelectionSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4,
+    textAlign: 'center',
   },
   selectedCustomerName: {
     fontSize: 14,
@@ -953,6 +1392,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  formNote: {
+    marginTop: 16,
+    paddingHorizontal: 4,
+  },
+  formNoteText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
 });
 
