@@ -39,6 +39,7 @@ type RootStackParamList = {
   Analytics: undefined;
   Calendar: undefined;
   Earnings: undefined;
+  Customers: undefined;
   ProviderTabs: {
     screen?: 'ProviderHomeTab' | 'QueueTab' | 'ServicesTab' | 'EarningsTab' | 'ProfileTab';
     params?: {
@@ -738,25 +739,7 @@ const ProviderHomeScreen: React.FC = () => {
       color: '#F97316',
       backgroundColor: '#FED7AA',
       action: () => {
-        Alert.alert(
-          'Customer Management Coming Soon',
-          'Customer relationship management features are being developed. Soon you\'ll be able to view customer profiles, booking history, and preferences!',
-          [
-            {
-              text: 'Understood',
-              style: 'default',
-            },
-            {
-              text: 'Learn more',
-              onPress: () => {
-                Alert.alert(
-                  'Upcoming Features',
-                  '• Customer profiles and contact info\n• Booking history and preferences\n• Loyalty program management\n• Communication tools\n• Customer feedback tracking'
-                );
-              },
-            },
-          ]
-        );
+        navigation.navigate('Customers');
       },
     },
   ];

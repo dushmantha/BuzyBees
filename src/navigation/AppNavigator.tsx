@@ -33,6 +33,7 @@ import ServiceManagementScreen from '../screens/provider/ServiceManagementScreen
 import EarningsScreen from '../screens/provider/EarningsScreen';
 import ShopDetailsScreen from '../screens/provider/ShopDetailsScreen';
 import InvoiceGeneratorScreen from '../screens/provider/InvoiceGeneratorScreen';
+import CustomersScreen from '../screens/provider/CustomersScreen';
 
 // Profile related screens
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -584,6 +585,7 @@ export type RootStackParamList = {
     onSave?: (shop: Shop) => void;
   } | undefined;
   InvoiceGenerator: undefined;
+  Customers: undefined;
   
   // Profile Related Screens
   Notifications: undefined;
@@ -1011,6 +1013,15 @@ const AppNavigator = () => {
               title: 'Generate Invoice',
               headerShown: true,
               presentation: 'modal',
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Customers" 
+            component={CustomersScreen}
+            options={{
+              title: 'Customers',
+              headerShown: false,
               ...getHeaderStyle(),
             }}
           />
