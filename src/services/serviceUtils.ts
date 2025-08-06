@@ -2,6 +2,7 @@
 import React from 'react';
 import mockService from './api/mock/index';
 import { ServiceOption, ServiceOptionState, ApiResponse } from '../types/service';
+import { serviceOptionsAPI, ServiceOption as APIServiceOption } from './api/serviceOptions/serviceOptionsAPI';
 
 /**
  * Utility class for handling service-related API calls and data transformations
@@ -15,23 +16,32 @@ export class ServiceUtils {
     error: string | null;
   }> {
     try {
-      const response: ApiResponse<ServiceOption[]> = await mockService.getServiceOptions(serviceId);
+      // Use the real service options API instead of mock service (serviceId is actually serviceName)
+      const { data, error } = await serviceOptionsAPI.getServiceOptionsForConsumer(serviceId);
       
-      if (response.error) {
+      if (error) {
         return {
           options: [],
-          error: response.error
+          error: error
+        };
+      }
+
+      if (!data || data.length === 0) {
+        console.log('📋 No service options available for:', serviceId);
+        return {
+          options: [],
+          error: null
         };
       }
 
       // Transform API response to component state format
-      const transformedOptions: ServiceOptionState[] = response.data.map((apiOption: ServiceOption, index: number) => ({
-        id: apiOption.id,
-        name: apiOption.name,
-        description: apiOption.description,
+      const transformedOptions: ServiceOptionState[] = data.map((apiOption: APIServiceOption, index: number) => ({
+        id: apiOption.id || `opt-${index}`,
+        name: apiOption.option_name,
+        description: apiOption.option_description || '',
         duration: `${apiOption.duration} min`,
-        price: `${apiOption.price} SEK`, // You can make currency configurable
-        selected: apiOption.is_default || (index === 0 && !response.data.some(opt => opt.is_default)),
+        price: `${apiOption.price} SEK`,
+        selected: index === 0, // Select first option by default
       }));
 
       return {

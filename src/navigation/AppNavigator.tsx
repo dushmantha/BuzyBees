@@ -32,6 +32,7 @@ import ServiceQueueScreen from '../screens/provider/ServiceQueueScreen';
 import ServiceManagementScreen from '../screens/provider/ServiceManagementScreen';
 import EarningsScreen from '../screens/provider/EarningsScreen';
 import ShopDetailsScreen from '../screens/provider/ShopDetailsScreen';
+import ServiceOptionsScreen from '../screens/provider/ServiceOptionsScreen';
 import InvoiceGeneratorScreen from '../screens/provider/InvoiceGeneratorScreen';
 import CustomersScreen from '../screens/provider/CustomersScreen';
 import AnalyticsScreen from '../screens/provider/AnalyticsScreen';
@@ -585,6 +586,12 @@ export type RootStackParamList = {
     shop?: Shop;
     onSave?: (shop: Shop) => void;
   } | undefined;
+  ServiceOptions: {
+    serviceId?: string;
+    serviceName: string;
+    shopId: string;
+    onGoBack?: () => void;
+  };
   InvoiceGenerator: undefined;
   Customers: undefined;
   Analytics: undefined;
@@ -1007,6 +1014,15 @@ const AppNavigator = () => {
               headerShown: true,
               ...getHeaderStyle(),
             })}
+          />
+          <RootStack.Screen 
+            name="ServiceOptions" 
+            component={ServiceOptionsScreen}
+            options={{
+              title: 'Service Options',
+              headerShown: false,
+              presentation: 'card',
+            }}
           />
           <RootStack.Screen 
             name="InvoiceGenerator" 

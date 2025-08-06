@@ -38,6 +38,7 @@ import integratedShopService from '../../lib/supabase/integrated';
 import { useAuth } from '../../navigation/AppNavigator';
 import { FriendlyScheduleDisplay } from '../../components/shop/FriendlyScheduleDisplay';
 import { TimePickerModal } from '../../components/shop/TimePickerModal';
+import { serviceOptionsAPI, ServiceOption } from '../../services/api/serviceOptions/serviceOptionsAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -513,6 +514,7 @@ const ShopDetailsScreen: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTimezoneModal, setShowTimezoneModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showServiceOptionsInModal, setShowServiceOptionsInModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showSpecialDayModal, setShowSpecialDayModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -562,6 +564,8 @@ const ShopDetailsScreen: React.FC = () => {
   const [serviceForm, setServiceForm] = useState<Partial<Service>>({
     name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], location_type: 'in_house', is_active: true
   });
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [loadingServiceOptions, setLoadingServiceOptions] = useState(false);
 
   // Staff form state
   const [staffForm, setStaffForm] = useState<Partial<Staff>>({
@@ -591,6 +595,9 @@ const ShopDetailsScreen: React.FC = () => {
   
   // Force re-render state for avatar
   const [avatarRefresh, setAvatarRefresh] = useState(0);
+  const [imageRefresh, setImageRefresh] = useState(0);
+  const [logoRefresh, setLogoRefresh] = useState(0);
+  const [shopImagesRefresh, setShopImagesRefresh] = useState(0);
 
   // Discount form state
   const [discountForm, setDiscountForm] = useState<Partial<Discount>>({
@@ -617,6 +624,13 @@ const ShopDetailsScreen: React.FC = () => {
       return avatar_url.length > 0 ? avatar_url[0] : undefined;
     }
     return undefined;
+  };
+
+  // Helper function to append timestamp to URL
+  const appendTimestamp = (url: string, timestamp: number): string => {
+    if (!url) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}t=${timestamp}`;
   };
 
   // Load complete shop data if editing
@@ -648,8 +662,8 @@ const ShopDetailsScreen: React.FC = () => {
               // Map the complete shop data to our expected format
               const mappedShop = {
                 ...existingShop, // Start with the basic data
-                // Override with complete data if available
-                images: completeShop.images || [],
+                // Override with complete data if available, but preserve current state if not in DB
+                images: completeShop.images || shop.images || existingShop.images || [],
                 services: completeShop.services || [],
                 staff: completeShop.staff || [],
                 business_hours: (() => {
@@ -697,7 +711,7 @@ const ShopDetailsScreen: React.FC = () => {
                 })(),
                 special_days: completeShop.special_days || [],
                 discounts: completeShop.discounts || [],
-                logo_url: completeShop.logo_url || existingShop.logo_url || '',
+                logo_url: completeShop.logo_url || existingShop.logo_url || shop.logo_url || '',
                 timezone: completeShop.timezone || existingShop.timezone || 'Europe/Stockholm',
                 advance_booking_days: completeShop.advance_booking_days || existingShop.advance_booking_days || 30,
                 slot_duration: completeShop.slot_duration || existingShop.slot_duration || 60,
@@ -1365,14 +1379,17 @@ const ShopDetailsScreen: React.FC = () => {
             // Skip compression for now and use original URI directly
             const imageUri = asset.uri;
             if (type === 'logo') {
-              
+              console.log('📸 Setting logo URL:', imageUri);
               setShop(prev => {
                 const updated = { ...prev, logo_url: imageUri };
+                console.log('📸 Updated shop with logo:', updated.logo_url);
                 return updated;
               });
+              // Force logo refresh only
+              setLogoRefresh(prev => prev + 1);
               
             } else {
-              
+              console.log('📸 Setting shop image at index:', selectedImageIndex, 'URL:', imageUri);
               setShop(prev => {
                 const newImages = [...(prev.images || [])];
                 // Ensure array is long enough
@@ -1381,13 +1398,20 @@ const ShopDetailsScreen: React.FC = () => {
                 }
                 newImages[selectedImageIndex] = imageUri;
                 const updated = { ...prev, images: newImages };
-                
+                console.log('📸 Updated shop images:', updated.images);
                 return updated;
               });
+              // Force shop images refresh only
+              setShopImagesRefresh(prev => prev + 1);
               
               // Verify state was set (delayed check)
               setTimeout(() => {
-                
+                console.log('📸 Verifying shop state after update...');
+                setShop(prev => {
+                  console.log('📸 Current shop images:', prev.images);
+                  console.log('📸 Current logo:', prev.logo_url);
+                  return prev;
+                });
               }, 100);
             }
           } catch (error) {
@@ -1532,6 +1556,7 @@ const ShopDetailsScreen: React.FC = () => {
           try {
             // Use original image URI directly for now
             const imageUri = asset.uri;
+            console.log('📸 [pickShopImage] Setting image at index:', index, 'URI:', imageUri);
             
             setShop(prev => {
               const newImages = [...(prev.images || [])];
@@ -1542,8 +1567,11 @@ const ShopDetailsScreen: React.FC = () => {
               newImages[index] = imageUri;
               
               const updated = { ...prev, images: newImages };
+              console.log('📸 [pickShopImage] Updated shop with images:', updated.images);
               return updated;
             });
+            // Force image refresh
+            setImageRefresh(prev => prev + 1);
             
           } catch (error) {
             
@@ -1557,6 +1585,8 @@ const ShopDetailsScreen: React.FC = () => {
               newImages[index] = asset.uri!;
               return { ...prev, images: newImages };
             });
+            // Force image refresh
+            setImageRefresh(prev => prev + 1);
           }
         } else {
           
@@ -1769,22 +1799,282 @@ const ShopDetailsScreen: React.FC = () => {
   };
 
   // Service management (keeping existing functionality)
-  const openServiceModal = (service?: Service) => {
+  const openServiceModal = async (service?: Service) => {
+    console.log('🔧 Opening service modal:', { service: service?.name || 'NEW SERVICE' });
     if (service) {
       setEditingService(service);
       setServiceForm(service);
+      console.log('📝 Editing existing service:', service.name);
+      
+      // Load service options for existing service
+      if (shop.id && service.name) {
+        try {
+          const { data, error } = await serviceOptionsAPI.getServiceOptions(service.name, shop.id);
+          if (!error && data) {
+            setServiceOptions(data);
+          } else {
+            setServiceOptions([]);
+          }
+        } catch (error) {
+          console.error('Error loading service options:', error);
+          setServiceOptions([]);
+        }
+      }
     } else {
       setEditingService(null);
       setServiceForm({
         name: '', description: '', price: 0, duration: 60,
         category: shop.category, location_type: 'in_house', is_active: true
       });
+      setServiceOptions([]); // Clear options for new service
+      console.log('➕ Creating new service');
     }
     setShowServiceModal(true);
+    console.log('✅ Service modal should be visible now');
+  };
+
+  const navigateToServiceOptions = async () => {
+    console.log('🔧 Loading service options');
+    console.log('📋 Current state:', { 
+      serviceForm: serviceForm.name, 
+      editingService: editingService?.name, 
+      shopId: shop.id 
+    });
+    
+    // Load service options
+    setLoadingServiceOptions(true);
+    try {
+      const serviceName = serviceForm.name || editingService?.name || '';
+      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceName, shop.id || '');
+      if (error) {
+        console.error('Error loading service options:', error);
+      }
+      setServiceOptions(data || []);
+      
+      // If no options exist, add a default empty option
+      if (!data || data.length === 0) {
+        setServiceOptions([createEmptyServiceOption(serviceName)]);
+      }
+      
+      // Show the service options view within the modal
+      setShowServiceOptionsInModal(true);
+    } catch (error) {
+      console.error('Error loading service options:', error);
+      Alert.alert('Error', 'Failed to load service options');
+    } finally {
+      setLoadingServiceOptions(false);
+    }
+  };
+
+  const createEmptyServiceOption = (serviceName: string): ServiceOption => ({
+    service_name: serviceName,
+    shop_id: shop.id || '',
+    option_name: '',
+    option_description: '',
+    price: 0,
+    duration: 30,
+    is_active: true,
+    sort_order: serviceOptions.length,
+  });
+
+  const handleAddServiceOption = () => {
+    const serviceName = serviceForm.name || editingService?.name || '';
+    setServiceOptions([...serviceOptions, createEmptyServiceOption(serviceName)]);
+  };
+
+  const handleUpdateServiceOption = (index: number, field: keyof ServiceOption, value: any) => {
+    const updatedOptions = [...serviceOptions];
+    updatedOptions[index] = {
+      ...updatedOptions[index],
+      [field]: field === 'price' || field === 'duration' || field === 'sort_order' ? Number(value) || 0 : value,
+    };
+    setServiceOptions(updatedOptions);
+  };
+
+  const handleDeleteServiceOption = (index: number) => {
+    if (serviceOptions.length <= 1) {
+      Alert.alert('Cannot Delete', 'At least one option is required.');
+      return;
+    }
+    
+    Alert.alert(
+      'Delete Option',
+      'Are you sure you want to delete this option?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const updatedOptions = serviceOptions.filter((_, i) => i !== index);
+            setServiceOptions(updatedOptions);
+          },
+        },
+      ]
+    );
+  };
+
+  const saveServiceOptions = async () => {
+    // Validate options
+    const validOptions = serviceOptions.filter(opt => opt.option_name.trim() !== '');
+    
+    if (validOptions.length === 0) {
+      Alert.alert('No Options', 'Please add at least one option with a name.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const serviceName = serviceForm.name || editingService?.name || '';
+      const { error } = await serviceOptionsAPI.upsertServiceOptions(
+        shop.id || '',
+        serviceName,
+        validOptions.map((opt, index) => {
+          // Remove id field for new options to let database auto-generate it
+          const { id, ...optionWithoutId } = opt;
+          return {
+            ...optionWithoutId,
+            sort_order: index,
+          };
+        })
+      );
+
+      if (error) {
+        Alert.alert('Error', 'Failed to save service options');
+        return;
+      }
+
+      Alert.alert('Success', 'Service options saved successfully!', [
+        { text: 'OK', onPress: () => {
+          setShowServiceOptionsInModal(false);
+          // Keep the saved options in state so they display in the service form
+          setServiceOptions(validOptions);
+        }}
+      ]);
+    } catch (error) {
+      console.error('Error saving service options:', error);
+      Alert.alert('Error', 'Failed to save service options');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const renderServiceOptionsView = () => {
+    if (loadingServiceOptions) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Loading options...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <>
+        <View style={styles.infoSection}>
+          <Text style={styles.infoText}>
+            Add different variations of "{serviceForm.name || editingService?.name}" with specific pricing and duration.
+          </Text>
+        </View>
+
+        {serviceOptions.map((option, index) => (
+          <View key={index} style={styles.optionCard}>
+            <View style={styles.optionHeader}>
+              <Text style={styles.optionNumber}>Option {index + 1}</Text>
+              {serviceOptions.length > 1 && (
+                <TouchableOpacity
+                  onPress={() => handleDeleteServiceOption(index)}
+                  style={styles.deleteButton}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Option Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={option.option_name}
+                onChangeText={(text) => handleUpdateServiceOption(index, 'option_name', text)}
+                placeholder="e.g., Men's Hair Cut"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Description</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={option.option_description}
+                onChangeText={(text) => handleUpdateServiceOption(index, 'option_description', text)}
+                placeholder="Brief description"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={2}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, styles.flex1]}>
+                <Text style={styles.label}>Price (SEK)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={option.price.toString()}
+                  onChangeText={(text) => handleUpdateServiceOption(index, 'price', text)}
+                  placeholder="0"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
+                <Text style={styles.label}>Duration (min)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={option.duration.toString()}
+                  onChangeText={(text) => handleUpdateServiceOption(index, 'duration', text)}
+                  placeholder="30"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.label}>Active</Text>
+              <Switch
+                value={option.is_active}
+                onValueChange={(value) => handleUpdateServiceOption(index, 'is_active', value)}
+                trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
+                thumbColor={option.is_active ? '#F59E0B' : '#9CA3AF'}
+              />
+            </View>
+          </View>
+        ))}
+
+        <TouchableOpacity style={styles.addButton} onPress={handleAddServiceOption}>
+          <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+          <Text style={styles.addButtonText}>Add Another Option</Text>
+        </TouchableOpacity>
+
+        <View style={styles.exampleSection}>
+          <Text style={styles.exampleTitle}>Examples:</Text>
+          <Text style={styles.exampleText}>
+            • Hair Cut: Child, Men's, Women's, Clipper{'\n'}
+            • Massage: 30min, 60min, 90min{'\n'}
+            • Cleaning: Basic, Deep, Move-in/out
+          </Text>
+        </View>
+      </>
+    );
   };
 
   const saveService = async () => {
+    console.log('💾 Saving service:', { serviceForm, editingService: editingService?.name || 'NEW' });
+    
     if (!serviceForm.name?.trim()) {
+      console.log('❌ Service name validation failed');
       Alert.alert('Error', 'Service name is required');
       return;
     }
@@ -1870,6 +2160,28 @@ const ShopDetailsScreen: React.FC = () => {
         }
         return updatedShop;
       });
+    }
+
+    // Show success message with options info for new services
+    const isNewService = !editingService;
+    if (isNewService) {
+      Alert.alert(
+        'Service Added!', 
+        'Your service has been added successfully. You can now add service options like different variations or pricing tiers.',
+        [
+          { text: 'OK', style: 'default' },
+          { 
+            text: 'Add Options', 
+            onPress: () => {
+              // Navigate to service options screen
+              setTimeout(() => {
+                // Load and show service options in the same modal
+                navigateToServiceOptions();
+              }, 100);
+            }
+          }
+        ]
+      );
     }
 
     setShowServiceModal(false);
@@ -2139,6 +2451,8 @@ const ShopDetailsScreen: React.FC = () => {
       console.log('📝 Work schedule:', formData.work_schedule);
       console.log('📝 Leave dates:', formData.leave_dates);
       setStaffForm(formData);
+      // Force avatar refresh when opening edit modal
+      setAvatarRefresh(prev => prev + 1);
     } else {
       setEditingStaff(null);
       const emptyForm = {
@@ -2388,7 +2702,12 @@ const ShopDetailsScreen: React.FC = () => {
           <Text style={styles.imageLabel}>Shop Logo</Text>
           <TouchableOpacity style={styles.logoContainer} onPress={() => pickImage('logo')}>
             {shop.logo_url ? (
-              <Image source={{ uri: shop.logo_url }} style={styles.logoImage} />
+              <Image 
+                key={`logo-${shop.logo_url}-${logoRefresh}`}
+                source={{ uri: appendTimestamp(shop.logo_url, logoRefresh) }} 
+                style={styles.logoImage}
+                onError={(e) => console.error('❌ Logo image failed to load:', e.nativeEvent.error)}
+              />
             ) : (
               <View style={styles.imagePlaceholder}>
                 <Ionicons name="business-outline" size={32} color="#9CA3AF" />
@@ -2406,6 +2725,7 @@ const ShopDetailsScreen: React.FC = () => {
             {[0, 1, 2, 3, 4].map((index) => {
               const imageUrl = shop.images?.[index];
               const hasImage = imageUrl && imageUrl.trim() !== '';
+              console.log(`🖼️ Shop image ${index}: hasImage=${hasImage}, URL=${imageUrl}`);
               return (
                 <TouchableOpacity
                   key={index}
@@ -2413,7 +2733,12 @@ const ShopDetailsScreen: React.FC = () => {
                   onPress={() => pickShopImage(index)}
                 >
                   {hasImage ? (
-                    <Image source={{ uri: imageUrl }} style={styles.photoImage} />
+                    <Image 
+                      key={`shop-image-${index}-${imageUrl}-${shopImagesRefresh}`}
+                      source={{ uri: appendTimestamp(imageUrl, shopImagesRefresh) }} 
+                      style={styles.photoImage}
+                      onError={(e) => console.error(`❌ Shop image ${index} failed to load:`, e.nativeEvent.error)}
+                    />
                   ) : (
                     <View style={styles.imagePlaceholder}>
                       <Ionicons name="camera-outline" size={20} color="#9CA3AF" />
@@ -2766,7 +3091,10 @@ const ShopDetailsScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Services</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => openServiceModal()}
+          onPress={() => {
+            console.log('🔥 ADD SERVICE BUTTON PRESSED');
+            openServiceModal();
+          }}
         >
           <Ionicons name="add" size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -2892,7 +3220,12 @@ const ShopDetailsScreen: React.FC = () => {
               <View style={styles.staffHeader}>
                 <View style={styles.staffAvatar}>
                   {getSafeAvatarUrl(item.avatar_url) ? (
-                    <Image source={{ uri: getSafeAvatarUrl(item.avatar_url)! }} style={styles.avatarImage} />
+                    <Image 
+                      key={`staff-${item.id}-${getSafeAvatarUrl(item.avatar_url)}-${avatarRefresh}`}
+                      source={{ uri: appendTimestamp(getSafeAvatarUrl(item.avatar_url)!, avatarRefresh) }} 
+                      style={styles.avatarImage} 
+                      onError={(e) => console.error('❌ Staff avatar failed to load:', e.nativeEvent.error)}
+                    />
                   ) : (
                     <Ionicons name="person" size={24} color="#6B7280" />
                   )}
@@ -3674,17 +4007,36 @@ const ShopDetailsScreen: React.FC = () => {
         >
           <View style={styles.fullScreenContent}>
             <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                {showServiceOptionsInModal && (
+                  <TouchableOpacity 
+                    onPress={() => setShowServiceOptionsInModal(false)}
+                    style={styles.backButton}
+                  >
+                    <Ionicons name="arrow-back" size={24} color="#1F2937" />
+                  </TouchableOpacity>
+                )}
+              </View>
               <Text style={styles.modalTitle}>
-                {editingService ? 'Edit Service' : 'Add Service'}
+                {showServiceOptionsInModal 
+                  ? 'Service Options' 
+                  : (editingService ? 'Edit Service' : 'Add Service')}
               </Text>
-              <TouchableOpacity onPress={() => setShowServiceModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowServiceModal(false);
+                setShowServiceOptionsInModal(false);
+                setServiceOptions([]); // Clear options when closing
+              }}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
             
             <ScrollView style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Service Name *</Text>
+              {!showServiceOptionsInModal ? (
+                <>
+                  {/* Service Form View */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Service Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={serviceForm.name}
@@ -3847,6 +4199,60 @@ const ShopDetailsScreen: React.FC = () => {
                 </View>
               </View>
 
+              {serviceForm.name && serviceForm.name.trim() !== '' && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Service Options</Text>
+                  <Text style={styles.optionsDescription}>
+                    Add different variations of this service (e.g., Men's Cut, Women's Cut, etc.)
+                  </Text>
+                  
+                  <TouchableOpacity
+                    style={styles.manageOptionsButton}
+                    onPress={() => {
+                      console.log('🔧 Navigating to service options for:', serviceForm.name);
+                      navigateToServiceOptions();
+                    }}
+                  >
+                    <Ionicons name="options-outline" size={20} color="#F59E0B" />
+                    <Text style={styles.manageOptionsText}>Manage Service Options</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+                  </TouchableOpacity>
+
+                  {/* Display existing service options */}
+                  {serviceOptions.length > 0 && (
+                    <View style={styles.optionsListContainer}>
+                      <Text style={styles.optionsListTitle}>Current Options:</Text>
+                      {serviceOptions.map((option, index) => (
+                        <View key={index} style={styles.optionListItem}>
+                          <View style={styles.optionListContent}>
+                            <Text style={styles.optionListName}>
+                              {option.option_name || `Option ${index + 1}`}
+                            </Text>
+                            <View style={styles.optionListDetails}>
+                              <Text style={styles.optionListPrice}>
+                                {option.price} SEK
+                              </Text>
+                              <Text style={styles.optionListDuration}>
+                                • {option.duration} min
+                              </Text>
+                            </View>
+                          </View>
+                          {option.is_active ? (
+                            <View style={styles.activeIndicator}>
+                              <Text style={styles.activeText}>Active</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.inactiveIndicator}>
+                              <Text style={styles.inactiveText}>Inactive</Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
               <View style={styles.switchRow}>
                 <View>
                   <Text style={styles.switchLabel}>Active Service</Text>
@@ -3861,21 +4267,39 @@ const ShopDetailsScreen: React.FC = () => {
                   thumbColor={serviceForm.is_active ? '#F59E0B' : '#9CA3AF'}
                 />
               </View>
+                </>
+              ) : (
+                <>
+                  {/* Service Options View */}
+                  {renderServiceOptionsView()}
+                </>
+              )}
             </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setShowServiceModal(false)}
+                onPress={() => {
+                  if (showServiceOptionsInModal) {
+                    setShowServiceOptionsInModal(false);
+                  } else {
+                    setShowServiceModal(false);
+                    setServiceOptions([]); // Clear options when closing
+                  }
+                }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>
+                  {showServiceOptionsInModal ? 'Back' : 'Cancel'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveModalButton}
-                onPress={saveService}
+                onPress={showServiceOptionsInModal ? saveServiceOptions : saveService}
               >
                 <Text style={styles.saveModalButtonText}>
-                  {editingService ? 'Update' : 'Add'} Service
+                  {showServiceOptionsInModal 
+                    ? 'Save Options' 
+                    : (editingService ? 'Update' : 'Add') + ' Service'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -4075,7 +4499,7 @@ const ShopDetailsScreen: React.FC = () => {
                       return avatarUrl ? (
                         <Image 
                           key={`${avatarUrl}-${avatarRefresh}`} // Force re-render when URI or refresh changes
-                          source={{ uri: avatarUrl }} 
+                          source={{ uri: appendTimestamp(avatarUrl, avatarRefresh) }} 
                           style={styles.avatarPreview}
                           onLoad={() => console.log('✅ Avatar image loaded successfully')}
                           onError={(error) => console.error('❌ Avatar image failed to load:', error)}
@@ -5175,11 +5599,166 @@ const ShopDetailsScreen: React.FC = () => {
       {renderDiscountModal()}
       {renderStaffModal()}
       {renderStaffLeaveCalendar()}
+      
     </SafeAreaView>
   )
 };
 
 const styles = StyleSheet.create({
+  // Service Options Styles
+  modalHeaderLeft: {
+    width: 40,
+  },
+  backButton: {
+    padding: 4,
+  },
+  infoSection: {
+    backgroundColor: '#EBF8FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B82F6',
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#1E40AF',
+    lineHeight: 18,
+  },
+  optionCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  optionNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  deleteButton: {
+    padding: 4,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    backgroundColor: '#FEF3C7',
+  },
+  addButtonText: {
+    color: '#F59E0B',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  exampleSection: {
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  exampleTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 8,
+  },
+  exampleText: {
+    fontSize: 13,
+    color: '#78350F',
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  // Service Options List Styles
+  optionsListContainer: {
+    marginTop: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  optionsListTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  optionListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  optionListContent: {
+    flex: 1,
+  },
+  optionListName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  optionListDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  optionListPrice: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  optionListDuration: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  activeText: {
+    fontSize: 11,
+    color: '#065F46',
+    fontWeight: '600',
+  },
+  inactiveIndicator: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  inactiveText: {
+    fontSize: 11,
+    color: '#991B1B',
+    fontWeight: '600',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -6164,6 +6743,46 @@ const styles = StyleSheet.create({
   // Staff Selection in Service Modal
   staffSelection: {
     gap: 8,
+  },
+
+  // Service Options
+  optionsDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  manageOptionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    padding: 16,
+  },
+  manageOptionsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F59E0B',
+    flex: 1,
+    marginLeft: 12,
+  },
+  optionsInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  optionsInfoText: {
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
+    marginLeft: 12,
+    lineHeight: 20,
   },
   staffOption: {
     flexDirection: 'row',

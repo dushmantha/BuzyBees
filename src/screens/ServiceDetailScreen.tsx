@@ -8,6 +8,7 @@ import { useServiceOptions, ServiceUtils } from '../services/serviceUtils';
 import { ServiceOptionState } from '../types/service';
 import type { Service } from '../services/types/service';
 import { shopAPI, Shop } from '../services/api/shops/shopAPI';
+import { serviceOptionsAPI, ServiceOption } from '../services/api/serviceOptions/serviceOptionsAPI';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -57,8 +58,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Fallback to placeholder if no images
-  const imageList = images.length > 0 ? images : ['https://via.placeholder.com/400x300'];
+  // Fallback to service image if no images provided, or use a fallback image
+  const imageList = images.length > 0 ? images : [service.image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'];
 
   // Get image type label
   const getImageTypeLabel = (imageUrl: string, index: number) => {
@@ -265,9 +266,14 @@ const ServiceDetailScreen: React.FC = () => {
   const [service, setService] = useState<Service | null>(routeService || null);
   const [loading, setLoading] = useState(!routeService);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('options');
+  const [activeTab, setActiveTab] = useState('services');
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [shopServices, setShopServices] = useState<any[]>([]);
+  const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set());
+  const [selectedServicesWithOptions, setSelectedServicesWithOptions] = useState<Map<string, Set<string>>>(new Map());
+  const [servicesLoading, setServicesLoading] = useState(false);
+  // Removed duplicate service options state - we'll use the useServiceOptions hook instead
 
   // Load service data if not passed directly
   useEffect(() => {
@@ -306,7 +312,13 @@ const ServiceDetailScreen: React.FC = () => {
         const serviceData = transformShopToService(shop);
         setService(serviceData);
         
+        // Also load shop services
+        if (shop.services && Array.isArray(shop.services)) {
+          setShopServices(shop.services);
+        }
+        
         console.log('✅ Successfully loaded service details:', serviceData.name);
+        console.log('✅ Shop services:', shop.services?.length || 0);
       } catch (err) {
         console.error('❌ Error loading service:', err);
         setError(err instanceof Error ? err.message : 'Failed to load service');
@@ -318,75 +330,167 @@ const ServiceDetailScreen: React.FC = () => {
     loadService();
   }, [routeServiceId, service]);
 
-  // Mock staff members data
+  // Service options are now handled by the useServiceOptions hook below
+
+  // Load real staff members data from Supabase
   useEffect(() => {
-    // Simulate loading staff members for the service
-    if (service) {
-      setStaffMembers([
-        {
-          id: 'staff1',
-          name: 'Anna Anderson',
-          avatar_url: 'https://i.pravatar.cc/150?img=1',
-          specialties: ['Manicure', 'Pedicure', 'Nail Art'],
-          experience_years: 5,
-          rating: 4.8,
-          work_schedule: {
-            monday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
-            tuesday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
-            wednesday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
-            thursday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
-            friday: { isWorking: true, startTime: '09:00', endTime: '17:00' },
-            saturday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
-            sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
-          },
-          leave_dates: [
-            { title: 'Vacation', startDate: '2025-08-15', endDate: '2025-08-20', type: 'leave' }
-          ]
-        },
-        {
-          id: 'staff2',
-          name: 'Maria Johansson',
-          avatar_url: 'https://i.pravatar.cc/150?img=2',
-          specialties: ['Gel Nails', 'Nail Extensions'],
-          experience_years: 3,
-          rating: 4.6,
-          work_schedule: {
-            monday: { isWorking: false, startTime: '09:00', endTime: '17:00' },
-            tuesday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
-            wednesday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
-            thursday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
-            friday: { isWorking: true, startTime: '10:00', endTime: '18:00' },
-            saturday: { isWorking: true, startTime: '10:00', endTime: '15:00' },
-            sunday: { isWorking: false, startTime: '09:00', endTime: '17:00' }
-          },
-          leave_dates: []
-        },
-        {
-          id: 'any',
-          name: 'Any Available Staff',
-          avatar_url: null,
-          specialties: [],
-          experience_years: 0,
-          rating: 0,
-          work_schedule: {
+    const loadStaffMembers = async () => {
+      if (!service || !routeServiceId) return;
+
+      try {
+        console.log('🔍 Fetching staff members for service:', routeServiceId);
+        
+        // Get the shop details again to access staff data
+        const shopsResponse = await shopAPI.getAllShops();
+        
+        if (shopsResponse.error || !shopsResponse.data) {
+          console.warn('⚠️ Could not fetch shops for staff data');
+          return;
+        }
+        
+        // Find the shop with matching ID
+        const shop = shopsResponse.data.find(s => s.id === routeServiceId);
+        
+        if (!shop || !shop.staff) {
+          console.warn('⚠️ No staff data found for shop');
+          // Set default "Any Available Staff" option
+          setStaffMembers([
+            {
+              id: 'any',
+              name: 'Any Available Staff',
+              avatar_url: null,
+              specialties: [],
+              experience_years: 0,
+              rating: 0,
+              work_schedule: {
+                monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+                sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+              },
+              leave_dates: []
+            }
+          ]);
+          return;
+        }
+
+        // Transform staff data from Supabase format to expected format
+        const transformedStaff = shop.staff.map(staff => ({
+          id: staff.id,
+          name: staff.name,
+          avatar_url: staff.avatar_url,
+          specialties: staff.specialties || [],
+          experience_years: staff.experience_years || 0,
+          rating: staff.rating || 4.5,
+          work_schedule: staff.work_schedule || {
             monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-            sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+            sunday: { isWorking: false, startTime: '09:00', endTime: '18:00' }
           },
-          leave_dates: []
-        }
-      ]);
-    }
-  }, [service]);
+          leave_dates: staff.leave_dates || []
+        }));
 
-  // Get the service ID for the hook - either from the loaded service or the route param
-  const serviceId = service?.id || routeServiceId;
+        // Always add "Any Available Staff" as an option
+        const staffWithAnyOption = [
+          ...transformedStaff,
+          {
+            id: 'any',
+            name: 'Any Available Staff',
+            avatar_url: null,
+            specialties: [],
+            experience_years: 0,
+            rating: 0,
+            work_schedule: {
+              monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+            },
+            leave_dates: []
+          }
+        ];
 
-  // Use the custom hook for managing service options (only if we have a serviceId)
+        setStaffMembers(staffWithAnyOption);
+        console.log('✅ Successfully loaded staff members:', staffWithAnyOption.length);
+      } catch (err) {
+        console.error('❌ Error loading staff members:', err);
+        // Fallback to default staff option
+        setStaffMembers([
+          {
+            id: 'any',
+            name: 'Any Available Staff',
+            avatar_url: null,
+            specialties: [],
+            experience_years: 0,
+            rating: 0,
+            work_schedule: {
+              monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+            },
+            leave_dates: []
+          }
+        ]);
+      }
+    };
+
+    loadStaffMembers();
+  }, [service, routeServiceId]);
+
+  // Load service options for each service
+  useEffect(() => {
+    const loadServiceOptions = async () => {
+      if (!shopServices || shopServices.length === 0) return;
+
+      try {
+        setServicesLoading(true);
+        console.log('🔍 Loading options for services:', shopServices.length);
+        
+        // Load options for each service
+        const servicesWithOptions = await Promise.all(
+          shopServices.map(async (service) => {
+            const { data: options, error } = await serviceOptionsAPI.getServiceOptions(
+              service.name,
+              routeServiceId || service.shop_id
+            );
+            
+            if (!error && options) {
+              return { ...service, options };
+            }
+            return service;
+          })
+        );
+        
+        setShopServices(servicesWithOptions);
+        console.log('✅ Loaded service options successfully');
+      } catch (err) {
+        console.error('❌ Error loading service options:', err);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    loadServiceOptions();
+  }, [shopServices.length, routeServiceId]);
+
+  // Get the service name for the hook (service options are keyed by service name)
+  const serviceName = service?.name || 'Hair Cut';
+
+  // Use the custom hook for managing service options
   const {
     options,
     loading: optionsLoading,
@@ -395,7 +499,7 @@ const ServiceDetailScreen: React.FC = () => {
     hasSelections,
     selectedCount,
     actions
-  } = useServiceOptions(serviceId || '');
+  } = useServiceOptions(serviceName);
 
   // Show loading state
   if (loading) {
@@ -437,8 +541,8 @@ const ServiceDetailScreen: React.FC = () => {
   ].filter(Boolean) as string[];
 
   const handleBookNow = () => {
-    if (!hasSelections) {
-      Alert.alert('No Selection', 'Please select at least one service option to continue.');
+    if (selectedServicesWithOptions.size === 0) {
+      Alert.alert('No Selection', 'Please select at least one service to continue.');
       return;
     }
 
@@ -447,12 +551,44 @@ const ServiceDetailScreen: React.FC = () => {
       return;
     }
 
-    const selectedServices = ServiceUtils.prepareSelectedServicesForBooking(options);
+    // Prepare selected services for booking
+    const selectedServices: any[] = [];
+    selectedServicesWithOptions.forEach((optionIds, serviceName) => {
+      const service = shopServices.find(s => s.name === serviceName);
+      if (service) {
+        if (optionIds.has('base')) {
+          // Base service selected
+          selectedServices.push({
+            id: service.id,
+            name: service.name,
+            price: service.price,
+            duration: service.duration,
+            type: 'base'
+          });
+        } else {
+          // Options selected
+          optionIds.forEach(optionId => {
+            const option = service.options?.find((opt: any) => opt.id === optionId);
+            if (option) {
+              selectedServices.push({
+                id: option.id,
+                name: `${service.name} - ${option.option_name}`,
+                price: option.price,
+                duration: option.duration,
+                type: 'option',
+                serviceName: service.name
+              });
+            }
+          });
+        }
+      }
+    });
+
     const selectedStaffMember = staffMembers.find(staff => staff.id === selectedStaff);
     
     navigation.navigate('BookingSummary', {
       selectedServices,
-      totalPrice,
+      totalPrice: calculateTotalPrice(),
       selectedStaff: selectedStaffMember
     });
   };
@@ -460,6 +596,56 @@ const ServiceDetailScreen: React.FC = () => {
   const handleFavoritePress = () => {
     // Implement favorite toggle logic
     console.log('Toggle favorite');
+  };
+
+  // Toggle service expansion
+  const toggleServiceExpansion = (serviceId: string) => {
+    setExpandedServices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(serviceId)) {
+        newSet.delete(serviceId);
+      } else {
+        newSet.add(serviceId);
+      }
+      return newSet;
+    });
+  };
+
+  // Toggle service option selection
+  const toggleServiceOption = (serviceName: string, optionId: string) => {
+    setSelectedServicesWithOptions(prev => {
+      const newMap = new Map(prev);
+      if (!newMap.has(serviceName)) {
+        newMap.set(serviceName, new Set());
+      }
+      const options = newMap.get(serviceName)!;
+      if (options.has(optionId)) {
+        options.delete(optionId);
+        if (options.size === 0) {
+          newMap.delete(serviceName);
+        }
+      } else {
+        options.add(optionId);
+      }
+      return newMap;
+    });
+  };
+
+  // Calculate total price for selected services and options
+  const calculateTotalPrice = () => {
+    let total = 0;
+    selectedServicesWithOptions.forEach((optionIds, serviceName) => {
+      const service = shopServices.find(s => s.name === serviceName);
+      if (service) {
+        optionIds.forEach(optionId => {
+          const option = service.options?.find((opt: any) => opt.id === optionId);
+          if (option) {
+            total += option.price || 0;
+          }
+        });
+      }
+    });
+    return total;
   };
 
   const renderOptionItem = ({ item }: { item: ServiceOptionState }) => (
@@ -484,6 +670,113 @@ const ServiceDetailScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
+  // Render services with dropdown options
+  const renderServicesContent = () => {
+    if (servicesLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1A2533" />
+          <Text style={styles.loadingText}>Loading services...</Text>
+        </View>
+      );
+    }
+
+    if (!shopServices || shopServices.length === 0) {
+      return (
+        <View style={styles.noOptionsContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#6B7280" />
+          <Text style={styles.noOptionsText}>No services available</Text>
+          <Text style={styles.noOptionsSubtext}>This shop has not added any services yet</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.servicesContainer}>
+        <Text style={styles.sectionTitle}>Available Services</Text>
+        <Text style={styles.sectionSubtitle}>Select services and customize with options</Text>
+        
+        {shopServices.map((service, index) => (
+          <View key={service.id || index} style={styles.serviceCard}>
+            <TouchableOpacity 
+              style={styles.serviceHeader}
+              onPress={() => toggleServiceExpansion(service.id || service.name)}
+            >
+              <View style={styles.serviceInfo}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                <Text style={styles.serviceDescription}>{service.description}</Text>
+                <View style={styles.serviceDetails}>
+                  <View style={styles.serviceDetailItem}>
+                    <Ionicons name="time-outline" size={16} color="#6B7280" />
+                    <Text style={styles.serviceDetailText}>{service.duration || 60} min</Text>
+                  </View>
+                  <View style={styles.serviceDetailItem}>
+                    <Ionicons name="cash-outline" size={16} color="#6B7280" />
+                    <Text style={styles.serviceDetailText}>From {service.price || 0} SEK</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons 
+                name={expandedServices.has(service.id || service.name) ? "chevron-up" : "chevron-down"} 
+                size={24} 
+                color="#6B7280" 
+              />
+            </TouchableOpacity>
+            
+            {expandedServices.has(service.id || service.name) && (
+              <View style={styles.serviceOptionsDropdown}>
+                {(!service.options || service.options.length === 0) ? (
+                  <View style={styles.noOptionsMessage}>
+                    <Text style={styles.noOptionsText}>No options available for this service</Text>
+                    <TouchableOpacity
+                      style={styles.selectBaseService}
+                      onPress={() => toggleServiceOption(service.name, 'base')}
+                    >
+                      <View style={[styles.checkbox, selectedServicesWithOptions.get(service.name)?.has('base') && styles.checkboxSelected]}>
+                        {selectedServicesWithOptions.get(service.name)?.has('base') && <Ionicons name="checkmark" size={16} color="white" />}
+                      </View>
+                      <Text style={styles.selectBaseServiceText}>Select base service ({service.price} SEK)</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  service.options.map((option: any) => (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={styles.serviceOption}
+                      onPress={() => toggleServiceOption(service.name, option.id)}
+                    >
+                      <View style={styles.optionLeft}>
+                        <View style={[styles.checkbox, selectedServicesWithOptions.get(service.name)?.has(option.id) && styles.checkboxSelected]}>
+                          {selectedServicesWithOptions.get(service.name)?.has(option.id) && <Ionicons name="checkmark" size={16} color="white" />}
+                        </View>
+                        <View style={styles.optionInfo}>
+                          <Text style={styles.optionName}>{option.option_name}</Text>
+                          {option.option_description && <Text style={styles.optionDescription}>{option.option_description}</Text>}
+                          <Text style={styles.optionDuration}>{option.duration} min</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.optionPrice}>{option.price} SEK</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            )}
+          </View>
+        ))}
+        
+        {selectedServicesWithOptions.size > 0 && (
+          <View style={styles.selectedOptionSummary}>
+            <Text style={styles.summaryTitle}>Selected Services ({selectedServicesWithOptions.size})</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Price</Text>
+              <Text style={styles.summaryValue}>{calculateTotalPrice()} SEK</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderOptionsContent = () => {
     if (optionsLoading) {
       return (
@@ -496,53 +789,61 @@ const ServiceDetailScreen: React.FC = () => {
 
     if (optionsError) {
       return (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#FF3B30" />
-          <Text style={styles.errorText}>{optionsError}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={actions.refetch}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+        <View style={styles.noOptionsContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={styles.noOptionsText}>Error loading service options</Text>
+          <Text style={styles.noOptionsSubtext}>{optionsError}</Text>
         </View>
       );
     }
 
-    if (options.length === 0) {
+    if (!options || options.length === 0) {
+      // If no options, show the base service info
       return (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="list-outline" size={48} color="#666" />
-          <Text style={styles.emptyText}>No service options available</Text>
+        <View style={styles.optionsContainer}>
+          <View style={styles.baseServiceCard}>
+            <Ionicons name="checkmark-circle" size={48} color="#F59E0B" />
+            <Text style={styles.baseServiceTitle}>Standard Service</Text>
+            <Text style={styles.baseServiceDescription}>
+              {service?.description || 'Professional service with standard duration and pricing'}
+            </Text>
+            <View style={styles.baseServiceInfo}>
+              <View style={styles.baseServiceInfoItem}>
+                <Ionicons name="time-outline" size={20} color="#6B7280" />
+                <Text style={styles.baseServiceInfoText}>{service?.duration || 60} min</Text>
+              </View>
+              <View style={styles.baseServiceInfoItem}>
+                <Ionicons name="cash-outline" size={20} color="#6B7280" />
+                <Text style={styles.baseServiceInfoText}>{service?.price || 500} SEK</Text>
+              </View>
+            </View>
+          </View>
         </View>
       );
     }
 
     return (
       <View style={styles.optionsContainer}>
-        <View style={styles.optionsHeader}>
-          <Text style={styles.optionsSectionTitle}>Select service options</Text>
-          {selectedCount > 0 && (
-            <View style={styles.selectionSummary}>
-              <Text style={styles.selectionText}>
-                {selectedCount} selected • {ServiceUtils.formatPrice(totalPrice)}
-              </Text>
-              <TouchableOpacity 
-                onPress={actions.clearAllSelections}
-                style={styles.clearButton}
-              >
-                <Text style={styles.clearButtonText}>Clear All</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <Text style={styles.sectionTitle}>Available Options</Text>
+        <Text style={styles.sectionSubtitle}>Select the service options that best fit your needs</Text>
+        
         <FlatList
           data={options}
           renderItem={renderOptionItem}
-          keyExtractor={item => item.id}
-          scrollEnabled={false}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.optionsList}
         />
+        
+        {hasSelections && (
+          <View style={styles.selectedOptionSummary}>
+            <Text style={styles.summaryTitle}>Selected Options ({selectedCount})</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Price</Text>
+              <Text style={styles.summaryValue}>{totalPrice} SEK</Text>
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -585,11 +886,11 @@ const ServiceDetailScreen: React.FC = () => {
           {/* Tabs */}
           <View style={styles.tabsContainer}>
             <TouchableOpacity 
-              style={[styles.tab, activeTab === 'options' && styles.activeTab]}
-              onPress={() => setActiveTab('options')}
+              style={[styles.tab, activeTab === 'services' && styles.activeTab]}
+              onPress={() => setActiveTab('services')}
             >
-              <Text style={[styles.tabText, activeTab === 'options' && styles.activeTabText]}>
-                Options {selectedCount > 0 && `(${selectedCount})`}
+              <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>
+                Services {selectedServicesWithOptions.size > 0 && `(${selectedServicesWithOptions.size})`}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -614,7 +915,7 @@ const ServiceDetailScreen: React.FC = () => {
 
           {/* Tab Content */}
           <View style={styles.tabContentContainer}>
-            {activeTab === 'options' && renderOptionsContent()}
+            {activeTab === 'services' && renderServicesContent()}
             {activeTab === 'about' && <AboutTab service={service} />}
             {activeTab === 'reviews' && <ReviewsTab service={service} />}
             {activeTab === 'location' && <LocationTab service={service} />}
@@ -624,24 +925,24 @@ const ServiceDetailScreen: React.FC = () => {
           <TouchableOpacity 
             style={[
               styles.bookButton, 
-              (!hasSelections || !selectedStaff || optionsLoading) && styles.bookButtonDisabled
+              (selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading) && styles.bookButtonDisabled
             ]}
             onPress={handleBookNow}
-            disabled={!hasSelections || !selectedStaff || optionsLoading}
+            disabled={(!hasSelections && options.length > 0) || !selectedStaff || optionsLoading}
           >
             <View style={styles.bookButtonContent}>
               <Text style={styles.bookButtonText}>
                 {optionsLoading 
                   ? 'Loading...' 
-                  : (!hasSelections 
+                  : ((!hasSelections && options.length > 0)
                     ? 'Select Options to Continue'
                     : !selectedStaff 
                       ? 'Select Staff to Continue'
-                      : `Book Now • ${ServiceUtils.formatPrice(totalPrice)}`
+                      : `Book Now • ${totalPrice} SEK`
                   )
                 }
               </Text>
-              {hasSelections && selectedStaff && !optionsLoading && (
+              {(hasSelections || options.length === 0) && selectedStaff && !optionsLoading && (
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               )}
             </View>
@@ -1129,6 +1430,249 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  // Service Options Styles
+  baseServiceCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  baseServiceTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  baseServiceDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  baseServiceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  baseServiceInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+  },
+  baseServiceInfoText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  selectedPriceText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  serviceOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  selectedServiceOption: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+  },
+  optionRadio: {
+    marginRight: 16,
+  },
+  radioOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: '#F59E0B',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#F59E0B',
+  },
+  optionContent: {
+    flex: 1,
+  },
+  optionMetaRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  optionDurationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  optionDuration: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  optionsList: {
+    paddingBottom: 16,
+  },
+  selectedOptionSummary: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#78350F',
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  noOptionsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  noOptionsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  noOptionsSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  // New styles for services view
+  servicesContainer: {
+    padding: 16,
+  },
+  serviceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  serviceInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  serviceName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A2533',
+    marginBottom: 4,
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  serviceDetails: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  serviceDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  serviceDetailText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  serviceOptionsDropdown: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+  },
+  noOptionsMessage: {
+    alignItems: 'center',
+    padding: 16,
+  },
+  noOptionsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  selectBaseService: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectBaseServiceText: {
+    fontSize: 14,
+    color: '#1A2533',
+    fontWeight: '500',
+  },
+  serviceOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 });
 

@@ -421,16 +421,20 @@ const ServiceListScreen = () => {
   // Effects
   useFocusEffect(
     useCallback(() => {
+      // Only load services on first focus or when route parameters change
       loadServices();
-    }, [loadServices])
+    }, [categoryId, showPopular]) // Remove loadServices dependency to prevent double calls
   );
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadServices();
-    }, 500); // Debounce search
+    // Only trigger search/filter updates, not initial load
+    if (searchQuery || Object.keys(filters).some(key => filters[key] !== undefined)) {
+      const timeoutId = setTimeout(() => {
+        loadServices();
+      }, 500); // Debounce search
 
-    return () => clearTimeout(timeoutId);
+      return () => clearTimeout(timeoutId);
+    }
   }, [searchQuery, filters]);
 
   if (loading && !refreshing) {
