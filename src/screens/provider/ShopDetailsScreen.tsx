@@ -138,6 +138,7 @@ export interface Shop {
   buffer_time: number;
   auto_approval: boolean;
   is_active: boolean;
+  first_time_discount_active?: boolean;
   services?: Service[];
   discounts?: Discount[];
   staff?: Staff[];
@@ -1157,7 +1158,8 @@ const ShopDetailsScreen: React.FC = () => {
         advance_booking_days: currentShop.advance_booking_days || 30,
         slot_duration: currentShop.slot_duration || 60,
         buffer_time: currentShop.buffer_time || 15,
-        auto_approval: currentShop.auto_approval ?? true
+        auto_approval: currentShop.auto_approval ?? true,
+        first_time_discount_active: currentShop.first_time_discount_active ?? true
       };
       // CRITICAL DEBUG: Show what business hours data we're sending
       console.log('🚨 FRONTEND: About to call updateShop');
@@ -2762,24 +2764,12 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Services</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openServiceModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Service</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openServiceModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       {isRefreshing ? (
@@ -2880,24 +2870,12 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Staff Members</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openStaffModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Staff</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openStaffModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       {isRefreshing ? (
@@ -2994,23 +2972,70 @@ const ShopDetailsScreen: React.FC = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Discounts & Offers</Text>
-        <View style={styles.sectionActions}>
-          {isEditing && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={refreshShopData}
-              disabled={isRefreshing}
-            >
-              <Ionicons name="refresh" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openDiscountModal()}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Discount</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => openDiscountModal()}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* First-Time User Discount Feature */}
+      <View style={styles.firstTimeDiscountCard}>
+        <View style={styles.firstTimeDiscountHeader}>
+          <View style={styles.firstTimeDiscountIcon}>
+            <Ionicons name="gift" size={24} color="#10B981" />
+          </View>
+          <View style={styles.firstTimeDiscountInfo}>
+            <Text style={styles.firstTimeDiscountTitle}>First-Time Customer Discount</Text>
+            <Text style={styles.firstTimeDiscountSubtitle}>
+              Automatically offer 25% off to new customers
+            </Text>
+          </View>
+          <Switch
+            value={shop.first_time_discount_active ?? true}
+            onValueChange={(value) => {
+              if (!value) {
+                Alert.alert(
+                  'Disable First-Time Discount',
+                  'Warning: Disabling the first-time customer discount may reduce customer attraction and growth. New customers are more likely to book services when offered an introductory discount.\n\nAre you sure you want to disable this promotional feature?',
+                  [
+                    { 
+                      text: 'Keep Active', 
+                      style: 'cancel',
+                      onPress: () => {}
+                    },
+                    { 
+                      text: 'Disable', 
+                      style: 'destructive',
+                      onPress: () => {
+                        setShop(prev => ({ ...prev, first_time_discount_active: false }));
+                      }
+                    }
+                  ],
+                  { cancelable: true }
+                );
+              } else {
+                setShop(prev => ({ ...prev, first_time_discount_active: true }));
+              }
+            }}
+            trackColor={{ false: '#E5E7EB', true: '#10B981' }}
+            thumbColor={shop.first_time_discount_active ?? true ? '#059669' : '#9CA3AF'}
+          />
+        </View>
+        <View style={styles.firstTimeDiscountBenefits}>
+          <View style={styles.benefitItem}>
+            <Ionicons name="trending-up" size={16} color="#10B981" />
+            <Text style={styles.benefitText}>Increase customer acquisition</Text>
+          </View>
+          <View style={styles.benefitItem}>
+            <Ionicons name="star" size={16} color="#10B981" />
+            <Text style={styles.benefitText}>Build customer loyalty</Text>
+          </View>
+          <View style={styles.benefitItem}>
+            <Ionicons name="megaphone" size={16} color="#10B981" />
+            <Text style={styles.benefitText}>Free app promotion</Text>
+          </View>
         </View>
       </View>
 
@@ -3638,16 +3663,16 @@ const ShopDetailsScreen: React.FC = () => {
   const renderServiceModal = () => (
     <Modal
       visible={showServiceModal}
-      transparent
+      presentationStyle="pageSheet"
       animationType="slide"
       onRequestClose={() => setShowServiceModal(false)}
     >
-      <View style={styles.modalOverlay}>
+      <SafeAreaView style={styles.fullScreenModal}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
+          style={styles.fullScreenKeyboardView}
         >
-          <View style={styles.modalContent}>
+          <View style={styles.fullScreenContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingService ? 'Edit Service' : 'Add Service'}
@@ -3856,23 +3881,23 @@ const ShopDetailsScreen: React.FC = () => {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     </Modal>
-  )
+  );
 
   const renderDiscountModal = () => (
     <Modal
       visible={showDiscountModal}
-      transparent
+      presentationStyle="pageSheet"
       animationType="slide"
       onRequestClose={() => setShowDiscountModal(false)}
     >
-      <View style={styles.modalOverlay}>
+      <SafeAreaView style={styles.fullScreenModal}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
+          style={styles.fullScreenKeyboardView}
         >
-          <View style={styles.modalContent}>
+          <View style={styles.fullScreenContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingDiscount ? 'Edit Discount' : 'Add Discount'}
@@ -4013,9 +4038,9 @@ const ShopDetailsScreen: React.FC = () => {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     </Modal>
-  )
+  );
 
   const renderStaffModal = () => (
     <Modal
@@ -5826,6 +5851,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
+  
+  // First-Time Discount Feature Styles
+  firstTimeDiscountCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  firstTimeDiscountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  firstTimeDiscountIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  firstTimeDiscountInfo: {
+    flex: 1,
+  },
+  firstTimeDiscountTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#065F46',
+    marginBottom: 4,
+  },
+  firstTimeDiscountSubtitle: {
+    fontSize: 14,
+    color: '#047857',
+  },
+  firstTimeDiscountBenefits: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#A7F3D0',
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  benefitText: {
+    fontSize: 14,
+    color: '#065F46',
+    marginLeft: 8,
+    flex: 1,
+  },
 
   // Empty State
   emptyState: {
@@ -5861,6 +5939,16 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
+  },
+  fullScreenModal: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  fullScreenKeyboardView: {
+    flex: 1,
+  },
+  fullScreenContent: {
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',

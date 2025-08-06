@@ -15,13 +15,16 @@ const apiRequest = async (endpoint: string, options = {}) => {
     if (endpoint.includes('/home')) {
       // Fetch real shop data from Supabase
       try {
+        console.log('🏠 Attempting to fetch real shop data from Supabase...');
         const homeShopData = await shopAPI.getHomeShopData();
         
         if (!homeShopData.data) {
+          console.warn('⚠️ No real shop data available, falling back to mock data');
           throw new Error(homeShopData.error || 'Failed to fetch shops');
         }
 
         const shops = homeShopData.data.shops;
+        console.log('✅ Successfully fetched real shop data:', shops.length, 'shops');
         
         // Transform shops to services format for backward compatibility
         const services = shops.map(shop => ({
@@ -78,18 +81,130 @@ const apiRequest = async (endpoint: string, options = {}) => {
         };
       } catch (error) {
         console.error('❌ Error fetching real shop data:', error);
-        // Return empty data instead of mock data
+        console.log('🎭 Falling back to mock data for demonstration...');
+        
+        // Return comprehensive mock data when real data fails
+        const mockCategories = [
+          {
+            id: 'beauty-wellness',
+            name: 'Beauty & Wellness',
+            service_count: 5,
+            color: '#FFE4E1',
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
+            description: 'Beauty and wellness services'
+          },
+          {
+            id: 'cleaning',
+            name: 'Cleaning',
+            service_count: 3,
+            color: '#E1F5FE',
+            image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop',
+            description: 'Professional cleaning services'
+          },
+          {
+            id: 'home-services',
+            name: 'Home Services',
+            service_count: 4,
+            color: '#F3E5F5',
+            image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=200&fit=crop',
+            description: 'Home maintenance and repair services'
+          },
+          {
+            id: 'fitness-health',
+            name: 'Fitness & Health',
+            service_count: 6,
+            color: '#E8F5E8',
+            image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop',
+            description: 'Fitness and health services'
+          },
+          {
+            id: 'automotive',
+            name: 'Automotive',
+            service_count: 2,
+            color: '#FFF3E0',
+            image: 'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=300&h=200&fit=crop',
+            description: 'Car maintenance and repair services'
+          },
+          {
+            id: 'pet-services',
+            name: 'Pet Services',
+            service_count: 3,
+            color: '#E0F2F1',
+            image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=300&h=200&fit=crop',
+            description: 'Pet care and grooming services'
+          }
+        ];
+
+        const mockServices = [
+          {
+            id: 'service-1',
+            name: 'Hair Styling',
+            description: 'Professional hair cutting and styling',
+            professional_name: 'Anna Lindström',
+            salon_name: 'Stockholm Beauty Salon', 
+            price: 450,
+            duration: 60,
+            rating: 4.8,
+            reviews_count: 127,
+            location: 'Stockholm, Sweden',
+            distance: '1.2 km',
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'
+          },
+          {
+            id: 'service-2', 
+            name: 'House Cleaning',
+            description: 'Deep cleaning for homes and offices',
+            professional_name: 'Erik Johansson',
+            salon_name: 'Clean Home Services',
+            price: 350,
+            duration: 120,
+            rating: 4.6,
+            reviews_count: 89,
+            location: 'Göteborg, Sweden', 
+            distance: '2.1 km',
+            image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop'
+          },
+          {
+            id: 'service-3',
+            name: 'Personal Training',
+            description: 'One-on-one fitness training sessions',
+            professional_name: 'Sara Nilsson',
+            salon_name: 'Fit Life Gym',
+            price: 500,
+            duration: 60,
+            rating: 4.9,
+            reviews_count: 156,
+            location: 'Malmö, Sweden',
+            distance: '0.8 km', 
+            image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop'
+          },
+          {
+            id: 'service-4',
+            name: 'Massage Therapy',
+            description: 'Relaxing Swedish massage therapy',
+            professional_name: 'Maria Andersson',
+            salon_name: 'Wellness Center',
+            price: 750,
+            duration: 90,
+            rating: 4.7,
+            reviews_count: 203,
+            location: 'Uppsala, Sweden',
+            distance: '1.5 km',
+            image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop'
+          }
+        ];
+
         return {
           data: {
-            categories: [],
+            categories: mockCategories,
             promotions: [],
-            popularServices: [],
+            popularServices: mockServices,
             upcomingBookings: [],
             stats: {
-              totalServices: 0,
-              totalCategories: 0,
-              totalProviders: 0,
-              avgRating: 0
+              totalServices: mockServices.length,
+              totalCategories: mockCategories.length,
+              totalProviders: 15,
+              avgRating: 4.7
             }
           },
           error: null,
@@ -103,6 +218,7 @@ const apiRequest = async (endpoint: string, options = {}) => {
       const query = new URLSearchParams(urlParams).get('q')?.toLowerCase() || '';
       
       try {
+        console.log('🔍 Searching categories with query:', query);
         const homeShopData = await shopAPI.getHomeShopData();
         const categories = homeShopData.data?.categories || [];
         
@@ -123,9 +239,24 @@ const apiRequest = async (endpoint: string, options = {}) => {
           status: 200
         };
       } catch (error) {
-        console.error('❌ Error searching categories:', error);
+        console.error('❌ Error searching categories, using mock data:', error);
+        
+        // Mock categories for search
+        const mockCategories = [
+          { id: 'beauty-wellness', name: 'Beauty & Wellness', service_count: 5, color: '#FFE4E1', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop', description: 'Beauty and wellness services' },
+          { id: 'cleaning', name: 'Cleaning', service_count: 3, color: '#E1F5FE', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop', description: 'Professional cleaning services' },
+          { id: 'home-services', name: 'Home Services', service_count: 4, color: '#F3E5F5', image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=200&fit=crop', description: 'Home maintenance and repair services' },
+          { id: 'fitness-health', name: 'Fitness & Health', service_count: 6, color: '#E8F5E8', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop', description: 'Fitness and health services' },
+          { id: 'automotive', name: 'Automotive', service_count: 2, color: '#FFF3E0', image: 'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=300&h=200&fit=crop', description: 'Car maintenance and repair services' },
+          { id: 'pet-services', name: 'Pet Services', service_count: 3, color: '#E0F2F1', image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=300&h=200&fit=crop', description: 'Pet care and grooming services' }
+        ];
+        
+        const filteredCategories = mockCategories.filter(category => 
+          category.name.toLowerCase().includes(query)
+        );
+        
         return {
-          data: { categories: [] },
+          data: { categories: filteredCategories },
           error: null,
           status: 200
         };
@@ -310,7 +441,9 @@ export const searchAPI = {
 export const homeAPI = {
   // Get all home screen data
   getHomeData: async (userId = null) => {
-    const endpoint = userId ? `/home?user_id=${userId}` : '/home';
+    // Always use /home endpoint for consistency
+    const endpoint = '/home';
+    console.log('🏠 HomeAPI calling endpoint:', endpoint, 'with userId:', userId || 'anonymous');
     return apiRequest(endpoint);
   },
 

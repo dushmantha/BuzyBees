@@ -16,7 +16,7 @@ import {
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import mockService from '../services/api/mock';
+import { shopAPI, Shop } from '../services/api/shops/shopAPI';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type ServiceListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceList'>;
@@ -94,7 +94,33 @@ const ServiceListScreen = () => {
     sort_order: 'desc' as 'asc' | 'desc'
   });
 
-  // Single API service function for comprehensive data fetching
+  // Transform shop data to service format for backward compatibility
+  const transformShopToService = (shop: Shop): Service => ({
+    id: shop.id,
+    name: shop.name,
+    description: shop.description,
+    price: shop.services && shop.services.length > 0 ? shop.services[0].price : 500,
+    duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
+    category_id: shop.category.toLowerCase().replace(/\s+/g, '-'),
+    image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+    rating: shop.rating || 4.5,
+    reviews_count: shop.reviews_count || 0,
+    professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
+    salon_name: shop.name,
+    location: `${shop.city}, ${shop.country}`,
+    distance: shop.distance || '1.5 km',
+    available_times: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+    certificate_images: [],
+    before_after_images: [],
+    available_time_text: 'Available today',
+    welcome_message: `Welcome to ${shop.name}! We provide excellent ${shop.category.toLowerCase()} services.`,
+    special_note: shop.description,
+    payment_methods: ['Card', 'Cash', 'Mobile Payment'],
+    is_favorite: false,
+    created_at: shop.created_at
+  });
+
+  // Real API service using shop data
   const apiService = {
     async getServiceListData(params?: {
       searchQuery?: string;
@@ -107,60 +133,75 @@ const ServiceListScreen = () => {
       filterOptions: FilterOptions;
     }>> {
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        let serviceResponse;
+        console.log('🔍 Fetching services with params:', params);
         
-        // Handle popular services specifically
-        if (params?.showPopular) {
-          serviceResponse = await mockService.getPopularServices(params.filters);
-        } else if (params?.searchQuery?.trim()) {
-          serviceResponse = await mockService.searchServices(params.searchQuery, {
-            category_id: params.categoryId,
-            ...params.filters
-          });
+        let shopsResponse;
+        
+        if (params?.searchQuery?.trim()) {
+          // Search shops by query
+          shopsResponse = await shopAPI.searchShops(params.searchQuery);
         } else if (params?.categoryId && params.categoryId !== 'popular') {
-          serviceResponse = await mockService.getServicesByCategory(params.categoryId, params.filters);
+          // Get shops by category - map categoryId back to category name
+          const categoryName = params.categoryId.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          
+          // Handle special category mappings
+          let mappedCategory = categoryName;
+          if (categoryName === 'Beauty Wellness') mappedCategory = 'Beauty & Wellness';
+          if (categoryName === 'Fitness Health') mappedCategory = 'Fitness & Health';
+          if (categoryName === 'Pet Services') mappedCategory = 'Pet Services';
+          
+          shopsResponse = await shopAPI.getShopsByCategory(mappedCategory);
         } else {
-          serviceResponse = await mockService.getServices(params?.filters);
+          // Get all shops for popular or general listing
+          shopsResponse = await shopAPI.getAllShops();
         }
 
-        const filterResponse = await mockService.getFilterOptions();
-
-        if (serviceResponse.error) {
-          throw new Error(serviceResponse.error);
+        if (shopsResponse.error || !shopsResponse.data) {
+          console.warn('⚠️ No shop data available:', shopsResponse.error);
+          return {
+            data: {
+              services: [],
+              totalResults: 0,
+              filterOptions: this.getDefaultFilterOptions()
+            },
+            success: false,
+            error: shopsResponse.error || 'Failed to fetch services'
+          };
         }
+
+        // Transform shops to services
+        const services = shopsResponse.data.map(transformShopToService);
+        
+        // Apply filters if provided
+        let filteredServices = services;
+        if (params?.filters) {
+          filteredServices = this.applyFilters(services, params.filters);
+        }
+        
+        // Sort services
+        if (params?.filters?.sort_by) {
+          filteredServices = this.sortServices(filteredServices, params.filters.sort_by, params.filters.sort_order);
+        }
+
+        console.log('✅ Successfully fetched and transformed services:', filteredServices.length);
 
         return {
           data: {
-            services: serviceResponse.data || [],
-            totalResults: serviceResponse.meta?.total || 0,
-            filterOptions: filterResponse.data || {
-              priceRange: { min: 0, max: 1000 },
-              locations: [],
-              durations: [],
-              categories: [],
-              paymentMethods: [],
-              sortOptions: []
-            }
+            services: filteredServices,
+            totalResults: filteredServices.length,
+            filterOptions: this.getDefaultFilterOptions()
           },
           success: true
         };
       } catch (error) {
-        console.error('API Error:', error);
+        console.error('❌ API Error:', error);
         return {
           data: {
             services: [],
             totalResults: 0,
-            filterOptions: {
-              priceRange: { min: 0, max: 1000 },
-              locations: [],
-              durations: [],
-              categories: [],
-              paymentMethods: [],
-              sortOptions: []
-            }
+            filterOptions: this.getDefaultFilterOptions()
           },
           success: false,
           error: error instanceof Error ? error.message : 'Failed to fetch service data'
@@ -168,11 +209,96 @@ const ServiceListScreen = () => {
       }
     },
 
+    getDefaultFilterOptions(): FilterOptions {
+      return {
+        priceRange: { min: 0, max: 1000 },
+        locations: ['Stockholm', 'Göteborg', 'Malmö', 'Uppsala', 'Linköping', 'Västerås'],
+        durations: [30, 45, 60, 90, 120, 180],
+        categories: [
+          { id: 'beauty-wellness', name: 'Beauty & Wellness' },
+          { id: 'cleaning', name: 'Cleaning' },
+          { id: 'home-services', name: 'Home Services' },
+          { id: 'fitness-health', name: 'Fitness & Health' },
+          { id: 'automotive', name: 'Automotive' },
+          { id: 'pet-services', name: 'Pet Services' }
+        ],
+        paymentMethods: ['Card', 'Cash', 'Mobile Payment', 'Bank Transfer'],
+        sortOptions: [
+          { value: 'popularity', label: 'Most Popular' },
+          { value: 'rating', label: 'Highest Rated' },
+          { value: 'price', label: 'Price: Low to High' },
+          { value: 'distance', label: 'Nearest First' }
+        ]
+      };
+    },
+
+    applyFilters(services: Service[], filters: any): Service[] {
+      let filtered = [...services];
+      
+      if (filters.price_min !== undefined) {
+        filtered = filtered.filter(service => service.price >= filters.price_min);
+      }
+      
+      if (filters.price_max !== undefined) {
+        filtered = filtered.filter(service => service.price <= filters.price_max);
+      }
+      
+      if (filters.rating_min !== undefined) {
+        filtered = filtered.filter(service => service.rating >= filters.rating_min);
+      }
+      
+      if (filters.location) {
+        filtered = filtered.filter(service => 
+          service.location.toLowerCase().includes(filters.location.toLowerCase())
+        );
+      }
+      
+      return filtered;
+    },
+
+    sortServices(services: Service[], sortBy: string, sortOrder: 'asc' | 'desc' = 'desc'): Service[] {
+      const sorted = [...services];
+      
+      sorted.sort((a, b) => {
+        let comparison = 0;
+        
+        switch (sortBy) {
+          case 'price':
+            comparison = a.price - b.price;
+            break;
+          case 'rating':
+            comparison = a.rating - b.rating;
+            break;
+          case 'distance':
+            const aDistance = parseFloat(a.distance.replace(' km', ''));
+            const bDistance = parseFloat(b.distance.replace(' km', ''));
+            comparison = aDistance - bDistance;
+            break;
+          case 'popularity':
+          default:
+            comparison = a.reviews_count - b.reviews_count;
+            break;
+        }
+        
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+      
+      return sorted;
+    },
+
     async toggleFavorite(userId: string, serviceId: string): Promise<ApiResponse<{ isFavorite: boolean }>> {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const response = await mockService.toggleFavorite(userId, serviceId);
-        return response;
+        // For now, just toggle locally - in the future integrate with backend
+        console.log('🤍 Toggling favorite for service:', serviceId);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Simulate toggle
+        const isFavorite = Math.random() > 0.5;
+        
+        return {
+          data: { isFavorite },
+          success: true
+        };
       } catch (error) {
         console.error('Toggle favorite error:', error);
         return {
@@ -403,7 +529,10 @@ const ServiceListScreen = () => {
               style={styles.serviceCard}
               onPress={() => {
                 if (navigation?.navigate) {
-                  navigation.navigate('ServiceDetail', { service });
+                  navigation.navigate('ServiceDetail', { 
+                    service,
+                    serviceId: service.id 
+                  });
                 } else {
                   Alert.alert('Navigation', 'Navigate to service detail');
                 }

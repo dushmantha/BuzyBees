@@ -702,22 +702,7 @@ const ProviderHomeScreen: React.FC = () => {
       color: '#10B981',
       backgroundColor: '#ECFDF5',
       action: () => {
-        Alert.alert(
-          'Analytics Coming Soon',
-          'Advanced analytics and reporting features are currently in development. Stay tuned for detailed business insights!',
-          [
-            {
-              text: 'Got it',
-              style: 'default',
-            },
-            {
-              text: 'Notify me',
-              onPress: () => {
-                Alert.alert('Notification Set', 'We\'ll let you know when analytics features are available!');
-              },
-            },
-          ]
-        );
+        navigation.navigate('Analytics');
       },
     },
     {

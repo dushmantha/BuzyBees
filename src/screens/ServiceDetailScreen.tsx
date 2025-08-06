@@ -7,9 +7,35 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useServiceOptions, ServiceUtils } from '../services/serviceUtils';
 import { ServiceOptionState } from '../types/service';
 import type { Service } from '../services/types/service';
-import mockService from '../services/api/mock/index';
+import { shopAPI, Shop } from '../services/api/shops/shopAPI';
 
 const { width: screenWidth } = Dimensions.get('window');
+
+// Transform shop data to service format for backward compatibility
+const transformShopToService = (shop: Shop): Service => ({
+  id: shop.id,
+  name: shop.name,
+  description: shop.description,
+  price: shop.services && shop.services.length > 0 ? shop.services[0].price : 500,
+  duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
+  category_id: shop.category.toLowerCase().replace(/\s+/g, '-'),
+  image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+  rating: shop.rating || 4.5,
+  reviews_count: shop.reviews_count || 0,
+  professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
+  salon_name: shop.name,
+  location: `${shop.city}, ${shop.country}`,
+  distance: shop.distance || '1.5 km',
+  available_times: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+  certificate_images: [],
+  before_after_images: shop.images && shop.images.length > 1 ? shop.images.slice(1, 3) : [],
+  available_time_text: 'Available today',
+  welcome_message: `Welcome to ${shop.name}! We provide excellent ${shop.category.toLowerCase()} services.`,
+  special_note: shop.description,
+  payment_methods: ['Card', 'Cash', 'Mobile Payment'],
+  is_favorite: false,
+  created_at: shop.created_at
+});
 
 type ServiceDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceDetail'>;
 type ServiceDetailScreenRouteProp = RouteProp<RootStackParamList, 'ServiceDetail'>;
@@ -260,19 +286,29 @@ const ServiceDetailScreen: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const response = await mockService.getServiceById(routeServiceId);
+        console.log('🔍 Fetching service details for ID:', routeServiceId);
         
-        if (response.error) {
-          throw new Error(response.error);
+        // First try to get all shops to find the one with matching ID
+        const shopsResponse = await shopAPI.getAllShops();
+        
+        if (shopsResponse.error || !shopsResponse.data) {
+          throw new Error(shopsResponse.error || 'Failed to fetch shops');
         }
         
-        if (!response.data) {
+        // Find the shop with matching ID
+        const shop = shopsResponse.data.find(s => s.id === routeServiceId);
+        
+        if (!shop) {
           throw new Error('Service not found');
         }
         
-        setService(response.data);
+        // Transform shop to service format
+        const serviceData = transformShopToService(shop);
+        setService(serviceData);
+        
+        console.log('✅ Successfully loaded service details:', serviceData.name);
       } catch (err) {
-        console.error('Error loading service:', err);
+        console.error('❌ Error loading service:', err);
         setError(err instanceof Error ? err.message : 'Failed to load service');
       } finally {
         setLoading(false);

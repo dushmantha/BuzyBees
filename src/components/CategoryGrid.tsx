@@ -1,7 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, ViewStyle, TextStyle, TouchableOpacity, ImageSourcePropType } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
 import CategoryItem from './CategoryItem';
 
 // Define the Category interface
@@ -14,12 +12,6 @@ export interface Category {
 
 
 
-// Define the navigation prop types
-type RootStackParamList = {
-  ServiceList: { categoryId: string; categoryName: string };
-};
-
-type NavigationProp = StackNavigationProp<RootStackParamList, 'ServiceList'>;
 
 // Predefined colors for categories if not provided
 const CATEGORY_COLORS = [
@@ -34,9 +26,7 @@ interface CategoryGridProps {
   onCategoryPress: (category: Category) => void;
 }
 
-const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
-  const navigation = useNavigation<NavigationProp>();
-
+const CategoryGrid: React.FC<CategoryGridProps> = ({ categories, onCategoryPress }) => {
   // Handle category press
   const handleCategoryPress = (category: Category) => {
     onCategoryPress(category);
@@ -64,9 +54,9 @@ const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
           >
             <CategoryItem 
               title={item.name}
+              categoryId={item.id}
               color={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
               image={typeof item.image === 'string' ? { uri: item.image } : item.image}
-              serviceCount={item.service_count}
             />
           </TouchableOpacity>
         )}

@@ -34,6 +34,7 @@ import EarningsScreen from '../screens/provider/EarningsScreen';
 import ShopDetailsScreen from '../screens/provider/ShopDetailsScreen';
 import InvoiceGeneratorScreen from '../screens/provider/InvoiceGeneratorScreen';
 import CustomersScreen from '../screens/provider/CustomersScreen';
+import AnalyticsScreen from '../screens/provider/AnalyticsScreen';
 
 // Profile related screens
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -586,6 +587,7 @@ export type RootStackParamList = {
   } | undefined;
   InvoiceGenerator: undefined;
   Customers: undefined;
+  Analytics: undefined;
   
   // Profile Related Screens
   Notifications: undefined;
@@ -1021,6 +1023,15 @@ const AppNavigator = () => {
             component={CustomersScreen}
             options={{
               title: 'Customers',
+              headerShown: false,
+              ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Analytics" 
+            component={AnalyticsScreen}
+            options={{
+              title: 'Business Analytics',
               headerShown: false,
               ...getHeaderStyle(),
             }}

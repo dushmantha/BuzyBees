@@ -11,6 +11,7 @@ interface CategoryItemProps {
   image?: ImageSourcePropType | { uri: string };
   color?: string;
   style?: any; // Accept style prop
+  categoryId?: string; // Add categoryId prop
 }
 
 // Dummy image placeholders for each category
@@ -29,14 +30,17 @@ const categoryImages: { [key: string]: any } = {
   'Träning': { uri: 'https://via.placeholder.com/100x100/FEE440/000000?text=Gym' },
 };
 
-const CategoryItem: React.FC<CategoryItemProps> = ({ title, color, style }) => {
+const CategoryItem: React.FC<CategoryItemProps> = ({ title, color, style, categoryId }) => {
   const navigation = useNavigation<CategoryItemNavigationProp>();
   
   // Get the image for this category, fallback to first letter if not found
   const imageSource = categoryImages[title] || null;
 
   const handlePress = () => {
-    navigation.navigate('ServiceList', { category: title });
+    navigation.navigate('ServiceList', { 
+      category: title,
+      categoryId: categoryId || title.toLowerCase().replace(/\s+/g, '-')
+    });
   };
 
   return (

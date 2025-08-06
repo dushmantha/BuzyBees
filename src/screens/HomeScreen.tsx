@@ -19,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import api from '../services/api/home/providerHomeAPI';
+import { shopAPI } from '../services/api/shops/shopAPI';
+import { categoryAPI } from '../services/api/categories/categoryAPI';
 import { useAuth } from '../context/AuthContext';
 import { usePremium } from '../contexts/PremiumContext';
 
@@ -34,6 +36,22 @@ interface Category {
   color: string;
   description?: string;
   icon?: string;
+}
+
+interface Shop {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  logo_url?: string;
+  images: string[];
+  rating?: number;
+  reviews_count?: number;
+  distance?: string;
 }
 
 interface Promotion {
@@ -120,57 +138,128 @@ const HomeScreen = () => {
   });
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [categoryShops, setCategoryShops] = useState<{[key: string]: Shop[]}>({});
+  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
 
   // Fetch home data
   const fetchHomeData = useCallback(async () => {
-    // Don't fetch if auth is still loading or no user
-    if (authLoading || premiumLoading || !user?.id) {
-      console.log('🔄 Skipping home data fetch - loading or no user:', { 
+    // Don't fetch if auth is still loading
+    if (authLoading || premiumLoading) {
+      console.log('🔄 Waiting for auth to complete...', { 
         authLoading, 
-        premiumLoading, 
-        userId: user?.id 
+        premiumLoading
       });
-      setIsLoading(false);
-      setRefreshing(false);
       return;
     }
 
     try {
       setError(null);
-      console.log('📦 Fetching home data for user:', {
-        userId: user.id,
+      console.log('📦 Fetching home data:', {
+        userId: user?.id || 'anonymous',
         isPremium,
         subscriptionType: subscription?.subscription_type,
         subscriptionStatus: subscription?.subscription_status
       });
+
+      // Fetch categories from our new category API (always shows all categories)
+      console.log('📋 Fetching categories from categoryAPI...');
+      const categoriesResponse = await categoryAPI.getAllCategories();
       
-      const { data, error: fetchError } = await api.getHomeData(user.id);
-      
-      if (fetchError) {
-        throw new Error(fetchError);
+      if (categoriesResponse.error && !categoriesResponse.data) {
+        throw new Error(categoriesResponse.error);
       }
-      
-      if (data) {
-        console.log('✅ Home data loaded successfully:', {
-          categories: data.categories?.length || 0,
-          services: data.popularServices?.length || 0,
-          promotions: data.promotions?.length || 0,
-          stats: data.stats
-        });
-        setHomeData(data);
-      } else {
-        console.warn('⚠️ No data returned from home API');
-        setError('No data available.');
+
+      // Fetch popular services from shop API
+      console.log('⭐ Fetching popular services from shopAPI...');
+      let popularServices = [];
+      try {
+        const shopsResponse = await shopAPI.getAllShops();
+        if (shopsResponse.data) {
+          // Transform shops to services format and limit to top 6
+          popularServices = shopsResponse.data.slice(0, 6).map(shop => ({
+            id: shop.id,
+            name: shop.name,
+            description: shop.description,
+            professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
+            salon_name: shop.name,
+            price: shop.services && shop.services.length > 0 ? shop.services[0].price : 500,
+            duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
+            rating: shop.rating || 4.5,
+            reviews_count: shop.reviews_count || 0,
+            location: `${shop.city}, ${shop.country}`,
+            distance: shop.distance || '1.5 km',
+            image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'
+          }));
+        }
+      } catch (shopError) {
+        console.warn('⚠️ Could not fetch shops for popular services:', shopError);
       }
+
+      // Calculate stats
+      const totalCategories = categoriesResponse.data?.length || 0;
+      const totalServices = categoriesResponse.data?.reduce((sum, cat) => sum + cat.service_count, 0) || 0;
+      const totalProviders = popularServices.length;
+      const avgRating = popularServices.length > 0 
+        ? popularServices.reduce((sum, service) => sum + service.rating, 0) / popularServices.length 
+        : 4.5;
+
+      const homeData = {
+        categories: categoriesResponse.data || [],
+        promotions: [], // No promotions for now
+        popularServices: popularServices,
+        upcomingBookings: [],
+        stats: {
+          totalServices,
+          totalCategories,
+          totalProviders,
+          avgRating: Number(avgRating.toFixed(1))
+        }
+      };
+
+      console.log('✅ Home data loaded successfully:', {
+        categories: homeData.categories.length,
+        services: homeData.popularServices.length,
+        stats: homeData.stats
+      });
+
+      setHomeData(homeData);
       
     } catch (err) {
-      console.error('❌ Error fetching home data:', err);
-      setError('Failed to load data. Please try again.');
+      console.error('❌ Error loading home data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      
+      // Always provide fallback data even on error
+      const fallbackData = {
+        categories: [],
+        promotions: [],
+        popularServices: [],
+        upcomingBookings: [],
+        stats: {
+          totalServices: 0,
+          totalCategories: 0,
+          totalProviders: 0,
+          avgRating: 4.5
+        }
+      };
+      
+      // Try to get at least the default categories
+      try {
+        const categoriesResponse = await categoryAPI.getAllCategories();
+        if (categoriesResponse.data) {
+          fallbackData.categories = categoriesResponse.data;
+          fallbackData.stats.totalCategories = categoriesResponse.data.length;
+        }
+      } catch (fallbackError) {
+        console.error('❌ Could not load even fallback categories:', fallbackError);
+      }
+      
+      setHomeData(fallbackData);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id, authLoading, premiumLoading, isPremium, subscription]);
+  }, [authLoading, premiumLoading, user?.id, isPremium, subscription]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -390,7 +479,66 @@ const HomeScreen = () => {
     });
   }, []);
 
-  // Handle category press
+  // Fetch shops for a specific category
+  const fetchCategoryShops = useCallback(async (category: Category) => {
+    console.log('🏪 Fetching shops for category:', category.name);
+    
+    const categoryKey = category.name;
+    setLoadingCategories(prev => new Set(prev.add(categoryKey)));
+    
+    try {
+      const result = await shopAPI.getShopsByCategory(category.name);
+      
+      if (result.error || !result.data) {
+        console.error('❌ Error fetching category shops:', result.error);
+        return;
+      }
+      
+      setCategoryShops(prev => ({
+        ...prev,
+        [categoryKey]: result.data || []
+      }));
+      
+      console.log('✅ Successfully fetched shops for category:', {
+        category: categoryKey,
+        count: result.data?.length || 0
+      });
+      
+    } catch (error) {
+      console.error('❌ Unexpected error fetching category shops:', error);
+    } finally {
+      setLoadingCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryKey);
+        return newSet;
+      });
+    }
+  }, []);
+
+  // Handle category expansion/collapse
+  const handleCategoryExpand = useCallback(async (category: Category) => {
+    const categoryKey = category.name;
+    const isExpanded = expandedCategories.has(categoryKey);
+    
+    if (isExpanded) {
+      // Collapse category
+      setExpandedCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryKey);
+        return newSet;
+      });
+    } else {
+      // Expand category
+      setExpandedCategories(prev => new Set(prev.add(categoryKey)));
+      
+      // Fetch shops if not already fetched
+      if (!categoryShops[categoryKey]) {
+        await fetchCategoryShops(category);
+      }
+    }
+  }, [expandedCategories, categoryShops, fetchCategoryShops]);
+
+  // Handle category press (navigate to full category view)
   const handleCategoryPress = (category: Category) => {
     console.log('Category pressed:', category.name);
     navigation.navigate('ServiceList', {
@@ -398,6 +546,17 @@ const HomeScreen = () => {
       categoryId: category.id
     });
   };
+
+  // Handle shop press
+  const handleShopPress = useCallback((shop: Shop) => {
+    console.log('Shop pressed:', shop.name);
+    // Navigate to shop details or service list
+    navigation.navigate('ServiceList', {
+      category: shop.category,
+      categoryId: shop.category.toLowerCase().replace(/\s+/g, '-'),
+      shopId: shop.id
+    });
+  }, [navigation]);
 
   // Handle service press
   const handleServicePress = (service: Service) => {
@@ -410,7 +569,7 @@ const HomeScreen = () => {
   // Handle view all popular services
   const handleViewAllPopularServices = () => {
     navigation.navigate('ServiceList', {
-      category: 'Populära tjänster',
+      category: 'Popular Services',
       categoryId: 'popular',
       showPopular: true
     });
@@ -428,28 +587,38 @@ const HomeScreen = () => {
     );
   };
 
-  const renderCategoryCard = ({ item: category }: { item: Category }) => (
-    <TouchableOpacity
-      style={[styles.categoryCard, { backgroundColor: category.color || '#FFFFFF' }]}
-      onPress={() => handleCategoryPress(category)}
-      activeOpacity={0.8}
-    >
-      {category.image ? (
-        <Image
-          source={{ uri: category.image }}
-          style={styles.categoryImage}
-          resizeMode="cover"
-          onError={() => console.log('Image error for:', category.name)}
-        />
-      ) : (
-        <View style={styles.categoryImagePlaceholder}>
-          <Ionicons name="image-outline" size={32} color="#8E8E93" />
-        </View>
-      )}
-      <Text style={styles.categoryName}>{category.name}</Text>
-      <Text style={styles.categoryCount}>{category.service_count}</Text>
-    </TouchableOpacity>
-  );
+  const renderCategoryCard = ({ item: category }: { item: Category }) => {
+    const categoryKey = category.name;
+    const isExpanded = expandedCategories.has(categoryKey);
+    const shops = categoryShops[categoryKey] || [];
+    const isLoading = loadingCategories.has(categoryKey);
+    
+    return (
+      <View style={styles.categoryContainer}>
+        <TouchableOpacity
+          style={[styles.categoryCard, { backgroundColor: category.color || '#FFFFFF' }]}
+          onPress={() => handleCategoryPress(category)}
+          activeOpacity={0.8}
+        >
+          {category.image ? (
+            <Image
+              source={{ uri: category.image }}
+              style={styles.categoryImage}
+              resizeMode="cover"
+              onError={() => console.log('Image error for:', category.name)}
+            />
+          ) : (
+            <View style={styles.categoryImagePlaceholder}>
+              <Ionicons name="image-outline" size={32} color="#8E8E93" />
+            </View>
+          )}
+          <Text style={styles.categoryName}>{category.name}</Text>
+          <Text style={styles.categoryCount}>{category.service_count}</Text>
+        </TouchableOpacity>
+
+      </View>
+    );
+  };
 
   const renderPromotionCard = ({ item: promotion }: { item: Promotion }) => (
     <TouchableOpacity
@@ -527,7 +696,7 @@ const HomeScreen = () => {
         <Text style={[styles.statusText, 
           booking.status === 'confirmed' ? styles.statusConfirmedText : styles.statusPendingText
         ]}>
-          {booking.status === 'confirmed' ? 'Bekräftad' : 'Väntande'}
+          {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
         </Text>
       </View>
     </TouchableOpacity>
@@ -537,7 +706,7 @@ const HomeScreen = () => {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1A2533" />
-        <Text style={styles.loadingText}>Laddar...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -548,7 +717,7 @@ const HomeScreen = () => {
         <Ionicons name="warning-outline" size={48} color="#EF4444" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity onPress={fetchHomeData} style={styles.retryButton}>
-          <Text style={styles.retryText}>Försök igen</Text>
+          <Text style={styles.retryText}>Try again</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -562,9 +731,9 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerGreeting}>
-            Hej{user ? ` ${user.full_name || user.first_name || user.email?.split('@')[0] || 'there'}` : ''}! 👋
+            Hello{user ? ` ${user.full_name || user.first_name || user.email?.split('@')[0] || 'there'}` : ''}! 👋
           </Text>
-          <Text style={styles.headerTitle}>Vad vill du boka?</Text>
+          <Text style={styles.headerTitle}>What would you like to book?</Text>
           {__DEV__ && (
             <Text style={styles.debugText}>
               Debug: Premium={isPremium ? 'Yes' : 'No'} | Type={subscription?.subscription_type || 'None'} | Status={subscription?.subscription_status || 'None'}
@@ -588,7 +757,7 @@ const HomeScreen = () => {
             <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Sök tjänst eller kategori"
+              placeholder="Search services or categories"
               placeholderTextColor="#8E8E93"
               value={searchQuery}
               onChangeText={handleSearchQueryChange}
@@ -621,7 +790,7 @@ const HomeScreen = () => {
                 {/* Categories Results */}
                 {searchResults.categories.length > 0 && (
                   <View style={styles.searchResultSection}>
-                    <Text style={styles.searchResultSectionTitle}>Kategorier</Text>
+                    <Text style={styles.searchResultSectionTitle}>Categories</Text>
                     {searchResults.categories.slice(0, 3).map((category) => (
                       <TouchableOpacity
                         key={category.id}
@@ -633,7 +802,7 @@ const HomeScreen = () => {
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{category.name}</Text>
-                          <Text style={styles.searchResultSubtitle}>{category.service_count} tjänster</Text>
+                          <Text style={styles.searchResultSubtitle}>{category.service_count} services</Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -643,7 +812,7 @@ const HomeScreen = () => {
                 {/* Services Results */}
                 {searchResults.services.length > 0 && (
                   <View style={styles.searchResultSection}>
-                    <Text style={styles.searchResultSectionTitle}>Tjänster</Text>
+                    <Text style={styles.searchResultSectionTitle}>Services</Text>
                     {searchResults.services.slice(0, 4).map((service) => (
                       <TouchableOpacity
                         key={service.id}
@@ -667,7 +836,7 @@ const HomeScreen = () => {
                 {/* Professionals Results */}
                 {searchResults.professionals.length > 0 && (
                   <View style={styles.searchResultSection}>
-                    <Text style={styles.searchResultSectionTitle}>Leverantörer</Text>
+                    <Text style={styles.searchResultSectionTitle}>Providers</Text>
                     {searchResults.professionals.slice(0, 3).map((professional) => (
                       <TouchableOpacity
                         key={professional.id}
@@ -693,9 +862,9 @@ const HomeScreen = () => {
                  searchQuery.length >= 2 && !isSearching && (
                   <View style={styles.noResultsContainer}>
                     <Ionicons name="search-outline" size={32} color="#8E8E93" />
-                    <Text style={styles.noResultsTitle}>Inga resultat</Text>
+                    <Text style={styles.noResultsTitle}>No results</Text>
                     <Text style={styles.noResultsText}>
-                      Försök med andra sökord eller bläddra bland kategorier
+                      Try different keywords or browse categories
                     </Text>
                   </View>
                 )}
@@ -707,7 +876,7 @@ const HomeScreen = () => {
                     onPress={handleSearch}
                   >
                     <Text style={styles.showMoreButtonText}>
-                      Se alla resultat för "{searchQuery}"
+                      See all results for "{searchQuery}"
                     </Text>
                     <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
                   </TouchableOpacity>
@@ -717,7 +886,7 @@ const HomeScreen = () => {
                 {isSearching && (
                   <View style={styles.searchLoadingContainer}>
                     <ActivityIndicator size="small" color="#F59E0B" />
-                    <Text style={styles.searchLoadingText}>Söker...</Text>
+                    <Text style={styles.searchLoadingText}>Searching...</Text>
                   </View>
                 )}
               </ScrollView>
@@ -726,7 +895,7 @@ const HomeScreen = () => {
           
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={14} color="#6B7280" style={styles.locationIcon} />
-            <Text style={styles.locationText}>Hela Sverige</Text>
+            <Text style={styles.locationText}>All Sweden</Text>
           </View>
         </View>
       </View>
@@ -747,9 +916,9 @@ const HomeScreen = () => {
         {user && homeData.upcomingBookings.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Kommande bokningar</Text>
+              <Text style={styles.sectionTitle}>Upcoming Bookings</Text>
               <TouchableOpacity onPress={() => console.log('Navigate to Bookings')}>
-                <Text style={styles.seeAllText}>Se alla</Text>
+                <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -767,7 +936,7 @@ const HomeScreen = () => {
         {homeData.promotions.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Aktuella erbjudanden</Text>
+              <Text style={styles.sectionTitle}>Current Offers</Text>
             </View>
             <FlatList
               data={homeData.promotions}
@@ -783,26 +952,24 @@ const HomeScreen = () => {
         {/* Categories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Kategorier</Text>
+            <Text style={styles.sectionTitle}>Categories</Text>
           </View>
-          <FlatList
-            data={homeData.categories}
-            renderItem={renderCategoryCard}
-            keyExtractor={item => item.id}
-            numColumns={3}
-            scrollEnabled={false}
-            contentContainerStyle={styles.categoriesGrid}
-            columnWrapperStyle={styles.categoryRow}
-          />
+          <View style={styles.categoriesContainer}>
+            {homeData.categories.map((category, index) => (
+              <View key={category.id} style={styles.categoryWrapper}>
+                {renderCategoryCard({ item: category })}
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Popular Services */}
         {homeData.popularServices.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Populära tjänster</Text>
+              <Text style={styles.sectionTitle}>Popular Services</Text>
               <TouchableOpacity onPress={handleViewAllPopularServices}>
-                <Text style={styles.seeAllText}>Se alla</Text>
+                <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -821,19 +988,19 @@ const HomeScreen = () => {
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{homeData.stats.totalServices}</Text>
-              <Text style={styles.statLabel}>Tjänster</Text>
+              <Text style={styles.statLabel}>Services</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{homeData.stats.totalProviders}</Text>
-              <Text style={styles.statLabel}>Leverantörer</Text>
+              <Text style={styles.statLabel}>Providers</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{homeData.stats.avgRating}</Text>
-              <Text style={styles.statLabel}>Snitt betyg</Text>
+              <Text style={styles.statLabel}>Avg Rating</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{homeData.stats.totalCategories}</Text>
-              <Text style={styles.statLabel}>Kategorier</Text>
+              <Text style={styles.statLabel}>Categories</Text>
             </View>
           </View>
         </View>
@@ -1106,17 +1273,23 @@ const styles = StyleSheet.create({
     color: '#F59E0B', // Primary amber/honey
     fontWeight: '600',
   },
-  categoriesGrid: {
+  categoriesContainer: {
     paddingHorizontal: 20,
-  },
-  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  categoryCard: {
+  categoryWrapper: {
     width: cardWidth,
+    marginBottom: 16,
+  },
+  categoryContainer: {
+    width: '100%',
+  },
+  categoryCard: {
+    width: '100%',
     aspectRatio: 1,
     borderRadius: 16,
-    marginBottom: 16,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -1130,6 +1303,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
   },
   categoryImage: {
     width: '70%',
@@ -1158,6 +1332,132 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280', // Darker gray for better readability
     fontWeight: '500',
+  },
+  expandButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shopListContainer: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  shopLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  shopLoadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  shopItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  shopImageContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  shopImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shopImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shopInfo: {
+    flex: 1,
+  },
+  shopName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  shopAddress: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  shopMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shopRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shopRatingText: {
+    fontSize: 12,
+    color: '#1F2937',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  shopDistance: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  shopSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 12,
+  },
+  noShopsContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  noShopsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  viewAllShopsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    marginHorizontal: 12,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+  },
+  viewAllShopsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+    marginRight: 4,
   },
   promotionsList: {
     paddingHorizontal: 20,
