@@ -9,34 +9,58 @@ import { ServiceOptionState } from '../types/service';
 import type { Service } from '../services/types/service';
 import { shopAPI, Shop } from '../services/api/shops/shopAPI';
 import { serviceOptionsAPI, ServiceOption } from '../services/api/serviceOptions/serviceOptionsAPI';
+import normalizedShopService, { CompleteShopData, supabase } from '../lib/supabase/normalized';
+import { favoritesAPI } from '../services/api/favorites/favoritesAPI';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 // Transform shop data to service format for backward compatibility
-const transformShopToService = (shop: Shop): Service => ({
+const transformShopToService = (shop: CompleteShopData): Service => ({
   id: shop.id,
   name: shop.name,
-  description: shop.description,
-  price: shop.services && shop.services.length > 0 ? shop.services[0].price : 500,
-  duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
+  description: shop.description || '',
+  price: shop.services && shop.services.length > 0 ? shop.services[0].price : 0,
+  duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 0,
   category_id: shop.category.toLowerCase().replace(/\s+/g, '-'),
-  image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
-  rating: shop.rating || 4.5,
+  image: shop.images && shop.images.length > 0 ? shop.images[0] : '',
+  rating: shop.rating || 0,
   reviews_count: shop.reviews_count || 0,
-  professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
+  professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : '',
   salon_name: shop.name,
   location: `${shop.city}, ${shop.country}`,
-  distance: shop.distance || '1.5 km',
-  available_times: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-  certificate_images: [],
-  before_after_images: shop.images && shop.images.length > 1 ? shop.images.slice(1, 3) : [],
-  available_time_text: 'Available today',
-  welcome_message: `Welcome to ${shop.name}! We provide excellent ${shop.category.toLowerCase()} services.`,
-  special_note: shop.description,
-  payment_methods: ['Card', 'Cash', 'Mobile Payment'],
-  is_favorite: false,
-  created_at: shop.created_at
+  distance: shop.distance || '',
+  available_times: shop.business_hours ? extractAvailableTimes(shop.business_hours) : [],
+  certificate_images: shop.certificate_images || [],
+  before_after_images: shop.before_after_images || shop.images?.slice(1) || [],
+  available_time_text: shop.is_active ? 'Check availability' : 'Currently closed',
+  welcome_message: shop.welcome_message || shop.description || '',
+  special_note: shop.special_note || '',
+  payment_methods: shop.payment_methods || [],
+  is_favorite: shop.is_favorite || false,
+  created_at: shop.created_at,
+  logo_url: shop.logo_url // Add logo_url to service data
 });
+
+// Helper function to extract available times from business hours
+const extractAvailableTimes = (businessHours: any[]): string[] => {
+  const times: string[] = [];
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const today = daysOfWeek[new Date().getDay()];
+  const todayHours = businessHours.find(bh => bh.day_of_week.toLowerCase() === today);
+  
+  if (todayHours && todayHours.is_open) {
+    // Generate time slots based on opening hours
+    const openTime = parseInt(todayHours.open_time.split(':')[0]);
+    const closeTime = parseInt(todayHours.close_time.split(':')[0]);
+    
+    for (let hour = openTime; hour < closeTime; hour++) {
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+      times.push(`${hour.toString().padStart(2, '0')}:30`);
+    }
+  }
+  
+  return times;
+};
 
 type ServiceDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceDetail'>;
 type ServiceDetailScreenRouteProp = RouteProp<RootStackParamList, 'ServiceDetail'>;
@@ -58,21 +82,28 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Fallback to service image if no images provided, or use a fallback image
-  const imageList = images.length > 0 ? images : [service.image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'];
+  // Use provided images array
+  const imageList = images.length > 0 ? images : (service.image ? [service.image] : []);
+  
+  console.log('📷 ImageCarousel received:', imageList.length, 'images');
 
-  // Get image type label
-  const getImageTypeLabel = (imageUrl: string, index: number) => {
-    if (index === 0 && service.image === imageUrl) {
-      return 'Main';
+  // Get image type label with proper categorization
+  const getImageTypeLabel = (imageUrl: string, index: number, images: any) => {
+    // Check if it's in main shop images
+    if (images.main?.includes(imageUrl)) {
+      return index === 0 ? 'Main' : `Gallery ${index + 1}`;
     }
-    if (service.certificate_images?.includes(imageUrl)) {
-      return 'Certificate';
+    // Check if it's a certificate
+    if (images.certificates?.includes(imageUrl)) {
+      const certIndex = images.certificates.indexOf(imageUrl) + 1;
+      return `Certificate ${certIndex}`;
     }
-    if (service.before_after_images?.includes(imageUrl)) {
-      return 'Before/After';
+    // Check if it's before/after
+    if (images.beforeAfter?.includes(imageUrl)) {
+      const beforeAfterIndex = images.beforeAfter.indexOf(imageUrl);
+      return beforeAfterIndex % 2 === 0 ? 'Before' : 'After';
     }
-    return null;
+    return `Image ${index + 1}`;
   };
 
   const handleScroll = (event: any) => {
@@ -89,7 +120,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
     });
   };
 
-  const currentImageLabel = getImageTypeLabel(imageList[currentIndex], currentIndex);
+  // We need to pass the categorized images to get proper labels
+  // For now, use a simple approach
+  const currentImageLabel = imageList[currentIndex] ? `${currentIndex + 1} of ${imageList.length}` : null;
 
   return (
     <View style={styles.imageContainer}>
@@ -99,16 +132,25 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
         style={styles.imageScrollView}
       >
-        {imageList.map((image, index) => (
-          <Image
-            key={index}
-            source={{ uri: image }}
-            style={styles.serviceImage}
-            resizeMode="cover"
-          />
-        ))}
+        {imageList.length > 0 ? (
+          imageList.map((image, index) => (
+            <Image
+              key={index}
+              source={{ uri: image }}
+              style={styles.serviceImage}
+              resizeMode="cover"
+            />
+          ))
+        ) : (
+          <View style={[styles.serviceImage, styles.noImageContainer]}>
+            <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.noImageText}>No images available</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Back Button */}
@@ -123,11 +165,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
       <TouchableOpacity 
         style={styles.favoriteButton}
         onPress={onFavoritePress}
+        activeOpacity={0.7}
       >
         <Ionicons 
           name={service.is_favorite ? 'heart' : 'heart-outline'} 
-          size={28} 
-          color={service.is_favorite ? '#FF3B30' : '#fff'} 
+          size={24} 
+          color={service.is_favorite ? '#EF4444' : '#1F2937'} 
         />
       </TouchableOpacity>
 
@@ -198,13 +241,16 @@ const StaffSelectionSection: React.FC<{
           <Text style={[styles.staffName, selectedStaff === staff.id && styles.selectedStaffName]}>
             {staff.name}
           </Text>
+          {staff.role && staff.id !== 'any' && (
+            <Text style={styles.staffRole}>{staff.role}</Text>
+          )}
           {staff.rating > 0 && (
             <View style={styles.staffRating}>
               <Ionicons name="star" size={12} color="#FFC107" />
               <Text style={styles.staffRatingText}>{staff.rating}</Text>
             </View>
           )}
-          {staff.specialties.length > 0 && (
+          {staff.specialties && staff.specialties.length > 0 && (
             <Text style={styles.staffSpecialty} numberOfLines={1}>
               {staff.specialties[0]}
             </Text>
@@ -215,43 +261,249 @@ const StaffSelectionSection: React.FC<{
   </View>
 );
 
-// Tab components
-const AboutTab: React.FC<ServiceTabProps> = ({ service }) => (
-  <View style={styles.tabContent}>
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="information-circle-outline" size={20} color="#666" />
-        <Text style={styles.sectionTitle}>Om behandlingen</Text>
+// Tab components with real shop data
+const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
+  const [shopData, setShopData] = useState<CompleteShopData | null>(null);
+
+  useEffect(() => {
+    const fetchShopData = async () => {
+      try {
+        const response = await normalizedShopService.getShopById(service.id);
+        if (response.success && response.data) {
+          console.log('🔍 About Tab - Shop data from same source as provider saves:', response.data);
+          setShopData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching shop data for about tab:', error);
+      }
+    };
+    fetchShopData();
+  }, [service.id]);
+
+  return (
+    <View style={styles.tabContent}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="information-circle-outline" size={20} color="#666" />
+          <Text style={styles.sectionTitle}>About {service.salon_name}</Text>
+        </View>
+        <Text style={styles.descriptionText}>
+          {service.description || 'No description available for this business.'}
+        </Text>
+
+        {/* Contact Information */}
+        <View style={styles.contactSection}>
+          <Text style={styles.contactTitle}>Contact Information</Text>
+          
+          {shopData?.phone && (
+            <View style={styles.contactItem}>
+              <Ionicons name="call-outline" size={20} color="#F59E0B" />
+              <Text style={styles.contactText}>{shopData.phone}</Text>
+            </View>
+          )}
+          
+          {shopData?.email && (
+            <View style={styles.contactItem}>
+              <Ionicons name="mail-outline" size={20} color="#F59E0B" />
+              <Text style={styles.contactText}>{shopData.email}</Text>
+            </View>
+          )}
+          
+          {shopData?.website_url && (
+            <View style={styles.contactItem}>
+              <Ionicons name="globe-outline" size={20} color="#F59E0B" />
+              <Text style={styles.contactText}>{shopData.website_url}</Text>
+            </View>
+          )}
+
+          {shopData?.address && (
+            <View style={styles.contactItem}>
+              <Ionicons name="location-outline" size={20} color="#F59E0B" />
+              <Text style={styles.contactText}>
+                {shopData.address}, {shopData.city}, {shopData.country}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
-      <Text style={styles.descriptionText}>
-        {service.description || 'No description available for this treatment.'}
-      </Text>
     </View>
-  </View>
-);
+  );
+};
+
+const HoursTab: React.FC<ServiceTabProps> = ({ service }) => {
+  const [shopData, setShopData] = useState<CompleteShopData | null>(null);
+  const [businessHours, setBusinessHours] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchShopAndHoursData = async () => {
+      try {
+        // Fetch basic shop data
+        const shopResponse = await normalizedShopService.getShopById(service.id);
+        if (shopResponse.success && shopResponse.data) {
+          console.log('🔍 Hours Tab - Shop data:', shopResponse.data);
+          setShopData(shopResponse.data);
+        }
+
+        // Fetch business hours directly from shop_business_hours table
+        console.log('🔍 Hours Tab - Fetching business hours from shop_business_hours table for shop:', service.id);
+        const { data: hoursData, error: hoursError } = await supabase
+          .from('shop_business_hours')
+          .select('*')
+          .eq('shop_id', service.id)
+          .eq('is_active', true)
+          .order('priority', { ascending: true });
+
+        if (hoursError) {
+          console.error('❌ Error fetching business hours:', hoursError);
+        } else {
+          console.log('✅ Hours Tab - Business hours from shop_business_hours:', hoursData);
+          setBusinessHours(hoursData || []);
+        }
+      } catch (error) {
+        console.error('Error fetching shop and hours data:', error);
+      }
+    };
+    fetchShopAndHoursData();
+  }, [service.id]);
+
+  const formatTime = (time: string) => {
+    if (!time) return '';
+    return time.slice(0, 5); // Remove seconds
+  };
+
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  return (
+    <View style={styles.tabContent}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="time-outline" size={20} color="#666" />
+          <Text style={styles.sectionTitle}>Opening Hours</Text>
+        </View>
+        
+        {businessHours && businessHours.length > 0 ? (
+          <View style={styles.hoursContainer}>
+            {dayNames.map((dayName, index) => {
+              // Find business hours for this day from the shop_business_hours table
+              const dayData = businessHours.find(bh => 
+                bh.day.toLowerCase() === dayName.toLowerCase()
+              );
+              
+              return (
+                <View key={dayName} style={styles.hourRow}>
+                  <Text style={styles.dayName}>{dayName}</Text>
+                  <Text style={styles.hourTime}>
+                    {dayData?.is_open 
+                      ? `${formatTime(dayData.open_time || '')} - ${formatTime(dayData.close_time || '')}`
+                      : 'Closed'
+                    }
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : shopData?.business_hours_start && shopData?.business_hours_end ? (
+          <View style={styles.hoursContainer}>
+            <View style={styles.basicHoursContainer}>
+              <Ionicons name="time-outline" size={20} color="#F59E0B" />
+              <Text style={styles.basicHoursText}>
+                General hours: {formatTime(shopData.business_hours_start)} - {formatTime(shopData.business_hours_end)}
+              </Text>
+            </View>
+            <Text style={styles.basicHoursNote}>
+              * Detailed daily schedules not available
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.noHoursContainer}>
+            <Ionicons name="time-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.noHoursText}>Opening hours not specified</Text>
+          </View>
+        )}
+
+        {shopData?.timezone && (
+          <Text style={styles.timezoneText}>Timezone: {shopData.timezone}</Text>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
+  const [shopData, setShopData] = useState<CompleteShopData | null>(null);
+
+  useEffect(() => {
+    const fetchShopData = async () => {
+      try {
+        const response = await normalizedShopService.getShopById(service.id);
+        if (response.success && response.data) {
+          console.log('🔍 Offers Tab - Shop discounts from same source as provider saves:', response.data?.discounts);
+          setShopData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching shop data for offers tab:', error);
+      }
+    };
+    fetchShopData();
+  }, [service.id]);
+
+  return (
+    <View style={styles.tabContent}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="pricetag-outline" size={20} color="#666" />
+          <Text style={styles.sectionTitle}>Current Offers</Text>
+        </View>
+        
+        {shopData?.discounts && shopData.discounts.length > 0 ? (
+          <View style={styles.offersContainer}>
+            {shopData.discounts.map((discount, index) => (
+              <View key={index} style={styles.offerCard}>
+                <View style={styles.offerHeader}>
+                  <Ionicons name="gift-outline" size={24} color="#F59E0B" />
+                  <View style={styles.offerInfo}>
+                    <Text style={styles.offerTitle}>
+                      {discount.type === 'percentage' ? `${discount.value}% OFF` : `${discount.value} SEK OFF`}
+                    </Text>
+                    <Text style={styles.offerDescription}>{discount.description}</Text>
+                  </View>
+                </View>
+                <Text style={styles.offerPeriod}>
+                  Valid: {new Date(discount.start_date).toLocaleDateString()} - {new Date(discount.end_date).toLocaleDateString()}
+                </Text>
+                {discount.usage_limit && (
+                  <Text style={styles.offerUsage}>
+                    Used: {discount.used_count || 0} / {discount.usage_limit}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.noOffersContainer}>
+            <Ionicons name="pricetag-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.noOffersText}>No current offers available</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
 
 const ReviewsTab: React.FC<ServiceTabProps> = ({ service }) => (
   <View style={styles.tabContent}>
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Reviews</Text>
+      <View style={styles.sectionHeader}>
+        <Ionicons name="star-outline" size={20} color="#666" />
+        <Text style={styles.sectionTitle}>Reviews</Text>
+      </View>
       <Text style={styles.descriptionText}>
         {service.reviews_count || 0} reviews • {service.rating || 0} ⭐
       </Text>
-      {/* Add more review content here */}
-    </View>
-  </View>
-);
-
-const LocationTab: React.FC<ServiceTabProps> = ({ service }) => (
-  <View style={styles.tabContent}>
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="location-outline" size={20} color="#666" />
-        <Text style={styles.sectionTitle}>Location</Text>
+      <View style={styles.reviewsPlaceholder}>
+        <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
+        <Text style={styles.reviewsPlaceholderText}>Reviews feature coming soon</Text>
       </View>
-      <Text style={styles.locationText}>{service.salon_name || service.location || 'Location not specified'}</Text>
-      <Text style={styles.distanceText}>{service.distance || ''} away</Text>
-      {/* Add map view here */}
     </View>
   </View>
 );
@@ -266,13 +518,15 @@ const ServiceDetailScreen: React.FC = () => {
   const [service, setService] = useState<Service | null>(routeService || null);
   const [loading, setLoading] = useState(!routeService);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('services');
+  const [activeTab, setActiveTab] = useState('about');
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+  const [allStaffMembers, setAllStaffMembers] = useState<any[]>([]);
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [shopServices, setShopServices] = useState<any[]>([]);
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set());
   const [selectedServicesWithOptions, setSelectedServicesWithOptions] = useState<Map<string, Set<string>>>(new Map());
   const [servicesLoading, setServicesLoading] = useState(false);
+  const [shopData, setShopData] = useState<CompleteShopData | null>(null);
   // Removed duplicate service options state - we'll use the useServiceOptions hook instead
 
   // Load service data if not passed directly
@@ -283,10 +537,13 @@ const ServiceDetailScreen: React.FC = () => {
 
       // If we don't have a service ID, show error
       if (!routeServiceId) {
+        console.error('❌ Route service ID is missing');
         setError('Service ID is missing');
         setLoading(false);
         return;
       }
+      
+      console.log('🔍 Route service ID:', routeServiceId, 'Type:', typeof routeServiceId);
 
       try {
         setLoading(true);
@@ -294,31 +551,29 @@ const ServiceDetailScreen: React.FC = () => {
         
         console.log('🔍 Fetching service details for ID:', routeServiceId);
         
-        // First try to get all shops to find the one with matching ID
-        const shopsResponse = await shopAPI.getAllShops();
+        // Fetch shop using normalized service (same as ShopDetailsScreen uses)
+        const shopResponse = await normalizedShopService.getShopById(routeServiceId);
         
-        if (shopsResponse.error || !shopsResponse.data) {
-          throw new Error(shopsResponse.error || 'Failed to fetch shops');
+        if (!shopResponse.success || !shopResponse.data) {
+          throw new Error(shopResponse.error || 'Failed to fetch shop details');
         }
         
-        // Find the shop with matching ID
-        const shop = shopsResponse.data.find(s => s.id === routeServiceId);
-        
-        if (!shop) {
-          throw new Error('Service not found');
-        }
+        const shop = shopResponse.data;
         
         // Transform shop to service format
         const serviceData = transformShopToService(shop);
         setService(serviceData);
         
-        // Also load shop services
-        if (shop.services && Array.isArray(shop.services)) {
-          setShopServices(shop.services);
-        }
-        
         console.log('✅ Successfully loaded service details:', serviceData.name);
-        console.log('✅ Shop services:', shop.services?.length || 0);
+        console.log('✅ Shop ID:', routeServiceId);
+        
+        // Load favorite status
+        const mockUserId = '12345678-1234-1234-1234-123456789012'; // Replace with actual auth.uid()
+        const favoriteResponse = await favoritesAPI.isFavorite(mockUserId, serviceData.id);
+        if (favoriteResponse.success) {
+          serviceData.is_favorite = favoriteResponse.data?.is_favorite || false;
+          setService(serviceData);
+        }
       } catch (err) {
         console.error('❌ Error loading service:', err);
         setError(err instanceof Error ? err.message : 'Failed to load service');
@@ -330,126 +585,263 @@ const ServiceDetailScreen: React.FC = () => {
     loadService();
   }, [routeServiceId, service]);
 
-  // Service options are now handled by the useServiceOptions hook below
-
-  // Load real staff members data from Supabase
+  // Load services from shop_services table
   useEffect(() => {
-    const loadStaffMembers = async () => {
-      if (!service || !routeServiceId) return;
+    const loadShopServices = async () => {
+      if (!routeServiceId) {
+        console.log('⚠️ No route service ID for loading services');
+        return;
+      }
 
       try {
-        console.log('🔍 Fetching staff members for service:', routeServiceId);
+        setServicesLoading(true);
+        console.log('🔍 Loading services for shop ID:', routeServiceId);
         
-        // Get the shop details again to access staff data
-        const shopsResponse = await shopAPI.getAllShops();
-        
-        if (shopsResponse.error || !shopsResponse.data) {
-          console.warn('⚠️ Could not fetch shops for staff data');
-          return;
+        // Fetch services directly from shop_services table
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('shop_services')
+          .select('*')
+          .eq('shop_id', routeServiceId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+          
+        if (servicesError) {
+          console.error('❌ Error fetching services:', servicesError);
+          setShopServices([]);
+        } else if (servicesData && servicesData.length > 0) {
+          console.log('✅ Found', servicesData.length, 'active services');
+          console.log('✅ Services with assigned_staff:', servicesData.map(s => ({ 
+            name: s.name, 
+            price: s.price,
+            assigned_staff: s.assigned_staff,
+            id: s.id
+          })));
+          setShopServices(servicesData);
+        } else {
+          console.log('❌ No active services found for shop:', routeServiceId);
+          setShopServices([]);
         }
+      } catch (error) {
+        console.error('❌ Error in loadShopServices:', error);
+        setShopServices([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    loadShopServices();
+  }, [routeServiceId]); // Only depend on routeServiceId
+
+  // Service options are now handled by the useServiceOptions hook below
+
+  // Load all staff members initially - using same logic as ShopDetailsScreen
+  useEffect(() => {
+    const loadAllStaff = async () => {
+      if (!routeServiceId) return;
+
+      try {
+        console.log('🔍 Loading all staff members for shop:', routeServiceId);
         
-        // Find the shop with matching ID
-        const shop = shopsResponse.data.find(s => s.id === routeServiceId);
+        // Use the same method as ShopDetailsScreen
+        const staffResponse = await normalizedShopService.getStaffByShopId(routeServiceId);
         
-        if (!shop || !shop.staff) {
-          console.warn('⚠️ No staff data found for shop');
-          // Set default "Any Available Staff" option
-          setStaffMembers([
-            {
-              id: 'any',
-              name: 'Any Available Staff',
-              avatar_url: null,
-              specialties: [],
-              experience_years: 0,
-              rating: 0,
-              work_schedule: {
-                monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-                sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
-              },
-              leave_dates: []
-            }
-          ]);
-          return;
+        console.log('📊 Staff response:', staffResponse);
+        
+        let allStaff = [];
+        
+        if (staffResponse.success && staffResponse.data && staffResponse.data.length > 0) {
+          allStaff = staffResponse.data;
+          console.log('✅ Staff loaded from normalized service:', allStaff.length, 'staff members');
+          console.log('✅ Staff details:', allStaff.map(s => ({ id: s.id, name: s.name, role: s.role })));
+        } else {
+          // Fallback to direct query (same as ShopDetailsScreen)
+          console.log('⚠️ Normalized service failed, trying direct query...');
+          
+          const { data: staffData, error: staffError } = await supabase
+            .from('shop_staff')
+            .select('*')
+            .eq('shop_id', routeServiceId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+          
+          if (staffData && staffData.length > 0) {
+            allStaff = staffData;
+            console.log('✅ Staff loaded from direct query:', allStaff.length, 'staff members');
+          } else {
+            console.log('⚠️ No staff found for shop:', routeServiceId);
+            console.log('   - Direct query error:', staffError);
+          }
         }
 
-        // Transform staff data from Supabase format to expected format
-        const transformedStaff = shop.staff.map(staff => ({
-          id: staff.id,
-          name: staff.name,
-          avatar_url: staff.avatar_url,
-          specialties: staff.specialties || [],
-          experience_years: staff.experience_years || 0,
-          rating: staff.rating || 4.5,
-          work_schedule: staff.work_schedule || {
+        // Transform staff data - simplified since normalized service returns proper format
+        const transformedStaff = allStaff.map((staff, index) => {
+          // Generate placeholder avatar if none exists
+          const avatarColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#DDA0DD'];
+          const avatarColor = avatarColors[index % avatarColors.length];
+          const placeholderAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=${avatarColor.slice(1)}&color=fff&size=120`;
+          
+          return {
+            id: staff.id,
+            name: staff.name,
+            avatar_url: staff.avatar_url || placeholderAvatar,
+            specialties: Array.isArray(staff.specialties) ? staff.specialties : [],
+            experience_years: staff.experience_years || 0,
+            rating: staff.rating || 4.5,
+            role: staff.role || 'Staff',
+            email: staff.email || '',
+            phone: staff.phone || '',
+            bio: staff.bio || '',
+            work_schedule: staff.work_schedule || {
+              monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+              sunday: { isWorking: false, startTime: '09:00', endTime: '18:00' }
+            },
+            leave_dates: staff.leave_dates || []
+          };
+        });
+        
+        console.log('✅ Transformed staff:', transformedStaff.map(s => ({ id: s.id, name: s.name, role: s.role })));
+
+        // Always add "Any Available Staff" as an option
+        transformedStaff.push({
+          id: 'any',
+          name: 'Any Available',
+          avatar_url: `https://ui-avatars.com/api/?name=Any&background=6B7280&color=fff&size=120`,
+          specialties: ['All Services'],
+          experience_years: 0,
+          rating: 0,
+          work_schedule: {
             monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
             saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-            sunday: { isWorking: false, startTime: '09:00', endTime: '18:00' }
+            sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
           },
-          leave_dates: staff.leave_dates || []
-        }));
+          leave_dates: []
+        });
 
-        // Always add "Any Available Staff" as an option
-        const staffWithAnyOption = [
-          ...transformedStaff,
-          {
-            id: 'any',
-            name: 'Any Available Staff',
-            avatar_url: null,
-            specialties: [],
-            experience_years: 0,
-            rating: 0,
-            work_schedule: {
-              monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
-            },
-            leave_dates: []
-          }
-        ];
+        setAllStaffMembers(transformedStaff);
+        setStaffMembers(transformedStaff);
+        console.log('✅ All staff loaded and set:', transformedStaff.length);
+        console.log('✅ Staff names:', transformedStaff.map(s => s.name));
 
-        setStaffMembers(staffWithAnyOption);
-        console.log('✅ Successfully loaded staff members:', staffWithAnyOption.length);
       } catch (err) {
-        console.error('❌ Error loading staff members:', err);
-        // Fallback to default staff option
-        setStaffMembers([
-          {
-            id: 'any',
-            name: 'Any Available Staff',
-            avatar_url: null,
-            specialties: [],
-            experience_years: 0,
-            rating: 0,
-            work_schedule: {
-              monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
-              sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
-            },
-            leave_dates: []
-          }
-        ]);
+        console.error('❌ Error loading all staff:', err);
+        // Still add "Any Available" option even if there's an error
+        const anyOption = {
+          id: 'any',
+          name: 'Any Available',
+          avatar_url: `https://ui-avatars.com/api/?name=Any&background=6B7280&color=fff&size=120`,
+          specialties: ['All Services'],
+          experience_years: 0,
+          rating: 0,
+          role: '',
+          email: '',
+          phone: '',
+          work_schedule: {
+            monday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            tuesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            wednesday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            thursday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            friday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            saturday: { isWorking: true, startTime: '09:00', endTime: '18:00' },
+            sunday: { isWorking: true, startTime: '09:00', endTime: '18:00' }
+          },
+          leave_dates: []
+        };
+        setAllStaffMembers([anyOption]);
+        setStaffMembers([anyOption]);
       }
     };
 
-    loadStaffMembers();
-  }, [service, routeServiceId]);
+    loadAllStaff();
+  }, [routeServiceId]); // Only depend on routeServiceId for initial load
+
+  // Filter staff based on selected services
+  useEffect(() => {
+    if (allStaffMembers.length === 0) {
+      console.log('⚠️ No staff members loaded yet');
+      return; // Wait for staff to load first
+    }
+
+    // If no services selected, show all staff
+    if (selectedServicesWithOptions.size === 0) {
+      console.log('🔍 No services selected, showing all staff');
+      setStaffMembers(allStaffMembers);
+      return;
+    }
+
+    console.log('🔍 Filtering staff based on selected services...');
+    
+    const selectedServiceNames = Array.from(selectedServicesWithOptions.keys());
+    console.log('🔍 Selected services:', selectedServiceNames);
+    
+    // Get the services data to check assigned_staff
+    const selectedServicesData = shopServices.filter(service => 
+      selectedServiceNames.includes(service.name)
+    );
+    
+    console.log('🔍 Selected services data:', selectedServicesData);
+    
+    // Collect all staff IDs who can perform the selected services
+    const availableStaffIds = new Set();
+    
+    selectedServicesData.forEach(service => {
+      console.log(`📋 Service "${service.name}":`, {
+        assigned_staff: service.assigned_staff,
+        type: typeof service.assigned_staff,
+        isArray: Array.isArray(service.assigned_staff)
+      });
+      
+      if (service.assigned_staff) {
+        let staffIds = service.assigned_staff;
+        
+        // Handle JSONB format
+        if (typeof staffIds === 'string') {
+          try {
+            staffIds = JSON.parse(staffIds);
+          } catch (e) {
+            console.log(`   - Failed to parse assigned_staff as JSON:`, e);
+            staffIds = [];
+          }
+        }
+        
+        if (Array.isArray(staffIds)) {
+          staffIds.forEach(staffId => {
+            console.log(`   - Adding staff ID: ${staffId}`);
+            availableStaffIds.add(staffId.toString());
+          });
+        }
+      }
+    });
+    
+    console.log('🔍 Available staff IDs:', Array.from(availableStaffIds));
+    console.log('🔍 All staff IDs:', allStaffMembers.map(s => s.id.toString()));
+    
+    // Filter staff based on assignments
+    const filteredStaff = allStaffMembers.filter(staff => {
+      // Always include "Any Available" option
+      if (staff.id === 'any') return true;
+      
+      // If no staff assignments found, show all staff (service might not have assignments set)
+      if (availableStaffIds.size === 0) return true;
+      
+      // Check if staff is assigned to any selected service
+      const isAssigned = availableStaffIds.has(staff.id.toString());
+      console.log(`   - Staff ${staff.name} (${staff.id}): ${isAssigned ? 'INCLUDED' : 'EXCLUDED'}`);
+      return isAssigned;
+    });
+    
+    console.log('🔍 Filtered staff:', filteredStaff.map(s => s.name));
+    setStaffMembers(filteredStaff);
+
+  }, [selectedServicesWithOptions, shopServices, allStaffMembers]);
 
   // Load service options for each service
   useEffect(() => {
@@ -484,22 +876,15 @@ const ServiceDetailScreen: React.FC = () => {
       }
     };
 
-    loadServiceOptions();
-  }, [shopServices.length, routeServiceId]);
+    // Only load if we have services and haven't loaded options yet
+    if (shopServices.length > 0 && !shopServices.some(s => s.options)) {
+      loadServiceOptions();
+    }
+  }, [shopServices, routeServiceId]);
 
-  // Get the service name for the hook (service options are keyed by service name)
-  const serviceName = service?.name || 'Hair Cut';
-
-  // Use the custom hook for managing service options
-  const {
-    options,
-    loading: optionsLoading,
-    error: optionsError,
-    totalPrice,
-    hasSelections,
-    selectedCount,
-    actions
-  } = useServiceOptions(serviceName);
+  // Calculate selected count for display
+  const selectedCount = Array.from(selectedServicesWithOptions.values())
+    .reduce((sum, options) => sum + options.size, 0);
 
   // Show loading state
   if (loading) {
@@ -532,13 +917,85 @@ const ServiceDetailScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
+  
+  // Load shop data directly from provider_businesses for images
+  useEffect(() => {
+    const loadShopData = async () => {
+      try {
+        console.log('📷 Loading shop images from provider_businesses table...');
+        
+        // Get images directly from provider_businesses table
+        const { data: shopData, error: shopError } = await supabase
+          .from('provider_businesses')
+          .select('images, image_url, logo_url, name')
+          .eq('id', service.id)
+          .single();
+          
+        if (!shopError && shopData) {
+          console.log('📷 Shop images data loaded:', {
+            hasImages: !!shopData.images,
+            imagesType: typeof shopData.images,
+            imagesLength: Array.isArray(shopData.images) ? shopData.images.length : 'not array',
+            imageUrls: shopData.images,
+            image_url: shopData.image_url,
+            logo_url: shopData.logo_url
+          });
+          setShopData(shopData);
+        } else {
+          console.error('❌ Failed to load shop images:', shopError?.message);
+        }
+      } catch (error) {
+        console.error('❌ Error loading shop images:', error);
+      }
+    };
+    loadShopData();
+  }, [service.id]);
 
-  // Combine all available images from the service
-  const serviceImages = [
-    service.image,
-    ...(service.certificate_images || []),
-    ...(service.before_after_images || [])
-  ].filter(Boolean) as string[];
+  // Get images from provider_businesses.images JSONB column
+  const getAllImages = () => {
+    const allImages = [];
+    
+    console.log('📷 Getting images from provider_businesses...');
+    console.log('ShopData:', shopData);
+    
+    // Get images from provider_businesses.images (JSONB array)
+    if (shopData?.images && Array.isArray(shopData.images)) {
+      const validImages = shopData.images.filter(img => img && img.trim() !== '');
+      allImages.push(...validImages);
+      console.log('📷 Added provider_businesses.images:', validImages.length, validImages);
+    }
+    
+    // Add image_url if it exists and is not already included
+    if (shopData?.image_url && shopData.image_url.trim() !== '' && !allImages.includes(shopData.image_url)) {
+      allImages.push(shopData.image_url);
+      console.log('📷 Added provider_businesses.image_url');
+    }
+    
+    // Fallback to service image if no images found
+    if (allImages.length === 0 && service.image && service.image.trim() !== '') {
+      allImages.push(service.image);
+      console.log('📷 Added fallback service.image');
+    }
+    
+    // Add certificate images if available
+    if (service.certificate_images && Array.isArray(service.certificate_images)) {
+      const validCerts = service.certificate_images.filter(img => img && img.trim() !== '');
+      allImages.push(...validCerts);
+      console.log('🏆 Added certificate images:', validCerts.length);
+    }
+    
+    // Add before/after images if available
+    if (service.before_after_images && Array.isArray(service.before_after_images)) {
+      const validBeforeAfter = service.before_after_images.filter(img => img && img.trim() !== '');
+      allImages.push(...validBeforeAfter);
+      console.log('🔄 Added before/after images:', validBeforeAfter.length);
+    }
+    
+    console.log('📷 Final images array:', allImages.length, allImages);
+    return allImages;
+  };
+  
+  const allServiceImages = getAllImages();
 
   const handleBookNow = () => {
     if (selectedServicesWithOptions.size === 0) {
@@ -593,9 +1050,37 @@ const ServiceDetailScreen: React.FC = () => {
     });
   };
 
-  const handleFavoritePress = () => {
-    // Implement favorite toggle logic
-    console.log('Toggle favorite');
+  const handleFavoritePress = async () => {
+    try {
+      // Get current user - for now using mock user ID, replace with actual auth user
+      const mockUserId = '12345678-1234-1234-1234-123456789012'; // Replace with actual auth.uid()
+      
+      const response = await favoritesAPI.toggleFavorite(mockUserId, service.id);
+      
+      if (!response.success) {
+        Alert.alert('Error', response.error || 'Failed to update favorite');
+        return;
+      }
+      
+      // Update service state
+      setService(prev => prev ? { ...prev, is_favorite: response.data?.is_favorite || false } : null);
+      
+      // Show feedback with better messaging
+      const isNowFavorited = response.data?.is_favorite || false;
+      const message = isNowFavorited ? 'Added to favorites!' : 'Removed from favorites';
+      
+      console.log('📝 Favorite status updated:', { 
+        wasBlank: !service?.is_favorite, 
+        nowFavorited: isNowFavorited, 
+        message 
+      });
+      
+      Alert.alert('Success', message);
+      
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite');
+    }
   };
 
   // Toggle service expansion
@@ -638,9 +1123,15 @@ const ServiceDetailScreen: React.FC = () => {
       const service = shopServices.find(s => s.name === serviceName);
       if (service) {
         optionIds.forEach(optionId => {
-          const option = service.options?.find((opt: any) => opt.id === optionId);
-          if (option) {
-            total += option.price || 0;
+          if (optionId === 'base') {
+            // Base service selected
+            total += service.price || 0;
+          } else {
+            // Option selected
+            const option = service.options?.find((opt: any) => opt.id === optionId);
+            if (option) {
+              total += option.price || 0;
+            }
           }
         });
       }
@@ -648,31 +1139,21 @@ const ServiceDetailScreen: React.FC = () => {
     return total;
   };
 
-  const renderOptionItem = ({ item }: { item: ServiceOptionState }) => (
-    <TouchableOpacity 
-      style={[styles.optionItem, item.selected && styles.selectedOption]}
-      onPress={() => actions.toggleOption(item.id)}
-    >
-      <View style={styles.optionLeft}>
-        <View style={[styles.checkbox, item.selected && styles.checkboxSelected]}>
-          {item.selected && <Ionicons name="checkmark" size={16} color="white" />}
-        </View>
-        <View style={styles.optionInfo}>
-          <Text style={styles.optionName}>{item.name}</Text>
-          <Text style={styles.optionDescription}>{item.description}</Text>
-          <Text style={styles.optionDuration}>{item.duration}</Text>
-        </View>
-      </View>
-      <View style={styles.optionPriceContainer}>
-        <Text style={styles.optionPrice}>{item.price}</Text>
-        {item.selected && <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />}
-      </View>
-    </TouchableOpacity>
-  );
+  // Removed old renderOptionItem as we're using services view now
 
   // Render services with dropdown options
   const renderServicesContent = () => {
+    console.log('🛠️ Rendering services content...');
+    console.log('🛠️ Services loading:', servicesLoading);
+    console.log('🛠️ Shop services:', shopServices);
+    console.log('🛠️ Shop services length:', shopServices?.length);
+    console.log('🛠️ Shop services type:', typeof shopServices);
+    console.log('🛠️ Shop services is array:', Array.isArray(shopServices));
+    console.log('🛠️ Current route service ID:', routeServiceId);
+    console.log('🛠️ Current service name:', service?.name);
+    
     if (servicesLoading) {
+      console.log('🔄 Showing loading state');
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1A2533" />
@@ -682,6 +1163,7 @@ const ServiceDetailScreen: React.FC = () => {
     }
 
     if (!shopServices || shopServices.length === 0) {
+      console.log('⚠️ Showing no services state - shopServices:', shopServices);
       return (
         <View style={styles.noOptionsContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#6B7280" />
@@ -690,6 +1172,8 @@ const ServiceDetailScreen: React.FC = () => {
         </View>
       );
     }
+    
+    console.log('✅ Rendering', shopServices.length, 'services');
 
     return (
       <View style={styles.servicesContainer}>
@@ -708,7 +1192,7 @@ const ServiceDetailScreen: React.FC = () => {
                 <View style={styles.serviceDetails}>
                   <View style={styles.serviceDetailItem}>
                     <Ionicons name="time-outline" size={16} color="#6B7280" />
-                    <Text style={styles.serviceDetailText}>{service.duration || 60} min</Text>
+                    <Text style={styles.serviceDetailText}>{service.duration || 0} min</Text>
                   </View>
                   <View style={styles.serviceDetailItem}>
                     <Ionicons name="cash-outline" size={16} color="#6B7280" />
@@ -777,83 +1261,14 @@ const ServiceDetailScreen: React.FC = () => {
     );
   };
 
-  const renderOptionsContent = () => {
-    if (optionsLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1A2533" />
-          <Text style={styles.loadingText}>Loading service options...</Text>
-        </View>
-      );
-    }
-
-    if (optionsError) {
-      return (
-        <View style={styles.noOptionsContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-          <Text style={styles.noOptionsText}>Error loading service options</Text>
-          <Text style={styles.noOptionsSubtext}>{optionsError}</Text>
-        </View>
-      );
-    }
-
-    if (!options || options.length === 0) {
-      // If no options, show the base service info
-      return (
-        <View style={styles.optionsContainer}>
-          <View style={styles.baseServiceCard}>
-            <Ionicons name="checkmark-circle" size={48} color="#F59E0B" />
-            <Text style={styles.baseServiceTitle}>Standard Service</Text>
-            <Text style={styles.baseServiceDescription}>
-              {service?.description || 'Professional service with standard duration and pricing'}
-            </Text>
-            <View style={styles.baseServiceInfo}>
-              <View style={styles.baseServiceInfoItem}>
-                <Ionicons name="time-outline" size={20} color="#6B7280" />
-                <Text style={styles.baseServiceInfoText}>{service?.duration || 60} min</Text>
-              </View>
-              <View style={styles.baseServiceInfoItem}>
-                <Ionicons name="cash-outline" size={20} color="#6B7280" />
-                <Text style={styles.baseServiceInfoText}>{service?.price || 500} SEK</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.optionsContainer}>
-        <Text style={styles.sectionTitle}>Available Options</Text>
-        <Text style={styles.sectionSubtitle}>Select the service options that best fit your needs</Text>
-        
-        <FlatList
-          data={options}
-          renderItem={renderOptionItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.optionsList}
-        />
-        
-        {hasSelections && (
-          <View style={styles.selectedOptionSummary}>
-            <Text style={styles.summaryTitle}>Selected Options ({selectedCount})</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Price</Text>
-              <Text style={styles.summaryValue}>{totalPrice} SEK</Text>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
+  // Removed old renderOptionsContent as we're using renderServicesContent now
 
   return (
     <View style={styles.container}>
       <ScrollView>
         {/* Image Carousel */}
         <ImageCarousel
-          images={serviceImages}
+          images={allServiceImages}
           service={service}
           onBackPress={() => navigation.goBack()}
           onFavoritePress={handleFavoritePress}
@@ -862,37 +1277,92 @@ const ServiceDetailScreen: React.FC = () => {
         {/* Service Info */}
         <View style={styles.contentContainer}>
           <View style={styles.header}>
-            <View>
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={18} color="#FFC107" />
-                <Text style={styles.ratingText}>{service.rating || 0}</Text>
-                <Text style={styles.reviewsText}>({service.reviews_count || 0} recensioner)</Text>
+            <View style={styles.shopInfoSection}>
+              {/* Shop Logo before name */}
+              <View style={styles.shopLogoAndName}>
+                {shopData?.logo_url ? (
+                  <Image 
+                    source={{ uri: shopData.logo_url }} 
+                    style={styles.shopLogo}
+                    onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
+                    onLoad={() => console.log('✅ Logo loaded successfully')}
+                  />
+                ) : (
+                  <View style={styles.shopLogoPlaceholder}>
+                    <Ionicons name="storefront" size={32} color="#F59E0B" />
+                  </View>
+                )}
+                <View style={styles.shopNameSection}>
+                  <Text style={styles.serviceName}>{service.name}</Text>
+                  <View style={styles.ratingContainer}>
+                    <Ionicons name="star" size={18} color="#FFC107" />
+                    <Text style={styles.ratingText}>{service.rating || 0}</Text>
+                    <Text style={styles.reviewsText}>({service.reviews_count || 0} recensioner)</Text>
+                  </View>
+                </View>
               </View>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>From ${service.price || 0}</Text>
-              <Text style={styles.timeText}>{service.duration || 30} min</Text>
+              <Text style={styles.priceText}>From {service.price || 0} SEK</Text>
+              <Text style={styles.timeText}>{service.duration || 0} min</Text>
             </View>
           </View>
 
-          {/* Staff Selection */}
-          <StaffSelectionSection 
-            staffMembers={staffMembers}
-            selectedStaff={selectedStaff}
-            onSelectStaff={setSelectedStaff}
-          />
+          {/* Step 1: Service Selection */}
+          <View style={styles.stepContainer}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
+              </View>
+              <Text style={styles.stepTitle}>Select Services</Text>
+              {selectedServicesWithOptions.size > 0 && (
+                <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
+              )}
+            </View>
+            {renderServicesContent()}
+          </View>
 
-          {/* Tabs */}
+          {/* Step 2: Staff Selection - always show staff selection */}
+          {true && (
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>2</Text>
+                </View>
+                <View style={styles.stepTitleContainer}>
+                  <Text style={styles.stepTitle}>
+                    Select Staff Member
+                  </Text>
+                  {selectedServicesWithOptions.size === 0 && (
+                    <Text style={styles.stepSubtitle}>
+                      Select services above for filtering
+                    </Text>
+                  )}
+                </View>
+                {selectedStaff && (
+                  <Text style={styles.stepCount}>
+                    {staffMembers.find(s => s.id === selectedStaff)?.name || 'Selected'}
+                  </Text>
+                )}
+              </View>
+              {staffMembers.length > 0 ? (
+                <StaffSelectionSection 
+                  staffMembers={staffMembers}
+                  selectedStaff={selectedStaff}
+                  onSelectStaff={setSelectedStaff}
+                />
+              ) : (
+                <View style={styles.noStaffContainer}>
+                  <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+                  <Text style={styles.noStaffText}>No staff members available</Text>
+                  <Text style={styles.noStaffSubtext}>Please contact the shop to add staff members</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Tabs - moved to bottom for additional information */}
           <View style={styles.tabsContainer}>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'services' && styles.activeTab]}
-              onPress={() => setActiveTab('services')}
-            >
-              <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>
-                Services {selectedServicesWithOptions.size > 0 && `(${selectedServicesWithOptions.size})`}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.tab, activeTab === 'about' && styles.activeTab]}
               onPress={() => setActiveTab('about')}
@@ -900,25 +1370,31 @@ const ServiceDetailScreen: React.FC = () => {
               <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
             </TouchableOpacity>
             <TouchableOpacity 
+              style={[styles.tab, activeTab === 'hours' && styles.activeTab]}
+              onPress={() => setActiveTab('hours')}
+            >
+              <Text style={[styles.tabText, activeTab === 'hours' && styles.activeTabText]}>Hours</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'offers' && styles.activeTab]}
+              onPress={() => setActiveTab('offers')}
+            >
+              <Text style={[styles.tabText, activeTab === 'offers' && styles.activeTabText]}>Offers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
               style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
               onPress={() => setActiveTab('reviews')}
             >
               <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'location' && styles.activeTab]}
-              onPress={() => setActiveTab('location')}
-            >
-              <Text style={[styles.tabText, activeTab === 'location' && styles.activeTabText]}>Location</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Tab Content */}
           <View style={styles.tabContentContainer}>
-            {activeTab === 'services' && renderServicesContent()}
             {activeTab === 'about' && <AboutTab service={service} />}
+            {activeTab === 'hours' && <HoursTab service={service} />}
+            {activeTab === 'offers' && <OffersTab service={service} />}
             {activeTab === 'reviews' && <ReviewsTab service={service} />}
-            {activeTab === 'location' && <LocationTab service={service} />}
           </View>
 
           {/* Book Button */}
@@ -928,21 +1404,21 @@ const ServiceDetailScreen: React.FC = () => {
               (selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading) && styles.bookButtonDisabled
             ]}
             onPress={handleBookNow}
-            disabled={(!hasSelections && options.length > 0) || !selectedStaff || optionsLoading}
+            disabled={selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading}
           >
             <View style={styles.bookButtonContent}>
               <Text style={styles.bookButtonText}>
-                {optionsLoading 
+                {servicesLoading 
                   ? 'Loading...' 
-                  : ((!hasSelections && options.length > 0)
-                    ? 'Select Options to Continue'
+                  : (selectedServicesWithOptions.size === 0
+                    ? 'Select Services to Continue'
                     : !selectedStaff 
                       ? 'Select Staff to Continue'
-                      : `Book Now • ${totalPrice} SEK`
+                      : `Book Now • ${calculateTotalPrice()} SEK`
                   )
                 }
               </Text>
-              {(hasSelections || options.length === 0) && selectedStaff && !optionsLoading && (
+              {selectedServicesWithOptions.size > 0 && selectedStaff && !servicesLoading && (
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               )}
             </View>
@@ -1018,6 +1494,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: 16,
+  },
+  stepContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 4,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'visible',
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  stepNumberText: {
+    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  stepTitleContainer: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  stepSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  stepCount: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#059669',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   selectionSummary: {
     flexDirection: 'row',
@@ -1204,14 +1737,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 44, // Adjusted for status bar height
     right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   imageCounter: {
     position: 'absolute',
@@ -1235,6 +1773,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   dot: {
     width: 8,
@@ -1243,7 +1782,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   activeDot: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F59E0B',
+    width: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
@@ -1251,7 +1791,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   inactiveDot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   // Rest of existing styles
   contentContainer: {
@@ -1358,17 +1898,21 @@ const styles = StyleSheet.create({
   },
   // Staff Selection Styles
   staffSection: {
-    marginVertical: 16,
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
   staffScroll: {
     marginTop: 12,
+    paddingBottom: 8,
   },
   staffCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     marginRight: 12,
     alignItems: 'center',
+    width: 120,
+    minHeight: 160,
     borderWidth: 2,
     borderColor: '#FCD34D',
     minWidth: 100,
@@ -1387,15 +1931,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   staffImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#F3F4F6',
   },
   staffPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F3F4F6',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1407,14 +1952,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   staffName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
+    width: '100%',
   },
   selectedStaffName: {
     color: '#F59E0B',
+  },
+  staffRole: {
+    fontSize: 11,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 4,
+    fontStyle: 'italic',
   },
   staffRating: {
     flexDirection: 'row',
@@ -1430,6 +1983,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  noStaffContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  noStaffText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  noStaffSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
   },
   // Service Options Styles
   baseServiceCard: {
@@ -1584,7 +2156,7 @@ const styles = StyleSheet.create({
   },
   // New styles for services view
   servicesContainer: {
-    padding: 16,
+    padding: 4,
   },
   serviceCard: {
     backgroundColor: '#FFFFFF',
@@ -1673,6 +2245,189 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  noImageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  noImageText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  // Contact section styles
+  contactSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  contactTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A2533',
+    marginBottom: 12,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  contactText: {
+    fontSize: 14,
+    color: '#4B5563',
+    flex: 1,
+  },
+  // Hours tab styles
+  hoursContainer: {
+    marginTop: 16,
+  },
+  hourRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dayName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A2533',
+  },
+  hourTime: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  noHoursContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noHoursText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  timezoneText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  basicHoursContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  basicHoursText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
+  },
+  basicHoursNote: {
+    fontSize: 12,
+    color: '#A16207',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // Offers tab styles
+  offersContainer: {
+    marginTop: 16,
+  },
+  offerCard: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  offerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  offerInfo: {
+    flex: 1,
+  },
+  offerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  offerDescription: {
+    fontSize: 14,
+    color: '#78350F',
+    marginTop: 4,
+  },
+  offerPeriod: {
+    fontSize: 12,
+    color: '#A16207',
+    marginTop: 8,
+  },
+  offerUsage: {
+    fontSize: 12,
+    color: '#A16207',
+    marginTop: 4,
+  },
+  noOffersContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noOffersText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+  // Reviews placeholder styles
+  reviewsPlaceholder: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  reviewsPlaceholderText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+  // Shop logo and name styles
+  shopInfoSection: {
+    flex: 1,
+  },
+  shopLogoAndName: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  shopLogo: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  shopLogoPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  shopNameSection: {
+    flex: 1,
   },
 });
 

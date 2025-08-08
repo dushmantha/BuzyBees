@@ -34,6 +34,7 @@ export interface ServiceOption {
     payment_methods: string[];
     is_favorite: boolean;
     created_at: string;
+    logo_url?: string; // Shop logo separate from main image
     options?: ServiceOption[]; // Optional: when service includes options
   }
   
