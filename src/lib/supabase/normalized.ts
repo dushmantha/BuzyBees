@@ -524,12 +524,10 @@ class NormalizedShopService {
           is_active: true
         }));
 
-        // CRITICAL DEBUG: Show exactly what will be saved to database
         console.log('🚨 ABOUT TO SAVE TO DATABASE:');
         console.log('Shop ID:', shopId);
         console.log('User ID:', user.id);
         console.log('Business Hours Data:', JSON.stringify(businessHoursToInsert, null, 2));
-        
 
         const { data: insertResult, error: businessHoursError } = await this.client
           .from('shop_business_hours')
@@ -543,29 +541,15 @@ class NormalizedShopService {
         if (businessHoursError) {
           console.error('❌ Business hours update error:', businessHoursError);
           
-          // Show error alert
-          Alert.alert(
-            'DATABASE ERROR',
-            `${businessHoursError.message}\n\nCode: ${businessHoursError.code}`,
-            [{ text: 'OK' }]
-          );
-          
-          // Check if it's a table not found error
-          if (businessHoursError.code === 'PGRST116' || businessHoursError.message.includes('does not exist')) {
-            return {
-              success: false,
-              error: 'Business hours table missing. Please run the migration script first.'
-            };
-          }
+          // Don't fail the entire operation, just log the error
+          console.log('⚠️ Business hours update failed, but shop update succeeded');
         } else {
           console.log('✅ Business hours updated successfully');
           console.log('✅ Inserted records:', insertResult?.length || 0);
-          
         }
       } else {
         console.log('🚨 NO BUSINESS HOURS PROVIDED');
         console.log('shopData.business_hours:', shopData.business_hours);
-        
       }
 
       // Update special days if provided
@@ -608,11 +592,7 @@ class NormalizedShopService {
         if (specialError) {
           console.error('❌ Special days update error:', specialError);
           // Don't fail the entire operation, just log the error
-          Alert.alert(
-            'Special Days Warning',
-            `Special days could not be saved: ${specialError.message}`,
-            [{ text: 'OK' }]
-          );
+          console.log('⚠️ Special days update failed, but shop update succeeded');
         } else {
           console.log('✅ Special days updated successfully');
           console.log('✅ Inserted special days:', specialResult?.length || 0);

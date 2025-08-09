@@ -22,6 +22,10 @@ export interface StaffMember {
   name: string;
   work_schedule: StaffWorkSchedule;
   leave_dates: StaffLeaveDate[];
+  rating?: number;
+  specialties?: string[];
+  role?: string;
+  avatar_url?: string;
 }
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

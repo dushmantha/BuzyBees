@@ -47,7 +47,7 @@ export const ServiceOptionsModal: React.FC<ServiceOptionsModalProps> = ({
   const loadServiceOptions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceName, shopId);
+      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceId, shopId);
       if (error) {
         Alert.alert('Error', 'Failed to load service options');
         return;
@@ -67,7 +67,7 @@ export const ServiceOptionsModal: React.FC<ServiceOptionsModalProps> = ({
   };
 
   const createEmptyOption = (): ServiceOption => ({
-    service_name: serviceName,
+    service_id: serviceId,
     shop_id: shopId,
     option_name: '',
     option_description: '',
@@ -121,7 +121,7 @@ export const ServiceOptionsModal: React.FC<ServiceOptionsModalProps> = ({
     try {
       const { error } = await serviceOptionsAPI.upsertServiceOptions(
         shopId,
-        serviceName,
+        serviceId,
         validOptions.map((opt, index) => ({
           ...opt,
           sort_order: index,

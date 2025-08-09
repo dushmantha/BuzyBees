@@ -855,10 +855,20 @@ const ServiceDetailScreen: React.FC = () => {
         // Load options for each service
         const servicesWithOptions = await Promise.all(
           shopServices.map(async (service) => {
+            // Only try to load options if service has a valid ID (UUID)
+            if (!service.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(service.id)) {
+              console.warn('⚠️ Skipping service options for invalid service ID:', service.id, 'Service:', service.name);
+              return service;
+            }
+            
             const { data: options, error } = await serviceOptionsAPI.getServiceOptions(
-              service.name,
+              service.id,
               routeServiceId || service.shop_id
             );
+            
+            if (error) {
+              console.error('❌ Error loading options for service:', service.name, error);
+            }
             
             if (!error && options) {
               return { ...service, options };

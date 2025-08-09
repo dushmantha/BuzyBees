@@ -2,7 +2,7 @@ import { supabaseService } from '../../../lib/supabase/index';
 
 export interface ServiceOption {
   id?: string;
-  service_name: string; // Primary identifier - service name (required)
+  service_id: string; // Primary identifier - service ID (required)
   shop_id: string;
   option_name: string;
   option_description?: string;
@@ -27,15 +27,15 @@ export interface ServiceWithOptions {
 class ServiceOptionsAPI {
   private supabase = supabaseService;
 
-  // Get all service options for a specific service by service name
-  async getServiceOptions(serviceName: string, shopId: string) {
+  // Get all service options for a specific service by service ID
+  async getServiceOptions(serviceId: string, shopId: string) {
     try {
-      console.log('🔍 Fetching service options for:', { serviceName, shopId });
+      console.log('🔍 Fetching service options for:', { serviceId, shopId });
       
       const { data, error } = await this.supabase.client
         .from('service_options')
         .select('*')
-        .eq('service_name', serviceName)
+        .eq('service_id', serviceId)
         .eq('shop_id', shopId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
@@ -53,16 +53,16 @@ class ServiceOptionsAPI {
     }
   }
 
-  // Get service options for consumer view (active only) by service name
-  async getServiceOptionsForConsumer(serviceName: string, shopId?: string) {
+  // Get service options for consumer view (active only) by service ID
+  async getServiceOptionsForConsumer(serviceId: string, shopId?: string) {
     try {
-      console.log('🔍 Fetching service options for consumer:', serviceName, shopId);
+      console.log('🔍 Fetching service options for consumer:', serviceId, shopId);
       
       // Build query
       let query = this.supabase.client
         .from('service_options')
         .select('*')
-        .eq('service_name', serviceName)
+        .eq('service_id', serviceId)
         .eq('is_active', true);
       
       // If shopId provided, filter by shop
@@ -165,28 +165,50 @@ class ServiceOptionsAPI {
     }
   }
 
+  // Helper function to validate UUID
+  private isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
   // Bulk create/update service options
-  async upsertServiceOptions(shopId: string, serviceName: string, options: Omit<ServiceOption, 'id' | 'created_at' | 'updated_at' | 'shop_id' | 'service_name'>[]) {
+  async upsertServiceOptions(shopId: string, serviceId: string, options: Omit<ServiceOption, 'id' | 'created_at' | 'updated_at' | 'shop_id' | 'service_id'>[]) {
     try {
-      console.log('🔄 Upserting service options:', { shopId, serviceName, count: options.length });
+      console.log('🔄 Upserting service options:', { shopId, serviceId, count: options.length });
       
-      // Prepare options with shop_id and service_name
-      const optionsToUpsert = options.map((opt, index) => ({
+      // Validate UUID format
+      if (!this.isValidUUID(serviceId)) {
+        console.error('❌ Invalid service ID format:', serviceId);
+        return { data: null, error: 'Service ID must be a valid UUID. Please save the service first.' };
+      }
+      
+      // First, delete existing options for this service
+      const { error: deleteError } = await this.supabase.client
+        .from('service_options')
+        .delete()
+        .eq('service_id', serviceId)
+        .eq('shop_id', shopId);
+      
+      if (deleteError) {
+        console.error('❌ Error deleting existing options:', deleteError);
+        return { data: null, error: deleteError.message };
+      }
+      
+      // Prepare options with shop_id and service_id
+      const optionsToInsert = options.map((opt, index) => ({
         ...opt,
         shop_id: shopId,
-        service_name: serviceName,
+        service_id: serviceId,
         sort_order: opt.sort_order || index
       }));
 
       const { data, error } = await this.supabase.client
         .from('service_options')
-        .upsert(optionsToUpsert, {
-          onConflict: 'shop_id,service_name,option_name'
-        })
+        .insert(optionsToInsert)
         .select();
 
       if (error) {
-        console.error('❌ Error upserting service options:', error);
+        console.error('❌ Error inserting service options:', error);
         return { data: null, error: error.message };
       }
 

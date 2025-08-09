@@ -9,15 +9,32 @@ import { serviceOptionsAPI, ServiceOption as APIServiceOption } from './api/serv
  */
 export class ServiceUtils {
   /**
+   * Helper function to validate UUID
+   */
+  private static isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  /**
    * Fetches service options from the API and transforms them for component use
    */
-  static async fetchServiceOptions(serviceId: string): Promise<{
+  static async fetchServiceOptions(serviceId: string, shopId?: string): Promise<{
     options: ServiceOptionState[];
     error: string | null;
   }> {
     try {
-      // Use the real service options API instead of mock service (serviceId is actually serviceName)
-      const { data, error } = await serviceOptionsAPI.getServiceOptionsForConsumer(serviceId);
+      // Validate that serviceId is a proper UUID
+      if (!serviceId || !ServiceUtils.isValidUUID(serviceId)) {
+        console.warn('⚠️ Invalid service ID format:', serviceId, 'Expected UUID format');
+        return {
+          options: [],
+          error: 'Invalid service ID format. Service must be saved first.'
+        };
+      }
+
+      // Use the real service options API
+      const { data, error } = await serviceOptionsAPI.getServiceOptionsForConsumer(serviceId, shopId);
       
       if (error) {
         return {
@@ -158,7 +175,7 @@ export class ServiceUtils {
 /**
  * Custom hook for managing service options state
  */
-export const useServiceOptions = (serviceId: string) => {
+export const useServiceOptions = (serviceId: string, shopId?: string) => {
   const [options, setOptions] = React.useState<ServiceOptionState[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -169,12 +186,12 @@ export const useServiceOptions = (serviceId: string) => {
     setLoading(true);
     setError(null);
     
-    const result = await ServiceUtils.fetchServiceOptions(serviceId);
+    const result = await ServiceUtils.fetchServiceOptions(serviceId, shopId);
     
     setOptions(result.options);
     setError(result.error);
     setLoading(false);
-  }, [serviceId]);
+  }, [serviceId, shopId]);
 
   const toggleOption = React.useCallback((optionId: string) => {
     setOptions(prevOptions => 

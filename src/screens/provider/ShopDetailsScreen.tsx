@@ -1135,49 +1135,49 @@ const ShopDetailsScreen: React.FC = () => {
         };
       };
 
-      const hours = getBusinessHours(currentShop.business_hours || []);
+      const hours = getBusinessHours((currentShop && currentShop.business_hours) || []);
 
       // Use formValues ref as primary source of truth (consistent with validation)
       // Ensure we have valid data before proceeding
-      const safeName = formValues.current.name || currentShop.name || '';
-      const safeDescription = formValues.current.description || currentShop.description || '';
-      const safeAddress = formValues.current.address || currentShop.address || '';
-      const safePhone = formValues.current.phone || currentShop.phone || '';
-      const safeEmail = formValues.current.email || currentShop.email || '';
+      const safeName = formValues.current.name || (currentShop && currentShop.name) || '';
+      const safeDescription = formValues.current.description || (currentShop && currentShop.description) || '';
+      const safeAddress = formValues.current.address || (currentShop && currentShop.address) || '';
+      const safePhone = formValues.current.phone || (currentShop && currentShop.phone) || '';
+      const safeEmail = formValues.current.email || (currentShop && currentShop.email) || '';
       
       const shopData = {
         name: safeName.trim(),
         description: safeDescription.trim(),
-        category: currentShop.category || 'Beauty & Wellness',
+        category: (currentShop && currentShop.category) || 'Beauty & Wellness',
         address: safeAddress.trim(),
-        city: (formValues.current.city || currentShop.city || '').trim(),
-        state: (formValues.current.state || currentShop.state || '').trim(),
-        country: (formValues.current.country || currentShop.country || 'Sweden').trim(),
+        city: (formValues.current.city || (currentShop && currentShop.city) || '').trim(),
+        state: (formValues.current.state || (currentShop && currentShop.state) || '').trim(),
+        country: (formValues.current.country || (currentShop && currentShop.country) || 'Sweden').trim(),
         phone: safePhone.trim(),
         email: safeEmail.trim(),
-        website_url: currentShop.website_url?.trim() || null,
+        website_url: (currentShop && currentShop.website_url)?.trim() || null,
         image_url: validMainImageUrl,
         business_hours_start: hours.start,
         business_hours_end: hours.end,
-        is_active: currentShop.is_active,
+        is_active: (currentShop && currentShop.is_active) ?? true,
         // Enhanced data fields
         logo_url: validLogoUrl,
         images: validAllImages, // Send as array, will be handled properly by auth service
-        business_hours: currentShop.business_hours || [],
-        special_days: currentShop.special_days || [],
-        services: shop.services || [],
-        staff: shop.staff || [],
-        discounts: shop.discounts || [],
-        timezone: currentShop.timezone || 'Europe/Stockholm',
-        advance_booking_days: currentShop.advance_booking_days || 30,
-        slot_duration: currentShop.slot_duration || 60,
-        buffer_time: currentShop.buffer_time || 15,
-        auto_approval: currentShop.auto_approval ?? true,
-        first_time_discount_active: currentShop.first_time_discount_active ?? true
+        business_hours: (currentShop && currentShop.business_hours) || [],
+        special_days: (currentShop && currentShop.special_days) || [],
+        services: (shop && shop.services) || [],
+        staff: (shop && shop.staff) || [],
+        discounts: (shop && shop.discounts) || [],
+        timezone: (currentShop && currentShop.timezone) || 'Europe/Stockholm',
+        advance_booking_days: (currentShop && currentShop.advance_booking_days) || 30,
+        slot_duration: (currentShop && currentShop.slot_duration) || 60,
+        buffer_time: (currentShop && currentShop.buffer_time) || 15,
+        auto_approval: (currentShop && currentShop.auto_approval) ?? true,
+        first_time_discount_active: (currentShop && currentShop.first_time_discount_active) ?? true
       };
       // CRITICAL DEBUG: Show what business hours data we're sending
       console.log('🚨 FRONTEND: About to call updateShop');
-      console.log('🚨 FRONTEND: currentShop.business_hours:', JSON.stringify(currentShop.business_hours, null, 2));
+      console.log('🚨 FRONTEND: currentShop.business_hours:', JSON.stringify((currentShop && currentShop.business_hours) || [], null, 2));
       console.log('🚨 FRONTEND: shopData.business_hours:', JSON.stringify(shopData.business_hours, null, 2));
       
 
@@ -1809,7 +1809,7 @@ const ShopDetailsScreen: React.FC = () => {
       // Load service options for existing service
       if (shop.id && service.name) {
         try {
-          const { data, error } = await serviceOptionsAPI.getServiceOptions(service.name, shop.id);
+          const { data, error } = await serviceOptionsAPI.getServiceOptions(service.id, shop.id);
           if (!error && data) {
             setServiceOptions(data);
           } else {
@@ -1841,11 +1841,20 @@ const ShopDetailsScreen: React.FC = () => {
       shopId: shop.id 
     });
     
+    const serviceId = serviceForm.id || editingService?.id || '';
+    
+    // Check if service is saved (has valid UUID)
+    const isNewService = !serviceId || /^\d+$/.test(serviceId);
+    if (isNewService) {
+      Alert.alert('Save Service First', 'Please save the service before managing its options.');
+      return;
+    }
+    
     // Load service options
     setLoadingServiceOptions(true);
     try {
       const serviceName = serviceForm.name || editingService?.name || '';
-      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceName, shop.id || '');
+      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceId, shop.id || '');
       if (error) {
         console.error('Error loading service options:', error);
       }
@@ -1853,7 +1862,7 @@ const ShopDetailsScreen: React.FC = () => {
       
       // If no options exist, add a default empty option
       if (!data || data.length === 0) {
-        setServiceOptions([createEmptyServiceOption(serviceName)]);
+        setServiceOptions([createEmptyServiceOption(serviceId)]);
       }
       
       // Show the service options view within the modal
@@ -1866,8 +1875,8 @@ const ShopDetailsScreen: React.FC = () => {
     }
   };
 
-  const createEmptyServiceOption = (serviceName: string): ServiceOption => ({
-    service_name: serviceName,
+  const createEmptyServiceOption = (serviceId: string): ServiceOption => ({
+    service_id: serviceId,
     shop_id: shop.id || '',
     option_name: '',
     option_description: '',
@@ -1878,8 +1887,8 @@ const ShopDetailsScreen: React.FC = () => {
   });
 
   const handleAddServiceOption = () => {
-    const serviceName = serviceForm.name || editingService?.name || '';
-    setServiceOptions([...serviceOptions, createEmptyServiceOption(serviceName)]);
+    const serviceId = serviceForm.id || editingService?.id || '';
+    setServiceOptions([...serviceOptions, createEmptyServiceOption(serviceId)]);
   };
 
   const handleUpdateServiceOption = (index: number, field: keyof ServiceOption, value: any) => {
@@ -1926,9 +1935,10 @@ const ShopDetailsScreen: React.FC = () => {
     setIsSaving(true);
     try {
       const serviceName = serviceForm.name || editingService?.name || '';
+      const serviceId = serviceForm.id || editingService?.id || '';
       const { error } = await serviceOptionsAPI.upsertServiceOptions(
         shop.id || '',
-        serviceName,
+        serviceId,
         validOptions.map((opt, index) => {
           // Remove id field for new options to let database auto-generate it
           const { id, ...optionWithoutId } = opt;
