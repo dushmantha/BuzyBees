@@ -4,7 +4,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useServiceOptions, ServiceUtils } from '../services/serviceUtils';
+import { ServiceUtils } from '../services/serviceUtils';
 import { ServiceOptionState } from '../types/service';
 import type { Service } from '../services/types/service';
 import { shopAPI, Shop } from '../services/api/shops/shopAPI';
@@ -17,17 +17,17 @@ const { width: screenWidth } = Dimensions.get('window');
 // Transform shop data to service format for backward compatibility
 const transformShopToService = (shop: CompleteShopData): Service => ({
   id: shop.id,
-  name: shop.name,
+  name: shop.name || 'Unnamed Shop',
   description: shop.description || '',
   price: shop.services && shop.services.length > 0 ? shop.services[0].price : 0,
   duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 0,
-  category_id: shop.category.toLowerCase().replace(/\s+/g, '-'),
+  category_id: (shop.category || 'general').toLowerCase().replace(/\s+/g, '-'),
   image: shop.images && shop.images.length > 0 ? shop.images[0] : '',
   rating: shop.rating || 0,
   reviews_count: shop.reviews_count || 0,
   professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : '',
-  salon_name: shop.name,
-  location: `${shop.city}, ${shop.country}`,
+  salon_name: shop.name || 'Unnamed Shop',
+  location: `${shop.city || 'Unknown City'}, ${shop.country || 'Unknown Country'}`,
   distance: shop.distance || '',
   available_times: shop.business_hours ? extractAvailableTimes(shop.business_hours) : [],
   certificate_images: shop.certificate_images || [],
@@ -44,18 +44,34 @@ const transformShopToService = (shop: CompleteShopData): Service => ({
 // Helper function to extract available times from business hours
 const extractAvailableTimes = (businessHours: any[]): string[] => {
   const times: string[] = [];
+  
+  // Validate businessHours is an array
+  if (!Array.isArray(businessHours) || businessHours.length === 0) {
+    return times;
+  }
+  
   const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const today = daysOfWeek[new Date().getDay()];
-  const todayHours = businessHours.find(bh => bh.day_of_week.toLowerCase() === today);
   
-  if (todayHours && todayHours.is_open) {
-    // Generate time slots based on opening hours
-    const openTime = parseInt(todayHours.open_time.split(':')[0]);
-    const closeTime = parseInt(todayHours.close_time.split(':')[0]);
-    
-    for (let hour = openTime; hour < closeTime; hour++) {
-      times.push(`${hour.toString().padStart(2, '0')}:00`);
-      times.push(`${hour.toString().padStart(2, '0')}:30`);
+  const todayHours = businessHours.find(bh => 
+    bh && bh.day_of_week && typeof bh.day_of_week === 'string' && 
+    bh.day_of_week.toLowerCase() === today
+  );
+  
+  if (todayHours && todayHours.is_open && todayHours.open_time && todayHours.close_time) {
+    try {
+      // Generate time slots based on opening hours
+      const openTime = parseInt(todayHours.open_time.split(':')[0]);
+      const closeTime = parseInt(todayHours.close_time.split(':')[0]);
+      
+      if (!isNaN(openTime) && !isNaN(closeTime) && openTime < closeTime) {
+        for (let hour = openTime; hour < closeTime; hour++) {
+          times.push(`${hour.toString().padStart(2, '0')}:00`);
+          times.push(`${hour.toString().padStart(2, '0')}:30`);
+        }
+      }
+    } catch (error) {
+      console.warn('Error parsing business hours:', error);
     }
   }
   
@@ -278,7 +294,7 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
       }
     };
     fetchShopData();
-  }, [service.id]);
+  }, [service?.id]);
 
   return (
     <View style={styles.tabContent}>
@@ -364,7 +380,7 @@ const HoursTab: React.FC<ServiceTabProps> = ({ service }) => {
       }
     };
     fetchShopAndHoursData();
-  }, [service.id]);
+  }, [service?.id]);
 
   const formatTime = (time: string) => {
     if (!time) return '';
@@ -445,7 +461,7 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
       }
     };
     fetchShopData();
-  }, [service.id]);
+  }, [service?.id]);
 
   return (
     <View style={styles.tabContent}>
@@ -455,9 +471,11 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
           <Text style={styles.sectionTitle}>Current Offers</Text>
         </View>
         
-        {shopData?.discounts && shopData.discounts.length > 0 ? (
+        {shopData?.discounts && Array.isArray(shopData.discounts) && shopData.discounts.length > 0 ? (
           <View style={styles.offersContainer}>
-            {shopData.discounts.map((discount, index) => (
+            {shopData.discounts
+              .filter(discount => discount && discount.type && discount.value)
+              .map((discount, index) => (
               <View key={index} style={styles.offerCard}>
                 <View style={styles.offerHeader}>
                   <Ionicons name="gift-outline" size={24} color="#F59E0B" />
@@ -465,11 +483,11 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
                     <Text style={styles.offerTitle}>
                       {discount.type === 'percentage' ? `${discount.value}% OFF` : `${discount.value} SEK OFF`}
                     </Text>
-                    <Text style={styles.offerDescription}>{discount.description}</Text>
+                    <Text style={styles.offerDescription}>{discount.description || 'Special offer'}</Text>
                   </View>
                 </View>
                 <Text style={styles.offerPeriod}>
-                  Valid: {new Date(discount.start_date).toLocaleDateString()} - {new Date(discount.end_date).toLocaleDateString()}
+                  Valid: {discount.start_date ? new Date(discount.start_date).toLocaleDateString() : 'Now'} - {discount.end_date ? new Date(discount.end_date).toLocaleDateString() : 'Ongoing'}
                 </Text>
                 {discount.usage_limit && (
                   <Text style={styles.offerUsage}>
@@ -512,8 +530,9 @@ const ServiceDetailScreen: React.FC = () => {
   const navigation = useNavigation<ServiceDetailNavigationProp>();
   const route = useRoute<ServiceDetailScreenRouteProp>();
   
-  // Get service data from route params - handle both cases
-  const { service: routeService, serviceId: routeServiceId } = route.params;
+  // Get service data from route params - handle both cases safely
+  const routeService = route.params?.service || null;
+  const routeServiceId = route.params?.serviceId || route.params?.service?.id || null;
   
   const [service, setService] = useState<Service | null>(routeService || null);
   const [loading, setLoading] = useState(!routeService);
@@ -527,19 +546,23 @@ const ServiceDetailScreen: React.FC = () => {
   const [selectedServicesWithOptions, setSelectedServicesWithOptions] = useState<Map<string, Set<string>>>(new Map());
   const [servicesLoading, setServicesLoading] = useState(false);
   const [shopData, setShopData] = useState<CompleteShopData | null>(null);
-  // Removed duplicate service options state - we'll use the useServiceOptions hook instead
+  
+  // Remove service options hook to fix React hooks order warning
 
   // Load service data if not passed directly
   useEffect(() => {
     const loadService = async () => {
       // If we already have the service data, no need to load
-      if (service) return;
+      if (routeService) {
+        setService(routeService);
+        setLoading(false);
+        return;
+      }
 
       // If we don't have a service ID, show error
       if (!routeServiceId) {
         console.error('❌ Route service ID is missing');
         setError('Service ID is missing');
-        setLoading(false);
         return;
       }
       
@@ -559,6 +582,19 @@ const ServiceDetailScreen: React.FC = () => {
         }
         
         const shop = shopResponse.data;
+        
+        // Validate shop data before transformation
+        if (!shop) {
+          throw new Error('Shop data is null or undefined');
+        }
+        
+        console.log('🔍 Shop data before transformation:', {
+          id: shop.id,
+          name: shop.name,
+          category: shop.category,
+          city: shop.city,
+          country: shop.country
+        });
         
         // Transform shop to service format
         const serviceData = transformShopToService(shop);
@@ -583,7 +619,7 @@ const ServiceDetailScreen: React.FC = () => {
     };
 
     loadService();
-  }, [routeServiceId, service]);
+  }, [routeServiceId, routeService]);
 
   // Load services from shop_services table
   useEffect(() => {
@@ -896,6 +932,41 @@ const ServiceDetailScreen: React.FC = () => {
   const selectedCount = Array.from(selectedServicesWithOptions.values())
     .reduce((sum, options) => sum + options.size, 0);
 
+  // Load shop data directly from provider_businesses for images
+  useEffect(() => {
+    if (!service?.id) return;
+    
+    const loadShopData = async () => {
+      try {
+        console.log('📷 Loading shop images from provider_businesses table...');
+        
+        // Get images directly from provider_businesses table
+        const { data: shopData, error: shopError } = await supabase
+          .from('provider_businesses')
+          .select('images, image_url, logo_url, name')
+          .eq('id', service.id)
+          .single();
+          
+        if (!shopError && shopData) {
+          console.log('📷 Shop images data loaded:', {
+            hasImages: !!shopData.images,
+            imagesType: typeof shopData.images,
+            imagesLength: Array.isArray(shopData.images) ? shopData.images.length : 'not array',
+            imageUrls: shopData.images,
+            image_url: shopData.image_url,
+            logo_url: shopData.logo_url
+          });
+          setShopData(shopData);
+        } else {
+          console.error('❌ Failed to load shop images:', shopError?.message);
+        }
+      } catch (error) {
+        console.error('❌ Error loading shop images:', error);
+      }
+    };
+    loadShopData();
+  }, [service?.id]);
+
   // Show loading state
   if (loading) {
     return (
@@ -928,39 +999,6 @@ const ServiceDetailScreen: React.FC = () => {
     );
   }
   
-  // Load shop data directly from provider_businesses for images
-  useEffect(() => {
-    const loadShopData = async () => {
-      try {
-        console.log('📷 Loading shop images from provider_businesses table...');
-        
-        // Get images directly from provider_businesses table
-        const { data: shopData, error: shopError } = await supabase
-          .from('provider_businesses')
-          .select('images, image_url, logo_url, name')
-          .eq('id', service.id)
-          .single();
-          
-        if (!shopError && shopData) {
-          console.log('📷 Shop images data loaded:', {
-            hasImages: !!shopData.images,
-            imagesType: typeof shopData.images,
-            imagesLength: Array.isArray(shopData.images) ? shopData.images.length : 'not array',
-            imageUrls: shopData.images,
-            image_url: shopData.image_url,
-            logo_url: shopData.logo_url
-          });
-          setShopData(shopData);
-        } else {
-          console.error('❌ Failed to load shop images:', shopError?.message);
-        }
-      } catch (error) {
-        console.error('❌ Error loading shop images:', error);
-      }
-    };
-    loadShopData();
-  }, [service.id]);
-
   // Get images from provider_businesses.images JSONB column
   const getAllImages = () => {
     const allImages = [];

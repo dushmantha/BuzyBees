@@ -16,7 +16,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { favoritesAPI, FavoriteShop } from '../services/api/favorites/favoritesAPI';
-import { transformShopToService } from '../services/api/shops/shopAPI';
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Favorites'>;
 

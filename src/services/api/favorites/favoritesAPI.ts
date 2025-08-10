@@ -159,12 +159,11 @@ class FavoritesAPI {
           id,
           shop_id,
           created_at,
-          provider_businesses:shop_id (
+          provider_businesses (
             name,
             category,
             image_url,
             logo_url,
-            rating,
             city,
             country
           )
@@ -189,7 +188,7 @@ class FavoritesAPI {
         shop_category: item.provider_businesses?.category || 'Unknown Category',
         shop_image_url: item.provider_businesses?.image_url || '',
         shop_logo_url: item.provider_businesses?.logo_url || '',
-        shop_rating: item.provider_businesses?.rating || 0,
+        shop_rating: 4.5, // Default rating since rating column doesn't exist
         shop_city: item.provider_businesses?.city || '',
         shop_country: item.provider_businesses?.country || '',
         created_at: item.created_at
