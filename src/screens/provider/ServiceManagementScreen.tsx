@@ -200,6 +200,9 @@ const QuickBookingModal = ({
   const [notes, setNotes] = useState('');
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [shopStaff, setShopStaff] = useState<any[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<any[]>([]);
+  const [selectedServiceOption, setSelectedServiceOption] = useState<any>(null);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingStaff, setLoadingStaff] = useState<boolean>(false);
 
   // Memoized date range calculation
@@ -285,6 +288,16 @@ const QuickBookingModal = ({
       loadServiceAvailability(selectedService.id);
     }
   }, [selectedService?.id, visible, loadServiceAvailability]);
+
+  // Load service options when service changes
+  useEffect(() => {
+    if (selectedService?.id && visible) {
+      loadServiceOptions(selectedService.id);
+    } else {
+      setServiceOptions([]);
+      setSelectedServiceOption(null);
+    }
+  }, [selectedService?.id, visible]);
 
   // Load staff when modal opens
   useEffect(() => {
@@ -536,6 +549,30 @@ const QuickBookingModal = ({
     setSelectedTime(time);
   }, []);
 
+  // Load service options for the selected service
+  const loadServiceOptions = useCallback(async (serviceId: string) => {
+    try {
+      setLoadingOptions(true);
+      const response = await normalizedShopService.getServiceOptions(serviceId);
+      
+      if (response.success && response.data) {
+        setServiceOptions(response.data);
+        // Auto-select first option if available
+        if (response.data.length > 0) {
+          setSelectedServiceOption(response.data[0]);
+        }
+      } else {
+        console.log('No service options found or error:', response.message);
+        setServiceOptions([]);
+      }
+    } catch (error) {
+      console.error('Error loading service options:', error);
+      setServiceOptions([]);
+    } finally {
+      setLoadingOptions(false);
+    }
+  }, []);
+
   const validateForm = useCallback(() => {
     const errors = [];
     
@@ -578,18 +615,24 @@ const QuickBookingModal = ({
         return;
       }
 
+      // Use selected service option if available, otherwise use base service
+      const effectivePrice = selectedServiceOption ? selectedServiceOption.price : (selectedService.price || selectedService.base_price || 0);
+      const effectiveDuration = selectedServiceOption ? selectedServiceOption.duration : selectedService.duration_minutes;
+      const serviceName = selectedServiceOption ? `${selectedService.name} - ${selectedServiceOption.option_name}` : selectedService.name;
+
       const bookingData: QuickBooking = {
         service_id: selectedService.id,
-        service_name: selectedService.name,
+        service_name: serviceName,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         customer_email: customerEmail.trim() || undefined,
         date: selectedDate,
         time: selectedTime,
-        duration: selectedService.duration_minutes,
-        price: selectedService.price || selectedService.base_price || 0,
+        duration: effectiveDuration,
+        price: effectivePrice,
         notes: notes.trim() || undefined,
-        assigned_staff_id: selectedStaffId || undefined
+        assigned_staff_id: selectedStaffId || undefined,
+        service_option_id: selectedServiceOption?.id || undefined
       };
       
       console.log('🔍 Booking data being sent:', bookingData);
@@ -639,6 +682,8 @@ const QuickBookingModal = ({
     setServiceAvailability(null);
     setAvailableSlots([]);
     setShopStaff([]);
+    setServiceOptions([]);
+    setSelectedServiceOption(null);
   }, []);
 
   const formatDisplayDate = useCallback((dateStr) => {
@@ -748,8 +793,57 @@ const QuickBookingModal = ({
             <View style={styles.serviceNameText}>
               <Text style={styles.serviceTitle}>{selectedService.name}</Text>
               <Text style={styles.serviceSubtitle}>
-                {String(selectedService.duration_minutes)} min • ${String(selectedService.price || selectedService.base_price || 0)}
+                {selectedServiceOption 
+                  ? `${selectedServiceOption.duration} min • $${selectedServiceOption.price}`
+                  : `${String(selectedService.duration_minutes)} min • $${String(selectedService.price || selectedService.base_price || 0)}`
+                }
               </Text>
+            </View>
+          )}
+
+          {/* Service Options Selection */}
+          {selectedService && serviceOptions.length > 0 && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Service Options</Text>
+              {loadingOptions ? (
+                <ActivityIndicator size="small" color="#007AFF" style={styles.optionLoader} />
+              ) : (
+                <View style={styles.serviceOptionsContainer}>
+                  {serviceOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={[
+                        styles.serviceOptionButton,
+                        selectedServiceOption?.id === option.id && styles.serviceOptionButtonSelected
+                      ]}
+                      onPress={() => setSelectedServiceOption(option)}
+                    >
+                      <View style={styles.serviceOptionContent}>
+                        <Text style={[
+                          styles.serviceOptionName,
+                          selectedServiceOption?.id === option.id && styles.serviceOptionNameSelected
+                        ]}>
+                          {option.option_name}
+                        </Text>
+                        <Text style={[
+                          styles.serviceOptionDetails,
+                          selectedServiceOption?.id === option.id && styles.serviceOptionDetailsSelected
+                        ]}>
+                          {option.duration} min • ${option.price}
+                        </Text>
+                        {option.option_description && (
+                          <Text style={[
+                            styles.serviceOptionDescription,
+                            selectedServiceOption?.id === option.id && styles.serviceOptionDescriptionSelected
+                          ]}>
+                            {option.option_description}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
@@ -2415,6 +2509,62 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 16,
     fontWeight: '500',
+  },
+  // Service Options Styles
+  optionLoader: {
+    marginVertical: 10,
+  },
+  serviceOptionsContainer: {
+    marginTop: 8,
+  },
+  serviceOptionButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  serviceOptionButtonSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#F0F9FF',
+  },
+  serviceOptionContent: {
+    flexDirection: 'column',
+  },
+  serviceOptionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  serviceOptionNameSelected: {
+    color: '#007AFF',
+  },
+  serviceOptionDetails: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  serviceOptionDetailsSelected: {
+    color: '#0056CC',
+  },
+  serviceOptionDescription: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    lineHeight: 18,
+  },
+  serviceOptionDescriptionSelected: {
+    color: '#6B7280',
   },
 });
 

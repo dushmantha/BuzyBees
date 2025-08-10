@@ -73,6 +73,7 @@ export interface Service {
   discount?: Discount;
   assigned_staff?: string[];
   is_active: boolean;
+  service_options?: ServiceOption[];
 }
 
 export interface Discount {
@@ -588,6 +589,47 @@ const ShopDetailsScreen: React.FC = () => {
   const [serviceForm, setServiceForm] = useState<Partial<Service>>({
     name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], location_type: 'in_house', is_active: true
   });
+
+  // Service options state - matching database schema
+  interface ServiceOption {
+    id: string;
+    option_name: string;
+    option_description: string;
+    price: number;
+    duration: number;
+    is_active: boolean;
+    sort_order: number;
+  }
+
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+
+  // Service options management functions
+  const addServiceOption = () => {
+    const newOption: ServiceOption = {
+      id: Date.now().toString(),
+      option_name: '',
+      option_description: '',
+      price: serviceForm.price || 0, // Start with base service price
+      duration: serviceForm.duration || 60, // Start with base service duration
+      is_active: true,
+      sort_order: serviceOptions.length
+    };
+    setServiceOptions(prev => [...prev, newOption]);
+  };
+
+  const updateServiceOption = (id: string, field: keyof ServiceOption, value: string | number | boolean) => {
+    setServiceOptions(prev => prev.map(option => 
+      option.id === id ? { ...option, [field]: value } : option
+    ));
+  };
+
+  const removeServiceOption = (id: string) => {
+    setServiceOptions(prev => prev.filter(option => option.id !== id));
+  };
+
+  const resetServiceOptions = () => {
+    setServiceOptions([]);
+  };
 
   // Staff form state
   const [staffForm, setStaffForm] = useState<Partial<Staff>>({
@@ -1979,12 +2021,45 @@ const ShopDetailsScreen: React.FC = () => {
       setServiceForm(service);
       console.log('📝 Editing existing service:', service.name);
       
+      // Load existing service options
+      try {
+        // First check if service options are stored locally (for new shops)
+        if (service.service_options && service.service_options.length > 0) {
+          setServiceOptions(service.service_options);
+          console.log('✅ Loaded', service.service_options.length, 'service options from local state');
+        } else if (isEditing && shop.id) {
+          // For existing shops, load from database
+          const optionsResult = await normalizedShopService.getServiceOptions(service.id);
+          if (optionsResult.success && optionsResult.data) {
+            const loadedOptions = optionsResult.data.map((option: any) => ({
+              id: option.id,
+              option_name: option.option_name,
+              option_description: option.option_description || '',
+              price: option.price,
+              duration: option.duration,
+              is_active: option.is_active,
+              sort_order: option.sort_order
+            }));
+            setServiceOptions(loadedOptions);
+            console.log('✅ Loaded', loadedOptions.length, 'service options from database');
+          } else {
+            console.log('⚠️ No service options found in database:', optionsResult.error);
+            resetServiceOptions();
+          }
+        } else {
+          resetServiceOptions();
+        }
+      } catch (error) {
+        console.error('❌ Error loading service options:', error);
+        resetServiceOptions();
+      }
     } else {
       setEditingService(null);
       setServiceForm({
         name: '', description: '', price: 0, duration: 60,
         category: shop.category, location_type: 'in_house', is_active: true
       });
+      resetServiceOptions();
       console.log('➕ Creating new service');
     }
     setShowServiceModal(true);
@@ -2002,21 +2077,41 @@ const ShopDetailsScreen: React.FC = () => {
       Alert.alert('Error', 'Service name is required');
       return;
     }
-    if (!serviceForm.price || serviceForm.price <= 0) {
-      Alert.alert('Error', 'Service price must be greater than 0');
+    // Validate price: either main service has price OR service options exist with prices
+    const hasValidMainPrice = serviceForm.price && serviceForm.price > 0;
+    const hasValidOptions = serviceOptions.length > 0 && serviceOptions.some(option => 
+      option.option_name.trim() && option.price > 0
+    );
+    
+    if (!hasValidMainPrice && !hasValidOptions) {
+      Alert.alert('Error', 'Either set a base service price or add service options with prices');
       return;
     }
 
     const serviceData = {
       name: serviceForm.name!.trim(),
       description: serviceForm.description || '',
-      price: serviceForm.price!,
-      duration: serviceForm.duration || 60,
+      base_price: serviceForm.price || 0, // Allow 0 if service options exist
+      price: serviceForm.price || 0, // For backward compatibility
+      duration_minutes: serviceForm.duration || 60, // Map to correct column name
+      duration: serviceForm.duration || 60, // For backward compatibility
       category: serviceForm.category || shop.category,
       assigned_staff: serviceForm.assigned_staff || [],
       location_type: serviceForm.location_type || 'in_house',
       is_active: serviceForm.is_active ?? true
     };
+
+    // Validate service options if they exist
+    if (serviceOptions.length > 0) {
+      const invalidOptions = serviceOptions.filter(option => 
+        !option.option_name.trim() || option.price <= 0 || option.duration <= 0
+      );
+      
+      if (invalidOptions.length > 0) {
+        Alert.alert('Error', 'All service options must have a name, price greater than 0, and duration greater than 0');
+        return;
+      }
+    }
 
     if (isEditing && shop.id) {
       // For existing shops, save directly to database
@@ -2049,6 +2144,25 @@ const ShopDetailsScreen: React.FC = () => {
         }
         
         if (result.success) {
+          // Save service options if they exist
+          if (serviceOptions.length > 0 && result.data?.id) {
+            try {
+              console.log('💾 Saving service options for service:', result.data.id);
+              const optionsResult = editingService 
+                ? await normalizedShopService.updateServiceOptions(result.data.id, serviceOptions)
+                : await normalizedShopService.createServiceOptions(result.data.id, serviceOptions);
+              
+              if (!optionsResult.success) {
+                console.error('❌ Service options save failed:', optionsResult.error);
+                Alert.alert('Warning', `Service was saved but service options failed: ${optionsResult.error}`);
+              } else {
+                console.log('✅ Service options saved successfully:', optionsResult.data?.length);
+              }
+            } catch (optionError) {
+              console.error('❌ Error saving service options:', optionError);
+              Alert.alert('Warning', 'Service was saved but there was an error saving service options');
+            }
+          }
           
           // Only refresh from database if it was actually saved to database (not fallback)
           if (!result.error?.includes('does not exist')) {
@@ -2069,7 +2183,8 @@ const ShopDetailsScreen: React.FC = () => {
       // For new shops, add to local state (will be saved when shop is created)
       const newService: Service = {
         id: editingService?.id || Date.now().toString(),
-        ...serviceData
+        ...serviceData,
+        service_options: serviceOptions.length > 0 ? serviceOptions : undefined // Store options locally
       };
 
       setShop(prev => {
@@ -2090,14 +2205,20 @@ const ShopDetailsScreen: React.FC = () => {
       });
     }
 
-    // Show success message with options info for new services
-    const isNewService = !editingService;
-    if (isNewService) {
-      Alert.alert('Success', 'Service has been saved successfully!');
-    }
+    // Show success message with options info
+    const optionsMessage = serviceOptions.length > 0 
+      ? ` with ${serviceOptions.length} option${serviceOptions.length === 1 ? '' : 's'}` 
+      : '';
+    
+    const successMessage = editingService 
+      ? `Service updated successfully${optionsMessage}!`
+      : `Service created successfully${optionsMessage}!`;
+    
+    Alert.alert('Success', successMessage);
 
     setShowServiceModal(false);
     setEditingService(null);
+    resetServiceOptions(); // Clear service options after saving
   };
 
   const toggleServiceStatus = async (service: Service, value: boolean) => {
@@ -4137,15 +4258,133 @@ const ShopDetailsScreen: React.FC = () => {
                 </View>
               </View>
 
-              {serviceForm.name && serviceForm.name.trim() !== '' && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Service Options</Text>
-                  <Text style={styles.optionsDescription}>
-                    Add different variations of this service (e.g., Men's Cut, Women's Cut, etc.)
-                  </Text>
-                  
+              <View style={styles.inputGroup}>
+                <View style={styles.optionsHeaderContainer}>
+                  <View style={styles.optionsTitleSection}>
+                    <Text style={styles.label}>Service Options</Text>
+                    <Text style={styles.optionsDescription}>
+                      Add variations of this service with different prices and durations
+                    </Text>
+                  </View>
+                    <TouchableOpacity
+                      style={styles.addOptionButton}
+                      onPress={addServiceOption}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color="#F59E0B" />
+                      <Text style={styles.addOptionText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {serviceOptions.length === 0 ? (
+                    <View style={styles.noOptionsContainer}>
+                      <Ionicons name="list-outline" size={40} color="#D1D5DB" />
+                      <Text style={styles.noOptionsText}>No service options added yet</Text>
+                      <Text style={styles.noOptionsSubtext}>
+                        Tap "Add Option" to create variations like "Basic", "Premium", etc.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.serviceOptionsList}>
+                      {serviceOptions.map((option, index) => (
+                        <View key={option.id} style={styles.serviceOptionItem}>
+                          <View style={styles.optionHeader}>
+                            <Text style={styles.optionNumber}>Option {index + 1}</Text>
+                            <TouchableOpacity
+                              style={styles.removeOptionButton}
+                              onPress={() => removeServiceOption(option.id)}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+
+                          <View style={styles.optionInputRow}>
+                            <View style={styles.optionNameContainer}>
+                              <Text style={styles.optionLabel}>Option Name *</Text>
+                              <TextInput
+                                style={styles.optionInput}
+                                value={option.option_name}
+                                onChangeText={(text) => updateServiceOption(option.id, 'option_name', text)}
+                                placeholder="e.g., Basic Package, Premium Service"
+                                placeholderTextColor="#9CA3AF"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={styles.optionInputRow}>
+                            <View style={styles.optionNameContainer}>
+                              <Text style={styles.optionLabel}>Description (Optional)</Text>
+                              <TextInput
+                                style={[styles.optionInput, styles.optionTextArea]}
+                                value={option.option_description}
+                                onChangeText={(text) => updateServiceOption(option.id, 'option_description', text)}
+                                placeholder="Describe what's included in this option"
+                                placeholderTextColor="#9CA3AF"
+                                multiline
+                                numberOfLines={2}
+                                textAlignVertical="top"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={styles.optionInputRow}>
+                            <View style={styles.optionFieldContainer}>
+                              <Text style={styles.optionLabel}>Price ($)</Text>
+                              <TextInput
+                                style={styles.optionInput}
+                                value={option.price.toString()}
+                                onChangeText={(text) => updateServiceOption(option.id, 'price', parseFloat(text) || 0)}
+                                placeholder={(serviceForm.price || 0).toString()}
+                                placeholderTextColor="#9CA3AF"
+                                keyboardType="numeric"
+                              />
+                            </View>
+                            <View style={styles.optionFieldContainer}>
+                              <Text style={styles.optionLabel}>Duration (min)</Text>
+                              <TextInput
+                                style={styles.optionInput}
+                                value={option.duration.toString()}
+                                onChangeText={(text) => updateServiceOption(option.id, 'duration', parseInt(text) || 0)}
+                                placeholder={(serviceForm.duration || 60).toString()}
+                                placeholderTextColor="#9CA3AF"
+                                keyboardType="numeric"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={styles.optionStatusRow}>
+                            <View>
+                              <Text style={styles.optionLabel}>Active Option</Text>
+                              <Text style={styles.optionStatusDescription}>
+                                Enable to make this option bookable
+                              </Text>
+                            </View>
+                            <Switch
+                              value={option.is_active}
+                              onValueChange={(value) => updateServiceOption(option.id, 'is_active', value)}
+                              trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
+                              thumbColor={option.is_active ? '#F59E0B' : '#9CA3AF'}
+                            />
+                          </View>
+
+                          <View style={styles.optionPreview}>
+                            <Text style={styles.previewLabel}>Preview:</Text>
+                            <Text style={styles.previewText}>
+                              {option.option_name || 'Option Name'} - ${option.price} ({option.duration} min)
+                              {!option.is_active && (
+                                <Text style={styles.inactiveText}> • Inactive</Text>
+                              )}
+                            </Text>
+                            {option.option_description && (
+                              <Text style={styles.previewDescription}>
+                                {option.option_description}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
-              )}
 
               <View style={styles.switchRow}>
                 <View>
@@ -6852,6 +7091,163 @@ const styles = StyleSheet.create({
   // Bottom spacing
   bottomSpacing: {
     height: 32,
+  },
+
+  // Service Options Styles
+  optionsHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  optionsTitleSection: {
+    flex: 1,
+    marginRight: 12,
+  },
+  addOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    gap: 4,
+    minWidth: 70,
+    justifyContent: 'center',
+  },
+  addOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  noOptionsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  noOptionsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  noOptionsSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  serviceOptionsList: {
+    gap: 16,
+  },
+  serviceOptionItem: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  optionNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  removeOptionButton: {
+    padding: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  optionInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  optionNameContainer: {
+    flex: 1,
+  },
+  optionFieldContainer: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  optionInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    backgroundColor: '#FFFFFF',
+    color: '#1F2937',
+  },
+  optionTextArea: {
+    height: 60,
+    textAlignVertical: 'top',
+  },
+  optionStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  optionStatusDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  optionPreview: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+    marginBottom: 4,
+  },
+  previewText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#047857',
+  },
+  previewDescription: {
+    fontSize: 12,
+    color: '#059669',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  inactiveText: {
+    color: '#EF4444',
+    fontSize: 11,
   },
 
   // Upload Progress Styles

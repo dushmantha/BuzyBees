@@ -221,9 +221,15 @@ const ServiceQueueScreen = ({ navigation }) => {
         const bookings = response.data;
         console.log('📋 Loaded', bookings.length, 'bookings from Supabase');
         
-        // Filter out bookings that have payment_status set (these should only show in Payments tab)
-        const queueBookings = bookings.filter(booking => !booking.payment_status);
-        console.log('📋 Filtered to', queueBookings.length, 'queue items (removed', (bookings.length - queueBookings.length), 'items with payment status)');
+        // Filter bookings for Service Queue: show all bookings that are NOT completed
+        // Completed bookings go to Payments tab
+        const queueBookings = bookings.filter(booking => {
+          // Keep in queue if status is not completed/cancelled/no_show
+          return booking.status !== 'completed' && 
+                 booking.status !== 'cancelled' && 
+                 booking.status !== 'no_show';
+        });
+        console.log('📋 Filtered to', queueBookings.length, 'queue items (active bookings)');
         
         // Transform the booking data to match our QueueItem interface
         const queueItems: QueueItem[] = queueBookings.map(booking => ({

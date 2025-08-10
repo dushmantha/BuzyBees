@@ -1114,12 +1114,22 @@ class NormalizedShopService {
         };
       }
 
+      // Map fields to match database schema
+      const updateData = {
+        name: serviceData.name,
+        description: serviceData.description,
+        category: serviceData.category,
+        base_price: serviceData.base_price || serviceData.price || 0,
+        duration_minutes: serviceData.duration_minutes || serviceData.duration || 60,
+        location_type: serviceData.location_type,
+        assigned_staff: serviceData.assigned_staff,
+        is_active: serviceData.is_active,
+        updated_at: new Date().toISOString()
+      };
+
       const { data, error } = await this.client
         .from('shop_services')
-        .update({
-          ...serviceData,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', serviceId)
         .select()
         .single();
@@ -1705,7 +1715,8 @@ class NormalizedShopService {
         // Status and type
         status: 'confirmed',
         booking_type: 'quick',
-        payment_status: 'pending',
+        // Don't set payment_status here - only set it when marked as complete
+        // This keeps the booking in Service Queue until completed
         
         // Communication flags - ensure no null values
         notification_sent: false,
@@ -1916,6 +1927,274 @@ class NormalizedShopService {
 
     } catch (error) {
       console.error('❌ Unexpected service creation error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Service Options management methods
+  async createServiceOptions(serviceId: string, options: any[]): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🛠️ Creating service options for service:', serviceId);
+      
+      // First, let's check what columns actually exist in the service_options table
+      try {
+        const { data: columnCheck, error: columnError } = await this.client
+          .from('service_options')
+          .select('*')
+          .limit(1);
+        console.log('📋 Service options table columns check:', columnCheck);
+        if (columnError) {
+          console.log('📋 Column check error:', columnError);
+        }
+        
+        // Also try to get table schema information via a simple insert test
+        try {
+          const testInsert = await this.client
+            .from('service_options')
+            .insert({
+              service_id: 'test-id',
+              name: 'test-name'
+            })
+            .select();
+          console.log('📋 Minimal test insert result:', testInsert);
+          
+          // Clean up the test record if it was created
+          if (testInsert.data && testInsert.data.length > 0) {
+            await this.client
+              .from('service_options')
+              .delete()
+              .eq('service_id', 'test-id');
+          }
+        } catch (testError) {
+          console.log('📋 Test insert error (this helps us understand required fields):', testError);
+        }
+      } catch (columnCheckError) {
+        console.log('📋 Column check failed:', columnCheckError);
+      }
+      
+      if (!options || options.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Get the service to verify ownership and get shop_id
+      const { data: service, error: serviceError } = await this.client
+        .from('shop_services')
+        .select('shop_id')
+        .eq('id', serviceId)
+        .single();
+
+      if (serviceError || !service) {
+        return {
+          success: false,
+          error: 'Service not found or unauthorized'
+        };
+      }
+
+      // Start with a minimal approach to avoid schema cache issues
+      // First try without any duration fields since that's causing the error
+      const optionsData = options.map((option, index) => ({
+        service_id: serviceId,
+        name: option.option_name,
+        description: option.option_description || '',
+        price_adjustment: Number(option.price) || 0,
+        is_active: option.is_active ?? true
+      }));
+
+      const { data, error } = await this.client
+        .from('service_options')
+        .insert(optionsData)
+        .select();
+
+      if (error) {
+        console.error('❌ Service options creation error:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        console.error('❌ Options data that failed:', JSON.stringify(optionsData, null, 2));
+        
+        // If it's still a column not found error, try even more simplified version
+        if (error.message.includes('column') || error.message.includes('price_adjustment') || error.message.includes('description')) {
+          console.log('🔄 Trying more simplified service options insert...');
+          
+          const simplifiedData = options.map((option, index) => ({
+            service_id: serviceId,
+            name: option.option_name
+          }));
+          
+          const { data: retryData, error: retryError } = await this.client
+            .from('service_options')
+            .insert(simplifiedData)
+            .select();
+            
+          if (retryError) {
+            console.error('❌ Simplified service options creation also failed:', retryError);
+            console.error('❌ Retry error details:', JSON.stringify(retryError, null, 2));
+            
+            // Try an ultra-minimal version with just required fields
+            if (retryError.message.includes('shop_id') || retryError.message.includes('column')) {
+              console.log('🔄 Trying ultra-minimal service options insert...');
+              
+              const minimalData = options.map((option, index) => ({
+                service_id: serviceId,
+                name: option.option_name,
+                price_adjustment: Number(option.price) || 0
+              }));
+              
+              const { data: minimalRetryData, error: minimalRetryError } = await this.client
+                .from('service_options')
+                .insert(minimalData)
+                .select();
+                
+              if (minimalRetryError) {
+                console.error('❌ Ultra-minimal service options creation also failed:', minimalRetryError);
+                console.error('❌ Ultra-minimal error details:', JSON.stringify(minimalRetryError, null, 2));
+                
+                // Final attempt - just service_id and name
+                if (minimalRetryError.message.includes('column') || minimalRetryError.message.includes('price_adjustment')) {
+                  console.log('🔄 Trying absolute minimal service options insert (just service_id + name)...');
+                  
+                  const absoluteMinimalData = options.map((option, index) => ({
+                    service_id: serviceId,
+                    name: option.option_name
+                  }));
+                  
+                  const { data: absoluteMinimalRetryData, error: absoluteMinimalRetryError } = await this.client
+                    .from('service_options')
+                    .insert(absoluteMinimalData)
+                    .select();
+                    
+                  if (absoluteMinimalRetryError) {
+                    console.error('❌ Absolute minimal service options creation also failed:', absoluteMinimalRetryError);
+                    return {
+                      success: false,
+                      error: `Failed to create service options after all attempts: ${absoluteMinimalRetryError.message}. The database table might not exist or have a completely different structure.`
+                    };
+                  }
+                  
+                  console.log('✅ Service options created with absolute minimal data');
+                  return {
+                    success: true,
+                    data: absoluteMinimalRetryData || []
+                  };
+                }
+                
+                return {
+                  success: false,
+                  error: `Failed to create service options after multiple attempts: ${minimalRetryError.message}`
+                };
+              }
+              
+              console.log('✅ Service options created with minimal data');
+              return {
+                success: true,
+                data: minimalRetryData || []
+              };
+            }
+            
+            return {
+              success: false,
+              error: `Failed to create service options: ${retryError.message}`
+            };
+          }
+          
+          console.log('✅ Service options created with simplified data');
+          return {
+            success: true,
+            data: retryData || []
+          };
+        }
+        
+        return {
+          success: false,
+          error: `Failed to create service options: ${error.message}`
+        };
+      }
+
+      console.log('✅ Service options created successfully:', data?.length);
+      return {
+        success: true,
+        data: data || []
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected service options creation error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async getServiceOptions(serviceId: string): Promise<ServiceResponse<any[]>> {
+    try {
+      const { data, error } = await this.client
+        .from('service_options')
+        .select('*')
+        .eq('service_id', serviceId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.error('❌ Service options fetch error:', error);
+        return {
+          success: false,
+          error: `Failed to fetch service options: ${error.message}`
+        };
+      }
+
+      // Normalize the data to handle both schema formats
+      const normalizedData = (data || []).map((option: any) => ({
+        id: option.id,
+        option_name: option.option_name || option.name,
+        option_description: option.option_description || option.description || '',
+        price: option.price || option.price_adjustment || 0,
+        duration: option.duration || option.duration_adjustment || 60,
+        is_active: option.is_active ?? true,
+        sort_order: option.sort_order ?? 0
+      }));
+
+      return {
+        success: true,
+        data: normalizedData
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected service options fetch error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async updateServiceOptions(serviceId: string, options: any[]): Promise<ServiceResponse<any[]>> {
+    try {
+      console.log('🛠️ Updating service options for service:', serviceId);
+
+      // First, delete existing options
+      await this.client
+        .from('service_options')
+        .delete()
+        .eq('service_id', serviceId);
+
+      // Then create new options if any
+      if (options && options.length > 0) {
+        return await this.createServiceOptions(serviceId, options);
+      }
+
+      return { success: true, data: [] };
+
+    } catch (error) {
+      console.error('❌ Unexpected service options update error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -2263,13 +2542,21 @@ class NormalizedShopService {
       }
 
       // Update the booking directly
+      // If marking as completed, also set payment_status to pending
+      const updateData: any = {
+        status: status,
+        internal_notes: internalNotes || undefined,
+        updated_at: new Date().toISOString()
+      };
+      
+      // When marking as complete, set payment_status to pending if not already set
+      if (status === 'completed') {
+        updateData.payment_status = 'pending';
+      }
+      
       const { data, error } = await this.client
         .from('shop_bookings')
-        .update({
-          status: status,
-          internal_notes: internalNotes || undefined,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', bookingId)
         .select()
         .single();
@@ -3164,12 +3451,12 @@ class NormalizedShopService {
         };
       }
 
-      // Query from shop_bookings table with payment status (comprehensive schema)
+      // Query from shop_bookings table - only get completed bookings for payments
       let query = this.client
         .from('shop_bookings')
         .select('*')
         .eq('provider_id', user.id)
-        .not('payment_status', 'is', null) // Only get bookings with payment status set
+        .eq('status', 'completed') // Only show completed bookings in payments
         .order('created_at', { ascending: false });
 
       if (shopId) {
