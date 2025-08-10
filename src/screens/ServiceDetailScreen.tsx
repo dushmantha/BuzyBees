@@ -537,7 +537,7 @@ const ServiceDetailScreen: React.FC = () => {
   const [service, setService] = useState<Service | null>(routeService || null);
   const [loading, setLoading] = useState(!routeService);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('about');
+  const [activeTab, setActiveTab] = useState('services');
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [allStaffMembers, setAllStaffMembers] = useState<any[]>([]);
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
@@ -1313,7 +1313,7 @@ const ServiceDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <ScrollView stickyHeaderIndices={[2]}>
         {/* Image Carousel */}
         <ImageCarousel
           images={allServiceImages}
@@ -1355,23 +1355,63 @@ const ServiceDetailScreen: React.FC = () => {
               <Text style={styles.timeText}>{service.duration || 0} min</Text>
             </View>
           </View>
+        </View>
 
-          {/* Step 1: Service Selection */}
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
+        {/* Sticky Tabs */}
+        <View style={styles.stickyTabsContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'services' && styles.activeTab]}
+            onPress={() => setActiveTab('services')}
+          >
+            <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>Services</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'team' && styles.activeTab]}
+            onPress={() => setActiveTab('team')}
+          >
+            <Text style={[styles.tabText, activeTab === 'team' && styles.activeTabText]}>Team</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+            onPress={() => setActiveTab('reviews')}
+          >
+            <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'buy' && styles.activeTab]}
+            onPress={() => setActiveTab('buy')}
+          >
+            <Text style={[styles.tabText, activeTab === 'buy' && styles.activeTabText]}>Buy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'about' && styles.activeTab]}
+            onPress={() => setActiveTab('about')}
+          >
+            <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tab Content */}
+        <View style={styles.contentContainer}>
+          {activeTab === 'services' && (
+            <>
+              {/* Step 1: Service Selection */}
+              <View style={styles.stepContainer}>
+                <View style={styles.stepHeader}>
+                  <View style={styles.stepNumber}>
+                    <Text style={styles.stepNumberText}>1</Text>
+                  </View>
+                  <Text style={styles.stepTitle}>Select Services</Text>
+                  {selectedServicesWithOptions.size > 0 && (
+                    <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
+                  )}
+                </View>
+                {renderServicesContent()}
               </View>
-              <Text style={styles.stepTitle}>Select Services</Text>
-              {selectedServicesWithOptions.size > 0 && (
-                <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
-              )}
-            </View>
-            {renderServicesContent()}
-          </View>
+            </>
+          )}
 
-          {/* Step 2: Staff Selection - always show staff selection */}
-          {true && (
+          {activeTab === 'team' && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={styles.stepNumber}>
@@ -1383,7 +1423,7 @@ const ServiceDetailScreen: React.FC = () => {
                   </Text>
                   {selectedServicesWithOptions.size === 0 && (
                     <Text style={styles.stepSubtitle}>
-                      Select services above for filtering
+                      Select services first for filtering
                     </Text>
                   )}
                 </View>
@@ -1409,43 +1449,21 @@ const ServiceDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* Tabs - moved to bottom for additional information */}
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'about' && styles.activeTab]}
-              onPress={() => setActiveTab('about')}
-            >
-              <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'hours' && styles.activeTab]}
-              onPress={() => setActiveTab('hours')}
-            >
-              <Text style={[styles.tabText, activeTab === 'hours' && styles.activeTabText]}>Hours</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'offers' && styles.activeTab]}
-              onPress={() => setActiveTab('offers')}
-            >
-              <Text style={[styles.tabText, activeTab === 'offers' && styles.activeTabText]}>Offers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
-              onPress={() => setActiveTab('reviews')}
-            >
-              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
-            </TouchableOpacity>
-          </View>
+          {activeTab === 'reviews' && <ReviewsTab service={service} />}
+          {activeTab === 'buy' && (
+            <View style={styles.tabContent}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Purchase Options</Text>
+                <Text style={styles.sectionText}>Special offers and packages coming soon.</Text>
+              </View>
+            </View>
+          )}
+          {activeTab === 'about' && <AboutTab service={service} />}
 
-          {/* Tab Content */}
-          <View style={styles.tabContentContainer}>
-            {activeTab === 'about' && <AboutTab service={service} />}
-            {activeTab === 'hours' && <HoursTab service={service} />}
-            {activeTab === 'offers' && <OffersTab service={service} />}
-            {activeTab === 'reviews' && <ReviewsTab service={service} />}
-          </View>
+        </View>
 
-          {/* Book Button */}
+        {/* Fixed Book Button */}
+        <View style={styles.fixedBookButtonContainer}>
           <TouchableOpacity 
             style={[
               styles.bookButton, 
@@ -1506,9 +1524,23 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  stickyTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
   tab: {
     flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     borderRadius: 8,
   },
@@ -1523,6 +1555,9 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#1F2937', // Dark accent charcoal black
     fontWeight: '600',
+  },
+  tabContent: {
+    padding: 16,
   },
   tabContentContainer: {
     minHeight: 150,
@@ -2476,6 +2511,17 @@ const styles = StyleSheet.create({
   },
   shopNameSection: {
     flex: 1,
+  },
+  fixedBookButtonContainer: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
 });
 
