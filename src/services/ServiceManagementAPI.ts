@@ -334,7 +334,7 @@ export interface Shop {
         console.log('📅 ServiceManagementAPI.createQuickBooking called with:', bookingData);
         
         // Validate required fields
-        if (!bookingData.customer_name || !bookingData.customer_phone || !bookingData.date || !bookingData.time) {
+        if (!bookingData.customer_name || !bookingData.customer_phone || !bookingData.date || !bookingData.time || !bookingData.service_id) {
           return {
             success: false,
             message: 'Missing required booking information',
@@ -343,6 +343,7 @@ export interface Shop {
               customer_phone: bookingData.customer_phone ? [] : ['Customer phone is required'],
               date: bookingData.date ? [] : ['Date is required'],
               time: bookingData.time ? [] : ['Time is required'],
+              service_id: bookingData.service_id ? [] : ['Service ID is required'],
             },
           };
         }

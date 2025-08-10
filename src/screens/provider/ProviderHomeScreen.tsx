@@ -821,8 +821,8 @@ const ProviderHomeScreen: React.FC = () => {
           monthly_revenue: 0, // New shop starts with no revenue
           certificate_images: [],
           business_hours: {
-            start: newShop.business_hours?.[0]?.openTime || '09:00',
-            end: newShop.business_hours?.[0]?.closeTime || '17:00'
+            start: newShop.shop?.business_hours?.[0]?.openTime || newShop.business_hours?.[0]?.openTime || '09:00',
+            end: newShop.shop?.business_hours?.[0]?.closeTime || newShop.business_hours?.[0]?.closeTime || '17:00'
           },
           contact_info: {
             phone: newShop.phone,
@@ -832,7 +832,7 @@ const ProviderHomeScreen: React.FC = () => {
           created_at: newShop.created_at || new Date().toISOString(),
           address: newShop.address,
           isActive: newShop.is_active,
-          openingHours: `${newShop.business_hours?.[0]?.openTime || '09:00'} - ${newShop.business_hours?.[0]?.closeTime || '17:00'}`,
+          openingHours: `${newShop.shop?.business_hours?.[0]?.openTime || newShop.business_hours?.[0]?.openTime || '09:00'} - ${newShop.shop?.business_hours?.[0]?.closeTime || newShop.business_hours?.[0]?.closeTime || '17:00'}`,
           services: newShop.services?.map((s: any) => s.name) || [],
           imageUrl: newShop.image_url || '',
           phone: newShop.phone,

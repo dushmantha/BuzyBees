@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { premiumService, UserSubscription, PremiumFeature } from '../lib/premium/premiumService';
+import { supabase } from '../lib/supabase/index';
 
 interface PremiumContextType {
   subscription: UserSubscription | null;
@@ -20,10 +21,39 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const tokenRefreshInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Load subscription data on mount
+  // Load subscription data on mount and set up token refresh
   useEffect(() => {
     loadSubscription();
+    
+    // Set up periodic token refresh to prevent expiry during real-time subscriptions
+    // Refresh token every 45 minutes (tokens typically expire after 1 hour)
+    const setupTokenRefresh = () => {
+      tokenRefreshInterval.current = setInterval(async () => {
+        try {
+          console.log('🔄 Periodic token refresh started');
+          const { data, error } = await supabase.auth.refreshSession();
+          
+          if (error) {
+            console.error('❌ Periodic token refresh failed:', error);
+          } else {
+            console.log('✅ Periodic token refresh successful');
+          }
+        } catch (error) {
+          console.error('❌ Error during periodic token refresh:', error);
+        }
+      }, 45 * 60 * 1000); // 45 minutes
+    };
+    
+    setupTokenRefresh();
+    
+    return () => {
+      if (tokenRefreshInterval.current) {
+        clearInterval(tokenRefreshInterval.current);
+        tokenRefreshInterval.current = null;
+      }
+    };
   }, []);
 
   // Subscribe to real-time changes

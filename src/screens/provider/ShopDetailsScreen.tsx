@@ -35,10 +35,12 @@ import { compressLogoImage, compressShopImage, compressAvatarImage } from '../..
 import { authService } from '../../lib/supabase/index';
 import normalizedShopService, { supabase, ShopStaff, WorkSchedule, LeaveDate } from '../../lib/supabase/normalized';
 import integratedShopService from '../../lib/supabase/integrated';
+import { OptimizedShopService } from '../../services/api/optimizedShop';
+import { updateShopWithCRUD, createShopWithCRUD } from '../../lib/supabase/normalizedShopUpdate';
+import { ImageUploadService } from '../../services/api/imageUploadFix';
 import { useAuth } from '../../navigation/AppNavigator';
 import { FriendlyScheduleDisplay } from '../../components/shop/FriendlyScheduleDisplay';
 import { TimePickerModal } from '../../components/shop/TimePickerModal';
-import { serviceOptionsAPI, ServiceOption } from '../../services/api/serviceOptions/serviceOptionsAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -237,10 +239,33 @@ const ShopDetailsScreen: React.FC = () => {
   // State to track if we've loaded data from the database
   const [hasLoadedData, setHasLoadedData] = useState(false);
 
-  // Debug: Log the existing shop data structure and test storage
+  // Load services from the new shop_services table
+  const loadShopServices = useCallback(async (shopId: string) => {
+    try {
+      console.log('🛠️ Loading services for shop:', shopId);
+      const response = await normalizedShopService.getServices(shopId);
+      
+      if (response.success && response.data) {
+        console.log('✅ Loaded services:', response.data.length);
+        setShop(prev => ({
+          ...prev,
+          services: response.data
+        }));
+      } else {
+        console.warn('⚠️ No services found or error:', response.error);
+      }
+    } catch (error) {
+      console.error('❌ Error loading services:', error);
+    }
+  }, []);
+
+  // Debug: Log the existing shop data structure and load services
   React.useEffect(() => {
     if (existingShop) {
-      
+      // Load services from the new table if shop exists
+      if (existingShop.id) {
+        loadShopServices(existingShop.id);
+      }
     }
 
     // Test storage connection when component loads (non-blocking)
@@ -514,7 +539,6 @@ const ShopDetailsScreen: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTimezoneModal, setShowTimezoneModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
-  const [showServiceOptionsInModal, setShowServiceOptionsInModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showSpecialDayModal, setShowSpecialDayModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -564,8 +588,6 @@ const ShopDetailsScreen: React.FC = () => {
   const [serviceForm, setServiceForm] = useState<Partial<Service>>({
     name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], location_type: 'in_house', is_active: true
   });
-  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
-  const [loadingServiceOptions, setLoadingServiceOptions] = useState(false);
 
   // Staff form state
   const [staffForm, setStaffForm] = useState<Partial<Staff>>({
@@ -792,6 +814,22 @@ const ShopDetailsScreen: React.FC = () => {
     loadCompleteShopData();
   }, [isEditing, existingShop]);
 
+  // Ensure shop always has business_hours to prevent undefined errors
+  useEffect(() => {
+    setShop(prevShop => {
+      // Only update if business_hours is missing or invalid
+      if (!prevShop.business_hours || !Array.isArray(prevShop.business_hours) || prevShop.business_hours.length === 0) {
+        console.warn('⚠️ Shop missing business_hours, adding defaults');
+        const defaultHours = createDefaultBusinessHours();
+        return {
+          ...prevShop,
+          business_hours: defaultHours
+        };
+      }
+      return prevShop; // No change needed
+    });
+  }, [shop.id]); // Run when shop ID changes
+
   // More robust validation that uses formValues ref to bypass state timing issues
   const validateBasicInfo = useCallback((): boolean => {
     
@@ -841,6 +879,33 @@ const ShopDetailsScreen: React.FC = () => {
       // Check if any images are actually selected
       const hasImages = shop.images && shop.images.length > 0 && shop.images.some(img => img && img.trim() !== '');
       const hasLogo = shop.logo_url && shop.logo_url.trim() !== '';
+
+      // Verify storage setup before attempting uploads
+      if (hasImages || hasLogo) {
+        console.log('🔍 Verifying storage setup for image uploads...');
+        const storageStatus = await ImageUploadService.verifyStorageSetup();
+        
+        if (!storageStatus.success) {
+          console.warn('⚠️ Storage buckets not properly configured:', storageStatus.error);
+          Alert.alert(
+            'Storage Setup Required', 
+            'Image upload requires storage buckets to be created. Please contact support or run the setup script.\n\n' + 
+            `Missing buckets:\n${!storageStatus.buckets.shopImages ? '• shop-images\n' : ''}` +
+            `${!storageStatus.buckets.userAvatars ? '• user-avatars\n' : ''}` +
+            `${!storageStatus.buckets.shopLogos ? '• shop-logos\n' : ''}`,
+            [
+              { text: 'Continue without images', onPress: () => {
+                // Set images to empty to continue without upload
+                setShop(prev => ({ ...prev, images: [], logo_url: '' }));
+              }},
+              { text: 'Cancel', style: 'cancel' }
+            ]
+          );
+          return;
+        } else {
+          console.log('✅ Storage setup verified successfully');
+        }
+      }
       
       if (!hasImages && !hasLogo) {
         
@@ -915,6 +980,15 @@ const ShopDetailsScreen: React.FC = () => {
         return prevShop;
       });
     });
+    
+    // Ensure currentShop has required properties with defaults
+    if (!currentShop?.business_hours) {
+      console.warn('⚠️ currentShop.business_hours is missing, adding defaults');
+      const defaultHours = createDefaultBusinessHours();
+      setShop(prev => ({ ...prev, business_hours: defaultHours }));
+      // Update currentShop reference
+      currentShop.business_hours = defaultHours;
+    }
     // Validate that at least one image is provided
     const isValidImageUrl = (url: string | undefined | null): boolean => {
       if (!url || typeof url !== 'string') return false;
@@ -925,9 +999,9 @@ const ShopDetailsScreen: React.FC = () => {
       return trimmed.startsWith('file://') || trimmed.startsWith('http://') || trimmed.startsWith('https://');
     };
     
-    const hasValidImages = currentShop.images && currentShop.images.length > 0 && currentShop.images.some(img => isValidImageUrl(img));
-    const hasValidLogo = isValidImageUrl(currentShop.logo_url);
-    if (currentShop.images && currentShop.images.length > 0) {
+    const hasValidImages = currentShop?.images && currentShop.images.length > 0 && currentShop.images.some(img => isValidImageUrl(img));
+    const hasValidLogo = isValidImageUrl(currentShop?.logo_url);
+    if (currentShop?.images && currentShop.images.length > 0) {
       currentShop.images.forEach((img, i) => {
         const valid = isValidImageUrl(img);
         
@@ -956,8 +1030,8 @@ const ShopDetailsScreen: React.FC = () => {
       
       // Initialize upload progress if there are any images to upload
       // Use currentShop instead of shop to ensure we have the latest state
-      const hasLogoToUpload = currentShop.logo_url && currentShop.logo_url.startsWith('file://');
-      const localImages = (currentShop.images || []).filter(img => img && img.startsWith('file://'));
+      const hasLogoToUpload = currentShop?.logo_url && currentShop.logo_url.startsWith('file://');
+      const localImages = (currentShop?.images || []).filter(img => img && img.startsWith('file://'));
       const totalImagesToUpload = (hasLogoToUpload ? 1 : 0) + localImages.length;
       
       // Debug: Check if images are properly stored
@@ -1000,8 +1074,8 @@ const ShopDetailsScreen: React.FC = () => {
       }
       
       // Upload logo if it's a local URI (and storage is available)
-      let uploadedLogoUrl = currentShop.logo_url;
-      if (currentShop.logo_url && currentShop.logo_url.startsWith('file://')) {
+      let uploadedLogoUrl = currentShop?.logo_url;
+      if (currentShop?.logo_url && currentShop.logo_url.startsWith('file://')) {
         if (storageAvailable) {
           
           // Update progress for logo upload
@@ -1012,30 +1086,41 @@ const ShopDetailsScreen: React.FC = () => {
             message: 'Uploading shop logo...'
           }));
           
-          const logoResult = await integratedShopService.uploadImage(currentShop.logo_url, 'shops/logos');
-          if (logoResult.success && logoResult.data) {
-            uploadedLogoUrl = logoResult.data;
+          try {
+            const logoResult = await ImageUploadService.uploadShopLogo(currentShop.logo_url);
+            if (logoResult.success && logoResult.data) {
+              uploadedLogoUrl = logoResult.data;
+              
+              // Update progress - logo completed
+              setUploadProgress(prev => ({
+                ...prev,
+                uploadedImages: 1,
+                message: '✅ Logo uploaded successfully!'
+              }));
+            } else {
+              uploadedLogoUrl = currentShop.logo_url; // Keep local URI as fallback
+              
+              // Update progress - logo failed but continuing
+              setUploadProgress(prev => ({
+                ...prev,
+                message: '⚠️ Logo upload failed, using local image: ' + (logoResult.error || 'Unknown error')
+              }));
+            }
+          } catch (uploadError: any) {
+            console.warn('⚠️ Logo upload threw error:', uploadError);
+            uploadedLogoUrl = currentShop.logo_url; // Keep local URI as fallback
             
-            // Update progress - logo completed
+            // Update progress - upload error but continuing
             setUploadProgress(prev => ({
               ...prev,
-              uploadedImages: 1,
-              message: '✅ Logo uploaded successfully!'
-            }));
-          } else {
-            uploadedLogoUrl = ''; // Set to empty string instead of keeping local URI
-            
-            // Update progress - logo failed
-            setUploadProgress(prev => ({
-              ...prev,
-              message: '❌ Logo upload failed: ' + (logoResult.error || 'Unknown error')
+              message: '⚠️ Logo upload error, using local image: ' + (uploadError.message || 'Network error')
             }));
           }
         } else {
           
           uploadedLogoUrl = '';
         }
-      } else if (currentShop.logo_url && !currentShop.logo_url.startsWith('http')) {
+      } else if (currentShop?.logo_url && !currentShop.logo_url.startsWith('http')) {
         
         uploadedLogoUrl = '';
       } else {
@@ -1044,7 +1129,7 @@ const ShopDetailsScreen: React.FC = () => {
       
       // Upload shop images that are local URIs
       let uploadedImageUrls: string[] = [];
-      const existingImages = (currentShop.images || []).filter(img => img && !img.startsWith('file://'));
+      const existingImages = (currentShop?.images || []).filter(img => img && !img.startsWith('file://'));
       if (localImages.length > 0) {
         if (storageAvailable) {
           
@@ -1063,22 +1148,39 @@ const ShopDetailsScreen: React.FC = () => {
               uploadedImages: uploadedCount,
               message: `Uploading image ${i + 1} of ${localImages.length}...`
             }));
-            const imageResult = await integratedShopService.uploadImage(imageUri, 'shops/images');
-            
-            if (imageResult.success && imageResult.data) {
-              uploadedImageUrls.push(imageResult.data);
+            try {
+              const imageResult = await ImageUploadService.uploadImage(imageUri, 'shop-images', 'gallery');
+              
+              if (imageResult.success && imageResult.data) {
+                uploadedImageUrls.push(imageResult.data);
+                uploadedCount++;
+                // Update progress - image completed
+                setUploadProgress(prev => ({
+                  ...prev,
+                  uploadedImages: uploadedCount,
+                  message: `✅ Image ${i + 1} uploaded successfully!`
+                }));
+              } else {
+                // Keep local image as fallback
+                uploadedImageUrls.push(imageUri);
+                uploadedCount++;
+                // Update progress - image failed but continuing with local
+                setUploadProgress(prev => ({
+                  ...prev,
+                  uploadedImages: uploadedCount,
+                  message: `⚠️ Image ${i + 1} upload failed, using local: ${imageResult.error || 'Unknown error'}`
+                }));
+              }
+            } catch (uploadError: any) {
+              console.warn(`⚠️ Image ${i + 1} upload threw error:`, uploadError);
+              // Keep local image as fallback
+              uploadedImageUrls.push(imageUri);
               uploadedCount++;
-              // Update progress - image completed
+              // Update progress - upload error but continuing with local
               setUploadProgress(prev => ({
                 ...prev,
                 uploadedImages: uploadedCount,
-                message: `✅ Image ${i + 1} uploaded successfully!`
-              }));
-            } else {
-              // Update progress - image failed
-              setUploadProgress(prev => ({
-                ...prev,
-                message: `❌ Image ${i + 1} failed: ${imageResult.error || 'Unknown error'}`
+                message: `⚠️ Image ${i + 1} upload error, using local: ${uploadError.message || 'Network error'}`
               }));
             }
             
@@ -1087,7 +1189,7 @@ const ShopDetailsScreen: React.FC = () => {
           }
           
           // Final upload completion message
-          const totalUploaded = uploadedImageUrls.length + (uploadedLogoUrl && uploadedLogoUrl !== currentShop.logo_url ? 1 : 0);
+          const totalUploaded = uploadedImageUrls.length + (uploadedLogoUrl && uploadedLogoUrl !== currentShop?.logo_url ? 1 : 0);
           if (totalUploaded > 0) {
             setUploadProgress(prev => ({
               ...prev,
@@ -1135,56 +1237,56 @@ const ShopDetailsScreen: React.FC = () => {
         };
       };
 
-      const hours = getBusinessHours((currentShop && currentShop.business_hours) || []);
+      const hours = getBusinessHours((currentShop?.business_hours) || []);
 
       // Use formValues ref as primary source of truth (consistent with validation)
       // Ensure we have valid data before proceeding
-      const safeName = formValues.current.name || (currentShop && currentShop.name) || '';
-      const safeDescription = formValues.current.description || (currentShop && currentShop.description) || '';
-      const safeAddress = formValues.current.address || (currentShop && currentShop.address) || '';
-      const safePhone = formValues.current.phone || (currentShop && currentShop.phone) || '';
-      const safeEmail = formValues.current.email || (currentShop && currentShop.email) || '';
+      const safeName = formValues.current.name || currentShop?.name || '';
+      const safeDescription = formValues.current.description || currentShop?.description || '';
+      const safeAddress = formValues.current.address || currentShop?.address || '';
+      const safePhone = formValues.current.phone || currentShop?.phone || '';
+      const safeEmail = formValues.current.email || currentShop?.email || '';
       
       const shopData = {
         name: safeName.trim(),
         description: safeDescription.trim(),
-        category: (currentShop && currentShop.category) || 'Beauty & Wellness',
+        category: currentShop?.category || 'Beauty & Wellness',
         address: safeAddress.trim(),
-        city: (formValues.current.city || (currentShop && currentShop.city) || '').trim(),
-        state: (formValues.current.state || (currentShop && currentShop.state) || '').trim(),
-        country: (formValues.current.country || (currentShop && currentShop.country) || 'Sweden').trim(),
+        city: (formValues.current.city || currentShop?.city || '').trim(),
+        state: (formValues.current.state || currentShop?.state || '').trim(),
+        country: (formValues.current.country || currentShop?.country || 'Sweden').trim(),
         phone: safePhone.trim(),
         email: safeEmail.trim(),
-        website_url: (currentShop && currentShop.website_url)?.trim() || null,
+        website_url: currentShop?.website_url?.trim() || null,
         image_url: validMainImageUrl,
         business_hours_start: hours.start,
         business_hours_end: hours.end,
-        is_active: (currentShop && currentShop.is_active) ?? true,
+        is_active: currentShop?.is_active ?? true,
         // Enhanced data fields
         logo_url: validLogoUrl,
         images: validAllImages, // Send as array, will be handled properly by auth service
-        business_hours: (currentShop && currentShop.business_hours) || [],
-        special_days: (currentShop && currentShop.special_days) || [],
-        services: (shop && shop.services) || [],
-        staff: (shop && shop.staff) || [],
-        discounts: (shop && shop.discounts) || [],
-        timezone: (currentShop && currentShop.timezone) || 'Europe/Stockholm',
-        advance_booking_days: (currentShop && currentShop.advance_booking_days) || 30,
-        slot_duration: (currentShop && currentShop.slot_duration) || 60,
-        buffer_time: (currentShop && currentShop.buffer_time) || 15,
-        auto_approval: (currentShop && currentShop.auto_approval) ?? true,
-        first_time_discount_active: (currentShop && currentShop.first_time_discount_active) ?? true
+        business_hours: currentShop?.business_hours || shop?.business_hours || createDefaultBusinessHours(),
+        special_days: currentShop?.special_days || [],
+        services: shop?.services || [],
+        staff: shop?.staff || [],
+        discounts: shop?.discounts || [],
+        timezone: currentShop?.timezone || 'Europe/Stockholm',
+        advance_booking_days: currentShop?.advance_booking_days || 30,
+        slot_duration: currentShop?.slot_duration || 60,
+        buffer_time: currentShop?.buffer_time || 15,
+        auto_approval: currentShop?.auto_approval ?? true,
+        first_time_discount_active: currentShop?.first_time_discount_active ?? true
       };
       // CRITICAL DEBUG: Show what business hours data we're sending
       console.log('🚨 FRONTEND: About to call updateShop');
-      console.log('🚨 FRONTEND: currentShop.business_hours:', JSON.stringify((currentShop && currentShop.business_hours) || [], null, 2));
+      console.log('🚨 FRONTEND: currentShop.business_hours:', JSON.stringify(currentShop?.business_hours || [], null, 2));
       console.log('🚨 FRONTEND: shopData.business_hours:', JSON.stringify(shopData.business_hours, null, 2));
       
 
       let result;
       if (isEditing && shop.id) {
         
-        result = await normalizedShopService.updateShop(shop.id, shopData);
+        result = await updateShopWithCRUD(shop.id, shopData, user.id);
       } else {
         
         // Extra safety check
@@ -1202,10 +1304,66 @@ const ShopDetailsScreen: React.FC = () => {
           throw new Error('shopData became undefined before service call');
         }
         
-        // Create a fresh copy to avoid any reference issues
-        const finalShopData = { ...shopData };
+        // Create shop data for optimized service
+        const optimizedShopData = {
+          shop: {
+            provider_id: user.id,
+            name: shopData.name,
+            description: shopData.description,
+            category: shopData.category,
+            phone: shopData.phone,
+            email: shopData.email,
+            website_url: shopData.website_url,
+            logo_url: shopData.logo_url,
+            business_hours: shopData.business_hours,
+            timezone: shopData.timezone,
+            advance_booking_days: shopData.advance_booking_days,
+            slot_duration: shopData.slot_duration,
+            buffer_time: shopData.buffer_time,
+            auto_approval: shopData.auto_approval,
+            is_active: shopData.is_active
+          },
+          addresses: [{
+            address_type: 'primary',
+            street_address: shopData.address,
+            city: shopData.city,
+            state: shopData.state,
+            country: shopData.country,
+            is_active: true
+          }],
+          staff: shopData.staff?.map((s: any) => ({
+            name: s.name,
+            email: s.email,
+            phone: s.phone,
+            role: s.role || 'staff',
+            specialties: s.specialties || [],
+            is_active: true
+          })) || [],
+          services: shopData.services?.map((s: any) => ({
+            name: s.name,
+            description: s.description,
+            category: s.category,
+            duration: s.duration,
+            price: s.price,
+            currency: 'SEK',
+            staff_ids: [],
+            is_active: true,
+            display_order: 0
+          })) || [],
+          discounts: shopData.discounts?.map((d: any) => ({
+            code: d.code,
+            name: d.name,
+            description: d.description,
+            discount_type: d.discount_type || 'percentage',
+            discount_value: d.discount_value,
+            minimum_amount: d.minimum_amount,
+            service_ids: [],
+            is_active: true,
+            used_count: 0
+          })) || []
+        };
         
-        result = await normalizedShopService.createShop(finalShopData);
+        result = await createShopWithCRUD(shopData, user.id);
         
       }
 
@@ -1681,6 +1839,21 @@ const ShopDetailsScreen: React.FC = () => {
     
     
     setShop(prev => {
+      // Ensure prev and business_hours exist
+      if (!prev) {
+        console.warn('⚠️ prev is null/undefined in updateBusinessHours');
+        return prev;
+      }
+      
+      if (!prev.business_hours) {
+        console.warn('⚠️ prev.business_hours is null/undefined, creating defaults');
+        const defaultHours = createDefaultBusinessHours();
+        return {
+          ...prev,
+          business_hours: defaultHours
+        };
+      }
+      
       const oldHour = prev.business_hours.find(h => h.day === day);
       console.log('🚨 Old business hour for', day, ':', oldHour);
       
@@ -1699,7 +1872,7 @@ const ShopDetailsScreen: React.FC = () => {
   };
 
   const openTimePicker = (day: string, type: 'open' | 'close') => {
-    const currentHour = shop.business_hours.find(h => h.day === day);
+    const currentHour = shop?.business_hours?.find(h => h.day === day);
     if (currentHour) {
       const time = type === 'open' ? currentHour.openTime : currentHour.closeTime;
       const [hours, minutes] = time.split(':').map(Number);
@@ -1806,279 +1979,20 @@ const ShopDetailsScreen: React.FC = () => {
       setServiceForm(service);
       console.log('📝 Editing existing service:', service.name);
       
-      // Load service options for existing service
-      if (shop.id && service.name) {
-        try {
-          const { data, error } = await serviceOptionsAPI.getServiceOptions(service.id, shop.id);
-          if (!error && data) {
-            setServiceOptions(data);
-          } else {
-            setServiceOptions([]);
-          }
-        } catch (error) {
-          console.error('Error loading service options:', error);
-          setServiceOptions([]);
-        }
-      }
     } else {
       setEditingService(null);
       setServiceForm({
         name: '', description: '', price: 0, duration: 60,
         category: shop.category, location_type: 'in_house', is_active: true
       });
-      setServiceOptions([]); // Clear options for new service
       console.log('➕ Creating new service');
     }
     setShowServiceModal(true);
     console.log('✅ Service modal should be visible now');
   };
 
-  const navigateToServiceOptions = async () => {
-    console.log('🔧 Loading service options');
-    console.log('📋 Current state:', { 
-      serviceForm: serviceForm.name, 
-      editingService: editingService?.name, 
-      shopId: shop.id 
-    });
-    
-    const serviceId = serviceForm.id || editingService?.id || '';
-    
-    // Check if service is saved (has valid UUID)
-    const isNewService = !serviceId || /^\d+$/.test(serviceId);
-    if (isNewService) {
-      Alert.alert('Save Service First', 'Please save the service before managing its options.');
-      return;
-    }
-    
-    // Load service options
-    setLoadingServiceOptions(true);
-    try {
-      const serviceName = serviceForm.name || editingService?.name || '';
-      const { data, error } = await serviceOptionsAPI.getServiceOptions(serviceId, shop.id || '');
-      if (error) {
-        console.error('Error loading service options:', error);
-      }
-      setServiceOptions(data || []);
-      
-      // If no options exist, add a default empty option
-      if (!data || data.length === 0) {
-        setServiceOptions([createEmptyServiceOption(serviceId)]);
-      }
-      
-      // Show the service options view within the modal
-      setShowServiceOptionsInModal(true);
-    } catch (error) {
-      console.error('Error loading service options:', error);
-      Alert.alert('Error', 'Failed to load service options');
-    } finally {
-      setLoadingServiceOptions(false);
-    }
-  };
 
-  const createEmptyServiceOption = (serviceId: string): ServiceOption => ({
-    service_id: serviceId,
-    shop_id: shop.id || '',
-    option_name: '',
-    option_description: '',
-    price: 0,
-    duration: 30,
-    is_active: true,
-    sort_order: serviceOptions.length,
-  });
 
-  const handleAddServiceOption = () => {
-    const serviceId = serviceForm.id || editingService?.id || '';
-    setServiceOptions([...serviceOptions, createEmptyServiceOption(serviceId)]);
-  };
-
-  const handleUpdateServiceOption = (index: number, field: keyof ServiceOption, value: any) => {
-    const updatedOptions = [...serviceOptions];
-    updatedOptions[index] = {
-      ...updatedOptions[index],
-      [field]: field === 'price' || field === 'duration' || field === 'sort_order' ? Number(value) || 0 : value,
-    };
-    setServiceOptions(updatedOptions);
-  };
-
-  const handleDeleteServiceOption = (index: number) => {
-    if (serviceOptions.length <= 1) {
-      Alert.alert('Cannot Delete', 'At least one option is required.');
-      return;
-    }
-    
-    Alert.alert(
-      'Delete Option',
-      'Are you sure you want to delete this option?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            const updatedOptions = serviceOptions.filter((_, i) => i !== index);
-            setServiceOptions(updatedOptions);
-          },
-        },
-      ]
-    );
-  };
-
-  const saveServiceOptions = async () => {
-    // Validate options
-    const validOptions = serviceOptions.filter(opt => opt.option_name.trim() !== '');
-    
-    if (validOptions.length === 0) {
-      Alert.alert('No Options', 'Please add at least one option with a name.');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const serviceName = serviceForm.name || editingService?.name || '';
-      const serviceId = serviceForm.id || editingService?.id || '';
-      const { error } = await serviceOptionsAPI.upsertServiceOptions(
-        shop.id || '',
-        serviceId,
-        validOptions.map((opt, index) => {
-          // Remove id field for new options to let database auto-generate it
-          const { id, ...optionWithoutId } = opt;
-          return {
-            ...optionWithoutId,
-            sort_order: index,
-          };
-        })
-      );
-
-      if (error) {
-        Alert.alert('Error', 'Failed to save service options');
-        return;
-      }
-
-      Alert.alert('Success', 'Service options saved successfully!', [
-        { text: 'OK', onPress: () => {
-          setShowServiceOptionsInModal(false);
-          // Keep the saved options in state so they display in the service form
-          setServiceOptions(validOptions);
-        }}
-      ]);
-    } catch (error) {
-      console.error('Error saving service options:', error);
-      Alert.alert('Error', 'Failed to save service options');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const renderServiceOptionsView = () => {
-    if (loadingServiceOptions) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading options...</Text>
-        </View>
-      );
-    }
-
-    return (
-      <>
-        <View style={styles.infoSection}>
-          <Text style={styles.infoText}>
-            Add different variations of "{serviceForm.name || editingService?.name}" with specific pricing and duration.
-          </Text>
-        </View>
-
-        {serviceOptions.map((option, index) => (
-          <View key={index} style={styles.optionCard}>
-            <View style={styles.optionHeader}>
-              <Text style={styles.optionNumber}>Option {index + 1}</Text>
-              {serviceOptions.length > 1 && (
-                <TouchableOpacity
-                  onPress={() => handleDeleteServiceOption(index)}
-                  style={styles.deleteButton}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Option Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={option.option_name}
-                onChangeText={(text) => handleUpdateServiceOption(index, 'option_name', text)}
-                placeholder="e.g., Men's Hair Cut"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={option.option_description}
-                onChangeText={(text) => handleUpdateServiceOption(index, 'option_description', text)}
-                placeholder="Brief description"
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={2}
-              />
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, styles.flex1]}>
-                <Text style={styles.label}>Price (SEK)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={option.price.toString()}
-                  onChangeText={(text) => handleUpdateServiceOption(index, 'price', text)}
-                  placeholder="0"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
-                <Text style={styles.label}>Duration (min)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={option.duration.toString()}
-                  onChangeText={(text) => handleUpdateServiceOption(index, 'duration', text)}
-                  placeholder="30"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Active</Text>
-              <Switch
-                value={option.is_active}
-                onValueChange={(value) => handleUpdateServiceOption(index, 'is_active', value)}
-                trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                thumbColor={option.is_active ? '#F59E0B' : '#9CA3AF'}
-              />
-            </View>
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.addButton} onPress={handleAddServiceOption}>
-          <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
-          <Text style={styles.addButtonText}>Add Another Option</Text>
-        </TouchableOpacity>
-
-        <View style={styles.exampleSection}>
-          <Text style={styles.exampleTitle}>Examples:</Text>
-          <Text style={styles.exampleText}>
-            • Hair Cut: Child, Men's, Women's, Clipper{'\n'}
-            • Massage: 30min, 60min, 90min{'\n'}
-            • Cleaning: Basic, Deep, Move-in/out
-          </Text>
-        </View>
-      </>
-    );
-  };
 
   const saveService = async () => {
     console.log('💾 Saving service:', { serviceForm, editingService: editingService?.name || 'NEW' });
@@ -2139,6 +2053,10 @@ const ShopDetailsScreen: React.FC = () => {
           // Only refresh from database if it was actually saved to database (not fallback)
           if (!result.error?.includes('does not exist')) {
             await refreshShopData('after-save');
+            // Also reload services to ensure we have the latest data with correct field names
+            if (shop.id) {
+              await loadShopServices(shop.id);
+            }
           }
         } else {
           Alert.alert('Error', result.error || 'Failed to save service');
@@ -2175,23 +2093,7 @@ const ShopDetailsScreen: React.FC = () => {
     // Show success message with options info for new services
     const isNewService = !editingService;
     if (isNewService) {
-      Alert.alert(
-        'Service Added!', 
-        'Your service has been added successfully. You can now add service options like different variations or pricing tiers.',
-        [
-          { text: 'OK', style: 'default' },
-          { 
-            text: 'Add Options', 
-            onPress: () => {
-              // Navigate to service options screen
-              setTimeout(() => {
-                // Load and show service options in the same modal
-                navigateToServiceOptions();
-              }, 100);
-            }
-          }
-        ]
-      );
+      Alert.alert('Success', 'Service has been saved successfully!');
     }
 
     setShowServiceModal(false);
@@ -2945,8 +2847,8 @@ const ShopDetailsScreen: React.FC = () => {
       <View style={styles.formSection}>
         <Text style={styles.sectionTitle}>Current Schedule Overview</Text>
         <FriendlyScheduleDisplay 
-          businessHours={shop.business_hours || []}
-          specialDays={shop.special_days || []}
+          businessHours={shop?.business_hours || []}
+          specialDays={shop?.special_days || []}
         />
       </View>
 
@@ -2954,7 +2856,7 @@ const ShopDetailsScreen: React.FC = () => {
       <View style={styles.formSection}>
         <Text style={styles.sectionTitle}>Edit Business Hours</Text>
         
-        {(shop.business_hours || [])
+        {(shop?.business_hours || [])
           .filter((hours, index, self) => 
             // Remove duplicates by keeping only the first occurrence of each day
             index === self.findIndex(h => h.day === hours.day)
@@ -3165,11 +3067,11 @@ const ShopDetailsScreen: React.FC = () => {
               <View style={styles.serviceDetails}>
                 <View style={styles.serviceDetail}>
                   <Ionicons name="cash-outline" size={16} color="#10B981" />
-                  <Text style={styles.serviceDetailText}>${item.price}</Text>
+                  <Text style={styles.serviceDetailText}>${item.price || item.base_price || 0}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
                   <Ionicons name="time-outline" size={16} color="#6B7280" />
-                  <Text style={styles.serviceDetailText}>{item.duration} min</Text>
+                  <Text style={styles.serviceDetailText}>{item.duration || item.duration_minutes || 0} min</Text>
                 </View>
                 <View style={styles.serviceDetail}>
                   <View style={[
@@ -3204,112 +3106,156 @@ const ShopDetailsScreen: React.FC = () => {
     </View>
   );
 
-  const renderStaff = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Staff Members</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => openStaffModal()}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+  const renderStaff = () => {
+    try {
+      console.log('🔍 Rendering staff tab with data:', shop.staff);
+      console.log('🔍 Staff count:', shop.staff?.length || 0);
+      
+      if (shop.staff && !Array.isArray(shop.staff)) {
+        console.error('❌ Staff is not an array:', typeof shop.staff, shop.staff);
+        return (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Staff Members</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateTitle}>Invalid staff data</Text>
+              <Text style={styles.emptyStateDescription}>Please refresh the page</Text>
+            </View>
+          </View>
+        );
+      }
+      
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Staff Members</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => openStaffModal()}
+            >
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
 
-      {isRefreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading staff...</Text>
-        </View>
-      ) : shop.staff && shop.staff.length > 0 ? (
-        <FlatList
-          data={shop.staff}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.staffCard}>
-              <View style={styles.staffHeader}>
-                <View style={styles.staffAvatar}>
-                  {getSafeAvatarUrl(item.avatar_url) ? (
-                    <Image 
-                      key={`staff-${item.id}-${getSafeAvatarUrl(item.avatar_url)}-${avatarRefresh}`}
-                      source={{ uri: appendTimestamp(getSafeAvatarUrl(item.avatar_url)!, avatarRefresh) }} 
-                      style={styles.avatarImage} 
-                      onError={(e) => console.error('❌ Staff avatar failed to load:', e.nativeEvent.error)}
-                    />
-                  ) : (
-                    <Ionicons name="person" size={24} color="#6B7280" />
-                  )}
-                </View>
-                <View style={styles.staffInfo}>
-                  <Text style={styles.staffName}>{item.name}</Text>
-                  <Text style={styles.staffRole}>{item.role}</Text>
-                  <Text style={styles.staffContact}>{item.email}</Text>
-                </View>
-                <View style={styles.staffActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => openStaffModal(item)}
-                  >
-                    <Ionicons name="create-outline" size={18} color="#F59E0B" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => deleteStaff(item.id)}
-                  >
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              {item.specialties && item.specialties.length > 0 && (
-                <View style={styles.specialties}>
-                  <Text style={styles.specialtiesLabel}>Specialties:</Text>
-                  <View style={styles.specialtyTags}>
-                    {item.specialties.filter(specialty => specialty && specialty.trim()).map((specialty, index) => (
-                      <View key={index} style={styles.specialtyTag}>
-                        <Text style={styles.specialtyText}>{specialty}</Text>
+          {isRefreshing ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#F59E0B" />
+              <Text style={styles.loadingText}>Loading staff...</Text>
+            </View>
+          ) : shop.staff && shop.staff.length > 0 ? (
+            <View>
+              {shop.staff.map((item, index) => {
+                // Skip invalid items
+                if (!item || typeof item !== 'object') {
+                  console.error('❌ Invalid staff item:', item);
+                  return null;
+                }
+            
+                // Ensure all fields are safe strings
+                const safeName = String(item.name || 'Unnamed Staff');
+                const safeRole = String(item.role || 'No Role');
+                const safeEmail = String(item.email || 'No Email');
+                const safeId = String(item.id || index);
+                
+                return (
+                  <View key={safeId} style={styles.staffCard}>
+                    <View style={styles.staffHeader}>
+                      <View style={styles.staffAvatar}>
+                        <Ionicons name="person" size={24} color="#6B7280" />
                       </View>
-                    ))}
+                      <View style={styles.staffInfo}>
+                        <Text style={styles.staffName}>{safeName}</Text>
+                        <Text style={styles.staffRole}>{safeRole}</Text>
+                        <Text style={styles.staffContact}>{safeEmail}</Text>
+                      </View>
+                      <View style={styles.staffActions}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => openStaffModal(item)}
+                        >
+                          <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => deleteStaff(safeId)}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    {/* Commented out complex rendering for now
+                    {item.specialties && Array.isArray(item.specialties) && item.specialties.length > 0 && (
+                      <View style={styles.specialties}>
+                        <Text style={styles.specialtiesLabel}>Specialties:</Text>
+                        <View style={styles.specialtyTags}>
+                          {item.specialties.filter(s => s && typeof s === 'string').map((specialty, idx) => (
+                            <View key={idx} style={styles.specialtyTag}>
+                              <Text style={styles.specialtyText}>{String(specialty)}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                    
+                    {item.bio && typeof item.bio === 'string' && (
+                      <Text style={styles.staffBio}>{item.bio}</Text>
+                    )}
+                    
+                    <View style={styles.staffDetails}>
+                      {item.experience_years && Number(item.experience_years) > 0 && (
+                        <View style={styles.staffDetail}>
+                          <Ionicons name="star-outline" size={16} color="#F59E0B" />
+                          <Text style={styles.staffDetailText}>{Number(item.experience_years)} years exp.</Text>
+                        </View>
+                      )}
+                      <View style={styles.staffDetail}>
+                        <View style={[
+                          styles.statusDot,
+                          { backgroundColor: item.is_active ? '#10B981' : '#EF4444' }
+                        ]} />
+                        <Text style={styles.staffDetailText}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </Text>
+                      </View>
+                    </View>
+                    */}
+                    
+                    {/* Simple status display */}
+                    <View style={styles.staffDetails}>
+                      <View style={styles.staffDetail}>
+                        <Text style={styles.staffDetailText}>
+                          Status: {item.is_active ? 'Active' : 'Inactive'}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              )}
-              
-              {item.bio && (
-                <Text style={styles.staffBio}>{item.bio}</Text>
-              )}
-              
-              <View style={styles.staffDetails}>
-                {item.experience_years && item.experience_years > 0 && (
-                  <View style={styles.staffDetail}>
-                    <Ionicons name="star-outline" size={16} color="#F59E0B" />
-                    <Text style={styles.staffDetailText}>{item.experience_years} years exp.</Text>
-                  </View>
-                )}
-                <View style={styles.staffDetail}>
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: item.is_active ? '#10B981' : '#EF4444' }
-                  ]} />
-                  <Text style={styles.staffDetailText}>
-                    {item.is_active ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
-              </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={48} color="#D1D5DB" />
+              <Text style={styles.emptyStateTitle}>No Staff Members Added</Text>
+              <Text style={styles.emptyStateDescription}>
+                Add staff members to assign them to services and manage your team
+              </Text>
             </View>
           )}
-          scrollEnabled={false}
-        />
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={48} color="#D1D5DB" />
-          <Text style={styles.emptyStateTitle}>No Staff Members Added</Text>
-          <Text style={styles.emptyStateDescription}>
-            Add staff members to assign them to services and manage your team
-          </Text>
         </View>
-      )}
-    </View>
-  );
+      );
+    } catch (error) {
+      console.error('❌ Error rendering staff section:', error);
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Staff Members</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>Error loading staff</Text>
+            <Text style={styles.emptyStateDescription}>Please try refreshing the page</Text>
+          </View>
+        </View>
+      );
+    }
+  };
 
   const renderDiscounts = () => (
     <View style={styles.section}>
@@ -4017,33 +3963,15 @@ const ShopDetailsScreen: React.FC = () => {
         >
           <View style={styles.fullScreenContent}>
             <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                {showServiceOptionsInModal && (
-                  <TouchableOpacity 
-                    onPress={() => setShowServiceOptionsInModal(false)}
-                    style={styles.backButton}
-                  >
-                    <Ionicons name="arrow-back" size={24} color="#1F2937" />
-                  </TouchableOpacity>
-                )}
-              </View>
               <Text style={styles.modalTitle}>
-                {showServiceOptionsInModal 
-                  ? 'Service Options' 
-                  : (editingService ? 'Edit Service' : 'Add Service')}
+                {editingService ? 'Edit Service' : 'Add Service'}
               </Text>
-              <TouchableOpacity onPress={() => {
-                setShowServiceModal(false);
-                setShowServiceOptionsInModal(false);
-                setServiceOptions([]); // Clear options when closing
-              }}>
+              <TouchableOpacity onPress={() => setShowServiceModal(false)}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
             
             <ScrollView style={styles.modalBody}>
-              {!showServiceOptionsInModal ? (
-                <>
                   {/* Service Form View */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Service Name *</Text>
@@ -4216,50 +4144,6 @@ const ShopDetailsScreen: React.FC = () => {
                     Add different variations of this service (e.g., Men's Cut, Women's Cut, etc.)
                   </Text>
                   
-                  <TouchableOpacity
-                    style={styles.manageOptionsButton}
-                    onPress={() => {
-                      console.log('🔧 Navigating to service options for:', serviceForm.name);
-                      navigateToServiceOptions();
-                    }}
-                  >
-                    <Ionicons name="options-outline" size={20} color="#F59E0B" />
-                    <Text style={styles.manageOptionsText}>Manage Service Options</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
-                  </TouchableOpacity>
-
-                  {/* Display existing service options */}
-                  {serviceOptions.length > 0 && (
-                    <View style={styles.optionsListContainer}>
-                      <Text style={styles.optionsListTitle}>Current Options:</Text>
-                      {serviceOptions.map((option, index) => (
-                        <View key={index} style={styles.optionListItem}>
-                          <View style={styles.optionListContent}>
-                            <Text style={styles.optionListName}>
-                              {option.option_name || `Option ${index + 1}`}
-                            </Text>
-                            <View style={styles.optionListDetails}>
-                              <Text style={styles.optionListPrice}>
-                                {option.price} SEK
-                              </Text>
-                              <Text style={styles.optionListDuration}>
-                                • {option.duration} min
-                              </Text>
-                            </View>
-                          </View>
-                          {option.is_active ? (
-                            <View style={styles.activeIndicator}>
-                              <Text style={styles.activeText}>Active</Text>
-                            </View>
-                          ) : (
-                            <View style={styles.inactiveIndicator}>
-                              <Text style={styles.inactiveText}>Inactive</Text>
-                            </View>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  )}
                 </View>
               )}
 
@@ -4277,39 +4161,21 @@ const ShopDetailsScreen: React.FC = () => {
                   thumbColor={serviceForm.is_active ? '#F59E0B' : '#9CA3AF'}
                 />
               </View>
-                </>
-              ) : (
-                <>
-                  {/* Service Options View */}
-                  {renderServiceOptionsView()}
-                </>
-              )}
             </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => {
-                  if (showServiceOptionsInModal) {
-                    setShowServiceOptionsInModal(false);
-                  } else {
-                    setShowServiceModal(false);
-                    setServiceOptions([]); // Clear options when closing
-                  }
-                }}
+                onPress={() => setShowServiceModal(false)}
               >
-                <Text style={styles.cancelButtonText}>
-                  {showServiceOptionsInModal ? 'Back' : 'Cancel'}
-                </Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveModalButton}
-                onPress={showServiceOptionsInModal ? saveServiceOptions : saveService}
+                onPress={saveService}
               >
                 <Text style={styles.saveModalButtonText}>
-                  {showServiceOptionsInModal 
-                    ? 'Save Options' 
-                    : (editingService ? 'Update' : 'Add') + ' Service'}
+                  {editingService ? 'Update' : 'Add'} Service
                 </Text>
               </TouchableOpacity>
             </View>
@@ -4616,7 +4482,7 @@ const ShopDetailsScreen: React.FC = () => {
                   <View style={styles.currentSpecialties}>
                     <Text style={styles.currentSpecialtiesLabel}>Current Specialties:</Text>
                     <View style={styles.specialtyTags}>
-                      {staffForm.specialties.filter(specialty => specialty && specialty.trim()).map((specialty, index) => (
+                      {(staffForm.specialties || []).filter(specialty => specialty && specialty.trim()).map((specialty, index) => (
                         <View key={index} style={styles.specialtyTagWithRemove}>
                           <Text style={styles.specialtyText}>{specialty}</Text>
                           <TouchableOpacity
@@ -5523,10 +5389,10 @@ const ShopDetailsScreen: React.FC = () => {
             ? specialDayTimeType === 'open' 
               ? specialDayForm.openTime || '09:00'
               : specialDayForm.closeTime || '17:00'
-            : editingTimeSlot && shop.business_hours.find(h => h.day === editingTimeSlot.day)
+            : editingTimeSlot && shop?.business_hours?.find(h => h.day === editingTimeSlot.day)
               ? editingTimeSlot.type === 'open'
-                ? shop.business_hours.find(h => h.day === editingTimeSlot.day)?.openTime
-                : shop.business_hours.find(h => h.day === editingTimeSlot.day)?.closeTime
+                ? shop?.business_hours?.find(h => h.day === editingTimeSlot.day)?.openTime
+                : shop?.business_hours?.find(h => h.day === editingTimeSlot.day)?.closeTime
               : '09:00'
         }
         title={editingTimeSlot ? `Select ${editingTimeSlot.type === 'open' ? 'Opening' : 'Closing'} Time for ${editingTimeSlot.day}` : 'Select Time'}
@@ -5548,10 +5414,10 @@ const ShopDetailsScreen: React.FC = () => {
                     ? specialDayTimeType === 'open' 
                       ? specialDayForm.openTime || '09:00'
                       : specialDayForm.closeTime || '17:00'
-                    : editingTimeSlot && shop.business_hours.find(h => h.day === editingTimeSlot.day)
+                    : editingTimeSlot && shop?.business_hours?.find(h => h.day === editingTimeSlot.day)
                       ? editingTimeSlot.type === 'open'
-                        ? shop.business_hours.find(h => h.day === editingTimeSlot.day)?.openTime
-                        : shop.business_hours.find(h => h.day === editingTimeSlot.day)?.closeTime
+                        ? shop?.business_hours?.find(h => h.day === editingTimeSlot.day)?.openTime
+                        : shop?.business_hours?.find(h => h.day === editingTimeSlot.day)?.closeTime
                       : '09:00'
                 }
                 onChange={(e) => {

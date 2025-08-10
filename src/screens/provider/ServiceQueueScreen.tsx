@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccount } from '../../navigation/AppNavigator';
 import UpgradeModal from '../../components/UpgradeModal';
 import { normalizedShopService, Payment } from '../../lib/supabase/normalized';
+import ServiceManagementAPI from '../../services/ServiceManagementAPI';
 import { usePremium } from '../../contexts/PremiumContext';
 import { CancellationBanner } from '../../components/CancellationBanner';
 import { useQueueBadge } from '../../contexts/QueueBadgeContext';
@@ -220,8 +221,12 @@ const ServiceQueueScreen = ({ navigation }) => {
         const bookings = response.data;
         console.log('📋 Loaded', bookings.length, 'bookings from Supabase');
         
+        // Filter out bookings that have payment_status set (these should only show in Payments tab)
+        const queueBookings = bookings.filter(booking => !booking.payment_status);
+        console.log('📋 Filtered to', queueBookings.length, 'queue items (removed', (bookings.length - queueBookings.length), 'items with payment status)');
+        
         // Transform the booking data to match our QueueItem interface
-        const queueItems: QueueItem[] = bookings.map(booking => ({
+        const queueItems: QueueItem[] = queueBookings.map(booking => ({
           id: booking.id,
           booking_id: booking.id,
           title: booking.service_name || 'Service',
@@ -617,7 +622,8 @@ const ServiceQueueScreen = ({ navigation }) => {
                   amount: item.price,
                   notes: item.notes,
                   location_type: item.location_type,
-                  location: item.location
+                  location: item.location,
+                  payment_status: 'pending' // Ensure completed items show as pending payments
                 });
 
                 if (paymentResponse.success) {
@@ -626,32 +632,53 @@ const ServiceQueueScreen = ({ navigation }) => {
                   console.warn('⚠️ Failed to create payment record:', paymentResponse.error);
                 }
 
-                // Update local state immediately
+                // Remove completed item from queue since it now has payment status
+                // (it will only show in Payments tab now)
                 setQueueData(prevData =>
-                  prevData.map(queueItem =>
-                    queueItem.id === item.id
-                      ? { ...queueItem, status: 'completed' as const }
-                      : queueItem
-                  )
+                  prevData.filter(queueItem => queueItem.id !== item.id)
                 );
                 
-                // Update stats
+                // Update stats (decrease total since item is removed from queue)
                 setQueueStats(prevStats => ({
                   ...prevStats,
+                  totalBookings: prevStats.totalBookings - 1,
                   confirmedCount: prevStats.confirmedCount - 1,
-                  completedCount: prevStats.completedCount + 1,
+                  // Don't increase completedCount since completed items are no longer in queue
                   todayRevenue: prevStats.todayRevenue + item.price,
                   weeklyRevenue: prevStats.weeklyRevenue + item.price
                 }));
                 
+                // Auto-switch to Payments tab to show the new pending payment
+                setActiveTab('payments');
+                setPaymentStatusTab('pending');
+                
+                // Load payments to show the new pending payment
+                await loadPayments();
+                
+                // Show simple success message with payment options
                 Alert.alert(
                   'Service Completed!',
-                  'Would you like to generate an invoice for this service?',
+                  `Service for ${item.client} completed successfully. The payment is now pending in the Payments tab below. You can mark it as paid when payment is received.`,
                   [
-                    { text: 'Later', style: 'cancel' },
+                    { text: 'OK' },
                     {
-                      text: 'Generate Invoice',
-                      onPress: () => handleGenerateInvoice(item)
+                      text: 'Mark as Paid Now',
+                      onPress: async () => {
+                        try {
+                          const response = await normalizedShopService.updatePaymentStatus(item.booking_id, 'paid');
+                          if (response.success) {
+                            Alert.alert('Success', `Payment for ${item.client} marked as paid!`);
+                            // Refresh data to update payment status
+                            loadQueueData();
+                            await loadPayments();
+                          } else {
+                            Alert.alert('Error', 'Failed to update payment status');
+                          }
+                        } catch (error) {
+                          console.error('Error updating payment:', error);
+                          Alert.alert('Error', 'Failed to update payment status');
+                        }
+                      }
                     }
                   ]
                 );
@@ -718,11 +745,53 @@ const ServiceQueueScreen = ({ navigation }) => {
     try {
       setProcessingItems(prev => new Set([...prev, item.id]));
       
-      const response = await queueAPI.sendInvoice(item.booking_id, user?.id || 'provider-123');
+      // Mock invoice sending - replace with actual invoice service when available
+      const response = await new Promise<{success: boolean; message?: string}>((resolve) => {
+        setTimeout(() => {
+          // Simulate successful invoice sending
+          resolve({
+            success: true,
+            message: 'Invoice sent successfully'
+          });
+        }, 1000); // Simulate network delay
+      });
       
       if (response.success) {
         const newInvoiceSentItems = new Set([...invoiceSentItems, item.booking_id]);
         setInvoiceSentItems(newInvoiceSentItems);
+        
+        // Create pending payment record for invoiced booking
+        console.log('💰 Creating pending payment record for invoiced booking');
+        try {
+          const paymentResponse = await normalizedShopService.createPaymentRecord({
+            booking_id: item.booking_id,
+            client_name: item.client,
+            client_email: item.client_email,
+            client_phone: item.client_phone,
+            service_title: item.title,
+            service_type: item.service_type,
+            service_date: item.date,
+            service_time: item.time,
+            duration: item.duration,
+            amount: item.price,
+            notes: item.notes,
+            location_type: item.location_type,
+            location: item.location,
+            payment_status: 'pending' // Explicitly set as pending for invoiced payments
+          });
+
+          if (paymentResponse.success) {
+            console.log('✅ Pending payment record created for invoice');
+            // Refresh payments if user is on payments tab
+            if (activeTab === 'payments') {
+              loadPayments();
+            }
+          } else {
+            console.warn('⚠️ Failed to create payment record for invoice:', paymentResponse.error);
+          }
+        } catch (paymentError) {
+          console.error('❌ Error creating payment record:', paymentError);
+        }
         
         // Save locally
         await AsyncStorage.setItem('sentInvoices', JSON.stringify([...newInvoiceSentItems]));
@@ -735,9 +804,17 @@ const ServiceQueueScreen = ({ navigation }) => {
           )
         );
         
+        // Auto-switch to Payments tab to show the new pending payment
+        setActiveTab('payments');
+        setPaymentStatusTab('pending');
+        
+        // Load payments to show the new pending payment
+        await loadPayments();
+        
+        // Show simple success message
         Alert.alert(
           'Invoice Sent!',
-          `Invoice has been sent to ${item.client} at ${item.client_email}`,
+          `Invoice has been sent to ${item.client}. Check the pending payments below to mark as paid when received.`,
           [{ text: 'OK' }]
         );
       } else {

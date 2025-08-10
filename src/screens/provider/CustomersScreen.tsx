@@ -136,21 +136,79 @@ const CustomersScreen: React.FC = () => {
     },
   ];
 
-  // Load customers data
+  // Load customers data from real bookings
   const loadCustomers = useCallback(async () => {
     try {
       setIsLoading(true);
-      // TODO: Replace with real API call
-      // const response = await normalizedShopService.getCustomers(userProfile?.id);
+      console.log('📋 Loading real customer data from bookings...');
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get all bookings for this provider
+      const response = await normalizedShopService.getBookings(userProfile?.id);
       
-      setCustomers(mockCustomers);
-      setFilteredCustomers(mockCustomers);
+      if (response.success && response.data) {
+        const bookings = response.data;
+        console.log('📋 Found', bookings.length, 'bookings to extract customers from');
+        
+        // Create customer map to aggregate data
+        const customerMap = new Map<string, Customer>();
+        
+        bookings.forEach(booking => {
+          // Use phone as unique identifier since email might be missing
+          const customerId = booking.customer_phone || booking.customer_email || `customer_${booking.id}`;
+          
+          if (!customerMap.has(customerId)) {
+            // Create new customer entry
+            customerMap.set(customerId, {
+              id: customerId,
+              name: booking.customer_name || 'Unknown Customer',
+              email: booking.customer_email || '',
+              phone: booking.customer_phone || '',
+              totalBookings: 0,
+              totalSpent: 0,
+              lastBooking: booking.booking_date,
+              status: 'active',
+              joinDate: booking.booking_date, // Use first booking as join date
+            });
+          }
+          
+          const customer = customerMap.get(customerId)!;
+          
+          // Update customer statistics
+          customer.totalBookings += 1;
+          
+          // Add to total spent if payment status is paid
+          if (booking.payment_status === 'paid') {
+            customer.totalSpent += booking.total_amount || 0;
+          }
+          
+          // Update last booking date if this booking is more recent
+          if (new Date(booking.booking_date) > new Date(customer.lastBooking)) {
+            customer.lastBooking = booking.booking_date;
+          }
+          
+          // Update join date if this booking is earlier
+          if (new Date(booking.booking_date) < new Date(customer.joinDate)) {
+            customer.joinDate = booking.booking_date;
+          }
+        });
+        
+        const realCustomers = Array.from(customerMap.values());
+        console.log('👥 Extracted', realCustomers.length, 'unique customers');
+        
+        setCustomers(realCustomers);
+        setFilteredCustomers(realCustomers);
+      } else {
+        console.log('❌ Failed to load bookings:', response.error);
+        // Fallback to empty array instead of mock data
+        setCustomers([]);
+        setFilteredCustomers([]);
+      }
     } catch (error) {
       console.error('Error loading customers:', error);
       Alert.alert('Error', 'Failed to load customers');
+      // Fallback to empty array instead of mock data
+      setCustomers([]);
+      setFilteredCustomers([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

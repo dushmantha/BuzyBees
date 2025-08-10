@@ -481,36 +481,24 @@ class IntegratedShopService {
         } catch (error: any) {
           console.error('❌ All upload methods failed:', error);
           
-          // Check if it's a bucket issue
-          if (error.message?.includes('bucket') || error.message?.includes('not found')) {
-            console.error('🪣 Storage bucket missing. Please create buckets manually:');
-            console.error('🔧 Go to Supabase Dashboard > Storage');
-            console.error('🔧 Create bucket: "shop-images" (public)');
-            console.error('🔧 Create bucket: "user-avatars" (public)');
-            console.error('🔧 Or run: storage_setup_user_safe.sql');
-            
-            return {
-              success: false,
-              error: 'Storage buckets missing. Please create "shop-images" and "user-avatars" buckets in Supabase Dashboard > Storage (make them public)'
-            };
-          }
+          // Always use local URI as fallback for development/testing
+          console.warn('⚠️ Upload failed, using local URI as fallback for development');
+          console.warn('⚠️ Error:', error.message || 'Network request failed');
+          console.warn('⚠️ This is temporary - images will not persist across app restarts');
+          console.warn('⚠️ To fix: Create storage buckets or check network connection');
           
-          // Fallback: For development, allow local images to be used temporarily
           if (localUri.startsWith('file://')) {
-            console.warn('⚠️ Upload failed, using local URI as fallback for development');
-            console.warn('⚠️ This is temporary - images will not persist across app restarts');
-            console.warn('⚠️ Please create the required storage buckets for production use');
-            
             return {
               success: true,
               data: localUri, // Return the local URI as fallback
-              warning: 'Using local image (temporary). Create storage buckets for persistence.'
+              warning: 'Using local image (temporary). Upload failed due to network or storage issues.'
             };
           }
           
+          // If it's not a local URI, we can't do much
           return {
             success: false,
-            error: `Upload failed: ${error.message || 'Unknown error'}`
+            error: `Image upload failed: ${error.message || 'Network request failed'}. Please check your internet connection or create storage buckets.`
           };
         }
       } else {

@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import mockService from '../services/api/mock/index';
 import { useAuth } from '../context/AuthContext';
+import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -446,7 +447,14 @@ const BookingsScreen = () => {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const userId = user?.id || '1';
+  // Utility function to check if string is valid UUID
+  const isValidUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Generate a valid UUID for demo purposes if no real user ID
+  const userId = user?.id && isValidUUID(user.id) ? user.id : '550e8400-e29b-41d4-a716-446655440000';
 
   // Single API service function for comprehensive booking data
   const apiService = {
@@ -655,7 +663,8 @@ const BookingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await apiService.cancelBooking(bookingId);
+              // Use real bookingsAPI to cancel booking
+              const response = await bookingsAPI.cancelBooking(bookingId);
               
               if (!response.success) {
                 Alert.alert('Error', response.error || 'Failed to cancel booking');
@@ -695,14 +704,41 @@ const BookingsScreen = () => {
       setIsLoading(true);
       setError(null);
       
-      const response = await apiService.getBookingsData(userId);
+      console.log('📅 Fetching bookings for user:', userId);
+      console.log('🔍 User ID is valid UUID:', isValidUUID(userId));
+      console.log('👤 Auth user:', user?.id || 'No user');
+      
+      // Use real bookingsAPI to fetch from Supabase
+      const response = await bookingsAPI.getCustomerBookings(userId);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to load bookings');
       }
       
-      if (response.data.bookings) {
-        const processedBookings = response.data.bookings.map(processBookingMemoized);
+      if (response.data && response.data.length > 0) {
+        console.log('✅ Found', response.data.length, 'bookings');
+        
+        // Convert Supabase booking format to component format
+        const processedBookings = response.data.map(booking => ({
+          id: booking.id,
+          service: booking.service_names || 'Service',
+          date: new Date(booking.booking_date).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short', 
+            day: 'numeric'
+          }),
+          time: booking.start_time,
+          professional: booking.staff_names || 'Staff Member',
+          salon: booking.shop_name || 'Salon',
+          price: booking.total_price,
+          status: booking.status === 'confirmed' ? 'Confirmed' : 
+                 booking.status === 'completed' ? 'Completed' :
+                 booking.status === 'cancelled' ? 'Cancelled' : 'Pending',
+          originalDate: new Date(`${booking.booking_date}T${booking.start_time}`),
+          duration: booking.duration || 60,
+          image: booking.shop_image_url || 'https://via.placeholder.com/150',
+          notes: booking.notes || ''
+        }));
         
         const now = new Date();
         const upcoming = processedBookings.filter(b => 
@@ -717,6 +753,10 @@ const BookingsScreen = () => {
         
         setUpcomingBookings(upcoming);
         setPastBookings(past);
+      } else {
+        console.log('📅 No bookings found for user');
+        setUpcomingBookings([]);
+        setPastBookings([]);
       }
     } catch (err) {
       console.error('Error fetching bookings:', err);

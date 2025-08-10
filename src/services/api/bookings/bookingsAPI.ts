@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase/normalized';
+import { normalizedShopService, supabase } from '../../../lib/supabase/normalized';
 
 export interface BookingService {
   id: string;
@@ -50,45 +50,56 @@ class BookingsAPI {
     try {
       console.log('📅 Creating booking:', bookingData);
 
-      // Skip conflict check for now - implement later
-      // const conflictCheck = await this.checkBookingConflict(
-      //   bookingData.staff_id,
-      //   bookingData.booking_date,
-      //   bookingData.start_time,
-      //   bookingData.end_time
-      // );
-
-      // if (conflictCheck.data) {
-      //   return {
-      //     data: null,
-      //     error: 'This time slot conflicts with an existing booking',
-      //     success: false
-      //   };
-      // }
-
-      const { data, error } = await supabase
-        .from('shop_bookings')
-        .insert([{
-          ...bookingData,
-          status: 'confirmed',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Booking creation error:', error);
+      // Transform old booking format to new format
+      const firstService = bookingData.services?.[0];
+      const totalDuration = bookingData.services?.reduce((sum, service) => sum + service.duration, 0) || 60;
+      
+      console.log('🔍 Booking services array:', bookingData.services);
+      console.log('🔍 First service:', firstService);
+      console.log('🔍 First service ID:', firstService?.id);
+      
+      if (!firstService?.id) {
+        console.error('❌ No valid service ID found in booking data');
         return {
           data: null,
-          error: error.message,
+          error: 'No service selected. Please select a service before booking.',
+          success: false
+        };
+      }
+      
+      const transformedBookingData = {
+        shop_id: bookingData.shop_id,
+        service_id: firstService.id, // Use first service as the primary service
+        assigned_staff_id: bookingData.staff_id,
+        customer_name: 'Customer', // Default name - should come from auth
+        customer_phone: 'N/A', // Default phone - should come from user profile
+        customer_email: undefined,
+        booking_date: bookingData.booking_date,
+        start_time: bookingData.start_time,
+        end_time: bookingData.end_time,
+        duration_minutes: totalDuration,
+        service_price: firstService?.price || 0,
+        total_amount: bookingData.total_price,
+        service_name: firstService?.name || 'Service',
+        notes: bookingData.notes,
+        timezone: 'UTC'
+      };
+
+      // Use the new normalized service method
+      const response = await normalizedShopService.createBooking(transformedBookingData);
+      
+      if (!response.success) {
+        console.error('❌ Booking creation error:', response.error);
+        return {
+          data: null,
+          error: response.error,
           success: false
         };
       }
 
-      console.log('✅ Booking created successfully:', data);
+      console.log('✅ Booking created successfully:', response.data);
       return {
-        data,
+        data: response.data,
         error: null,
         success: true
       };

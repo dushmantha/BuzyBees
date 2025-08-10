@@ -28,8 +28,6 @@ const EarningsScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { isPremium, isLoading: premiumLoading } = usePremium();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [showFilterModal, setShowFilterModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // API data states
@@ -46,32 +44,46 @@ const EarningsScreen = ({ navigation }) => {
   const getDateRange = (period) => {
     const now = new Date();
     const startDate = new Date();
+    let endDate = new Date();
     
     switch (period) {
       case 'week':
         const dayOfWeek = now.getDay() || 7;
         startDate.setDate(now.getDate() - dayOfWeek + 1);
         startDate.setHours(0, 0, 0, 0);
+        // End of week
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
         break;
         
       case 'month':
         startDate.setDate(1);
         startDate.setHours(0, 0, 0, 0);
+        // End of month
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate.setHours(23, 59, 59, 999);
         break;
         
       case 'year':
         startDate.setMonth(0, 1);
         startDate.setHours(0, 0, 0, 0);
+        // End of year
+        endDate = new Date(now.getFullYear(), 11, 31);
+        endDate.setHours(23, 59, 59, 999);
         break;
         
       default:
         startDate.setDate(1);
         startDate.setHours(0, 0, 0, 0);
+        // End of month
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate.setHours(23, 59, 59, 999);
     }
     
     return {
       startDate: startDate.toISOString().split('T')[0],
-      endDate: now.toISOString().split('T')[0]
+      endDate: endDate.toISOString().split('T')[0]
     };
   };
 
@@ -95,30 +107,45 @@ const EarningsScreen = ({ navigation }) => {
         // Use the payment data directly from response
         const payments = response.data || [];
         console.log('📋 Found', payments.length, 'payments');
+        // Debug payment status breakdown
+        console.log('📋 Payment status breakdown:', payments.reduce((acc, p) => {
+          acc[p.payment_status || 'null'] = (acc[p.payment_status || 'null'] || 0) + 1;
+          return acc;
+        }, {}));
         
         // Calculate total for selected period
-        const totalForPeriod = payments
-          .filter(p => p.payment_status === 'paid')
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+        const paidPayments = payments.filter(p => p.payment_status === 'paid');
+        console.log('💰 Paid payments:', paidPayments.length, 'out of', payments.length);
+        
+        const totalForPeriod = paidPayments.reduce((sum, payment) => {
+            const amount = Number(payment.amount) || 0;
+            return sum + amount;
+          }, 0);
           
         // Calculate this month and this week totals
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Use same week calculation as getDateRange to ensure consistency
+        const dayOfWeek = now.getDay() || 7;
         const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
+        startOfWeek.setHours(0, 0, 0, 0);
         
         const thisMonthTotal = payments
-          .filter(p => p.payment_status === 'paid' && new Date(p.service_date) >= startOfMonth)
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          .filter(p => p.payment_status === 'paid' && new Date(p.service_date || p.booking_date) >= startOfMonth)
+          .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
           
         const thisWeekTotal = payments
-          .filter(p => p.payment_status === 'paid' && new Date(p.service_date) >= startOfWeek)
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          .filter(p => p.payment_status === 'paid' && new Date(p.service_date || p.booking_date) >= startOfWeek)
+          .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
           
         const pendingTotal = payments
           .filter(p => p.payment_status === 'pending')
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+          .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
           
+        console.log('💵 Week calculation - API date range:', startDate, 'to', endDate);
+        console.log('💵 Week calculation - JS startOfWeek:', startOfWeek.toISOString().split('T')[0]);
         console.log('💵 Totals - Period:', totalForPeriod, 'Month:', thisMonthTotal, 'Week:', thisWeekTotal, 'Pending:', pendingTotal);
         
         setEarningsData({
@@ -158,18 +185,14 @@ const EarningsScreen = ({ navigation }) => {
     }
   };
 
-  const fetchTransactions = async (period, filter = 'all') => {
+  const fetchTransactions = async (period) => {
     try {
       const { startDate, endDate } = getDateRange(period);
       
-      console.log('🔄 Fetching transactions for period:', period, 'with filter:', filter);
+      console.log('🔄 Fetching transactions for period:', period);
       
-      // Get payments from Supabase based on filter
-      let status = undefined;
-      if (filter === 'completed') status = 'paid';
-      if (filter === 'pending') status = 'pending';
-      
-      const response = await normalizedShopService.getPayments(undefined, status, startDate, endDate);
+      // Get all payments from Supabase
+      const response = await normalizedShopService.getPayments(undefined, undefined, startDate, endDate);
       
       console.log('📄 Transactions response:', response.success ? 'Success' : 'Failed', response.data?.length || 0, 'transactions');
       
@@ -179,8 +202,8 @@ const EarningsScreen = ({ navigation }) => {
           id: payment.id,
           client: payment.client_name || 'Unknown Client',
           service: payment.service_title || 'Service',
-          amount: parseFloat(payment.amount) || 0,
-          date: payment.service_date,
+          amount: Number(payment.amount) || 0,
+          date: payment.service_date || payment.booking_date,
           status: payment.payment_status === 'paid' ? 'completed' : 'pending',
           category: payment.service_type?.toLowerCase() || 'other',
           bookingId: payment.booking_id,
@@ -190,12 +213,6 @@ const EarningsScreen = ({ navigation }) => {
           notes: payment.notes
         }));
         
-        // Apply category filter if needed
-        if (filter !== 'all' && filter !== 'completed' && filter !== 'pending') {
-          transformedTransactions = transformedTransactions.filter(transaction => 
-            transaction.category === filter
-          );
-        }
         
         // Sort by date (newest first)
         transformedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -222,8 +239,18 @@ const EarningsScreen = ({ navigation }) => {
       console.log('📊 Monthly data response:', response.success ? 'Success' : 'Failed', response.data?.length || 0, 'payments');
       
       if (response.success && response.data && response.data.length > 0) {
+        console.log('📊 All monthly payments:', response.data.length);
+        console.log('📊 Monthly payment statuses:', response.data.reduce((acc, p) => {
+          acc[p.payment_status || 'null'] = (acc[p.payment_status || 'null'] || 0) + 1;
+          return acc;
+        }, {}));
+        
         const payments = response.data.filter(p => p.payment_status === 'paid');
         console.log('💰 Paid payments for breakdown:', payments.length);
+        
+        // Also check for payments with any payment status (for debugging)
+        const paymentsWithStatus = response.data.filter(p => p.payment_status);
+        console.log('💰 Payments with any status:', paymentsWithStatus.length);
         
         let groupedData = [];
         
@@ -248,9 +275,9 @@ const EarningsScreen = ({ navigation }) => {
             
             // Group payments by day
             payments.forEach(payment => {
-              const paymentDate = payment.service_date;
+              const paymentDate = payment.service_date || payment.booking_date;
               if (dailyData[paymentDate]) {
-                dailyData[paymentDate].amount += parseFloat(payment.amount);
+                dailyData[paymentDate].amount += Number(payment.amount) || 0;
                 dailyData[paymentDate].jobs += 1;
               }
             });
@@ -279,7 +306,7 @@ const EarningsScreen = ({ navigation }) => {
             const currentYear = new Date().getFullYear();
             
             const monthlyPayments = payments.filter(payment => {
-              const paymentDate = new Date(payment.service_date);
+              const paymentDate = new Date(payment.service_date || payment.booking_date);
               return paymentDate.getMonth() === currentMonth && 
                      paymentDate.getFullYear() === currentYear;
             });
@@ -287,7 +314,7 @@ const EarningsScreen = ({ navigation }) => {
             if (monthlyPayments.length > 0) {
               const weeklyData = {};
               monthlyPayments.forEach(payment => {
-                const paymentDate = new Date(payment.service_date);
+                const paymentDate = new Date(payment.service_date || payment.booking_date);
                 const weekStart = getWeekStart(paymentDate);
                 const weekKey = weekStart.toISOString().split('T')[0];
                 
@@ -295,7 +322,7 @@ const EarningsScreen = ({ navigation }) => {
                   weeklyData[weekKey] = { amount: 0, jobs: 0, date: weekKey };
                 }
                 
-                weeklyData[weekKey].amount += parseFloat(payment.amount);
+                weeklyData[weekKey].amount += Number(payment.amount) || 0;
                 weeklyData[weekKey].jobs += 1;
               });
               
@@ -325,7 +352,7 @@ const EarningsScreen = ({ navigation }) => {
             const monthlyData = {};
             
             payments.forEach(payment => {
-              const paymentDate = new Date(payment.service_date);
+              const paymentDate = new Date(payment.service_date || payment.booking_date);
               const monthKey = `${paymentDate.getFullYear()}-${paymentDate.getMonth()}`;
               const monthLabel = paymentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               
@@ -333,7 +360,7 @@ const EarningsScreen = ({ navigation }) => {
                 monthlyData[monthKey] = { amount: 0, jobs: 0, month: monthLabel, date: payment.service_date };
               }
               
-              monthlyData[monthKey].amount += parseFloat(payment.amount);
+              monthlyData[monthKey].amount += Number(payment.amount) || 0;
               monthlyData[monthKey].jobs += 1;
             });
             
@@ -419,7 +446,7 @@ const EarningsScreen = ({ navigation }) => {
       try {
         await Promise.all([
           fetchEarningsData(selectedPeriod),
-          fetchTransactions(selectedPeriod, selectedFilter),
+          fetchTransactions(selectedPeriod),
           fetchMonthlyData(selectedPeriod)
         ]);
         console.log('✅ All data fetched successfully');
@@ -432,11 +459,6 @@ const EarningsScreen = ({ navigation }) => {
     fetchAllData();
   }, [selectedPeriod, user?.id]);
 
-  // Fetch transactions when filter changes
-  useEffect(() => {
-    if (!user?.id) return;
-    fetchTransactions(selectedPeriod, selectedFilter);
-  }, [selectedFilter, user?.id]);
 
   const periodButtons = [
     { key: 'week', label: 'Week' },
@@ -444,27 +466,12 @@ const EarningsScreen = ({ navigation }) => {
     { key: 'year', label: 'Year' },
   ];
 
-  const filterOptions = [
-    { key: 'all', label: 'All Transactions', icon: 'list-outline' },
-    { key: 'completed', label: 'Completed', icon: 'checkmark-circle-outline' },
-    { key: 'pending', label: 'Pending', icon: 'time-outline' },
-    { key: 'plumbing', label: 'Plumbing', icon: 'water-outline' },
-    { key: 'electrical', label: 'Electrical', icon: 'flash-outline' },
-    { key: 'carpentry', label: 'Carpentry', icon: 'hammer-outline' },
-    { key: 'hvac', label: 'HVAC', icon: 'snow-outline' },
-    { key: 'painting', label: 'Painting', icon: 'brush-outline' },
-  ];
-
-  const getFilteredTransactions = () => {
-    return transactions;
-  };
 
   const getDisplayedTransactions = () => {
-    const filtered = getFilteredTransactions();
     if (!isPremium) {
-      return filtered.slice(0, 3);
+      return transactions.slice(0, 3);
     }
-    return filtered;
+    return transactions;
   };
 
   const getDisplayedMonthlyData = () => {
@@ -478,15 +485,6 @@ const EarningsScreen = ({ navigation }) => {
     setSelectedPeriod(period);
   };
 
-  const handleFilterPress = (filterKey) => {
-    if (!isPremium && filterKey !== 'all') {
-      setUpgradeSource('filter');
-      setShowUpgradeModal(true);
-      return;
-    }
-    setSelectedFilter(filterKey);
-    setShowFilterModal(false);
-  };
 
   const handleUpgradePress = (source = 'general') => {
     setUpgradeSource(source);
@@ -604,33 +602,6 @@ const EarningsScreen = ({ navigation }) => {
     }
   };
 
-  const renderFilterOption = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.filterOption,
-        selectedFilter === item.key && styles.activeFilterOption,
-        !isPremium && item.key !== 'all' && styles.lockedFilterOption
-      ]}
-      onPress={() => handleFilterPress(item.key)}
-    >
-      <View style={styles.filterOptionContent}>
-        <Ionicons 
-          name={item.icon} 
-          size={20} 
-          color={selectedFilter === item.key ? '#FFFFFF' : '#4B5563'} 
-        />
-        <Text style={[
-          styles.filterOptionText,
-          selectedFilter === item.key && styles.activeFilterOptionText
-        ]}>
-          {item.label}
-        </Text>
-        {!isPremium && item.key !== 'all' && (
-          <Ionicons name="lock-closed" size={16} color="#F59E0B" />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
 
   const renderMonthItem = ({ item, index }) => {
     const isBlurred = !isPremium && index >= 3;
@@ -700,45 +671,6 @@ const EarningsScreen = ({ navigation }) => {
     );
   };
 
-  const FilterModal = () => (
-    <Modal
-      visible={showFilterModal}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => setShowFilterModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.filterModal}>
-          <View style={styles.filterModalHeader}>
-            <Text style={styles.filterModalTitle}>Filter Transactions</Text>
-            <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-          </View>
-          
-          <FlatList
-            data={filterOptions}
-            renderItem={renderFilterOption}
-            keyExtractor={(item) => item.key}
-            showsVerticalScrollIndicator={false}
-          />
-          
-          {!isPremium && (
-            <TouchableOpacity
-              style={styles.upgradeButton}
-              onPress={() => {
-                setShowFilterModal(false);
-                handleUpgradePress('filter');
-              }}
-            >
-              <Ionicons name="star" size={20} color="#FFFFFF" />
-              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
 
   const renderPremiumPrompt = (type) => {
     if (isPremium) return null;
@@ -901,36 +833,12 @@ const EarningsScreen = ({ navigation }) => {
           {renderPremiumPrompt('monthly')}
         </View>
 
-        {/* Filter Section */}
+        {/* Recent Transactions Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setShowFilterModal(true)}
-            >
-              <Ionicons name="filter-outline" size={20} color="#10B981" />
-              <Text style={styles.filterButtonText}>Filter</Text>
-              {!isPremium && (
-                <Ionicons name="lock-closed" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
-              )}
-            </TouchableOpacity>
           </View>
 
-          {/* Active Filter Display */}
-          {selectedFilter !== 'all' && (
-            <View style={styles.activeFilterContainer}>
-              <Text style={styles.activeFilterLabel}>Filtered by:</Text>
-              <View style={styles.activeFilterChip}>
-                <Text style={styles.activeFilterText}>
-                  {filterOptions.find(f => f.key === selectedFilter)?.label}
-                </Text>
-                <TouchableOpacity onPress={() => setSelectedFilter('all')}>
-                  <Ionicons name="close" size={16} color="#10B981" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
 
           <FlatList
             data={getDisplayedTransactions()}
@@ -942,8 +850,6 @@ const EarningsScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      <FilterModal />
-      
       {/* Updated UpgradeModal with dynamic content */}
       <UpgradeModal
         visible={showUpgradeModal}

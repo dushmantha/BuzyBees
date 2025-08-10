@@ -72,7 +72,6 @@ interface ProfileData {
     email?: string;
     website_url?: string;
     is_verified: boolean;
-    women_owned_business?: boolean;
     created_at: string;
     updated_at: string;
     provider_skills?: Array<{
@@ -197,7 +196,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       category: '',
       description: '',
       is_verified: false,
-      women_owned_business: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     } : undefined,
@@ -246,8 +244,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               category: '',
               description: '',
               is_verified: false,
-              women_owned_business: false,
-              created_at: new Date().toISOString(),
+                            created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             } : undefined,
             consumer_details: accountType === 'consumer' ? {
@@ -328,8 +325,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               category: '',
               description: '',
               is_verified: false,
-              women_owned_business: false,
-              created_at: new Date().toISOString(),
+                            created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             } : undefined,
             consumer_details: accountType === 'consumer' ? {
@@ -373,8 +369,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             category: '',
             description: '',
             is_verified: false,
-            women_owned_business: false,
-            created_at: new Date().toISOString(),
+                        created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           } : undefined,
           consumer_details: accountType === 'consumer' ? {
@@ -829,8 +824,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           country: profile.provider_business.country || '',
           phone: profile.provider_business.phone || '',
           email: profile.provider_business.email || '',
-          website_url: profile.provider_business.website_url || '',
-          women_owned_business: profile.provider_business.women_owned_business || false
+          website_url: profile.provider_business.website_url || ''
         } : null
       };
       
@@ -907,8 +901,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           country: tempProfile.provider_business.country?.trim() || null,
           phone: tempProfile.provider_business.phone?.trim() || null,
           email: tempProfile.provider_business.email?.trim() || null,
-          website_url: tempProfile.provider_business.website_url?.trim() || null,
-          women_owned_business: tempProfile.provider_business.women_owned_business || false
+          website_url: tempProfile.provider_business.website_url?.trim() || null
         };
 
         const businessResponse = await normalizedShopService.updateProviderBusiness(businessData);
@@ -1145,8 +1138,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         category: '',
         description: '',
         is_verified: false,
-        women_owned_business: false,
-        created_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
     }
@@ -1644,7 +1636,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               {renderProviderField('Service Category', 'category')}
               {renderProviderField('Business Description', 'description', true)}
               {renderProviderField('Website URL', 'website_url')}
-              {renderProviderField('Women Owned Business', 'women_owned_business', false, 'boolean')}
               
               {/* Skills Management */}
               <View style={styles.fieldContainer}>

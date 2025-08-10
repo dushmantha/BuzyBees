@@ -22,6 +22,8 @@ import {
   getStaffAvailabilityForDate,
   StaffMember 
 } from '../utils/staffAvailability';
+import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
+import { useAuth } from '../context/AuthContext';
 
 type RootStackParamList = {
   BookingDateTimeEnhanced: {
@@ -52,6 +54,7 @@ const mockBookedSlots = {
 const BookingDateTimeEnhancedScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp>();
+  const { user } = useAuth();
   const { selectedServices, totalPrice, selectedStaff } = route.params;
   
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -152,25 +155,77 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
 
   const handleConfirm = async (): Promise<void> => {
     if (!selectedDate || !selectedTime) {
+      Alert.alert('Missing Information', 'Please select both date and time');
       return;
     }
     
     try {
-      // Simulate booking confirmation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
       
-      setShowSuccessModal(true);
+      // Calculate end time based on service duration
+      const [startHour, startMinute] = selectedTime.split(':').map(Number);
+      const startTotalMinutes = startHour * 60 + startMinute;
+      const endTotalMinutes = startTotalMinutes + serviceDuration;
+      const endHour = Math.floor(endTotalMinutes / 60);
+      const endMinute = endTotalMinutes % 60;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        setSelectedDate('');
-        setSelectedTime('');
-        console.log('Booking completed successfully!');
-        navigation.navigate('ConsumerTabs');
-      }, 2500);
+      // UUID validation utility
+      const isValidUUID = (str: string): boolean => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(str);
+      };
+
+      // Prepare booking data with valid UUIDs
+      const customerId = user?.id && isValidUUID(user.id) ? user.id : '550e8400-e29b-41d4-a716-446655440000';
+      const shopId = selectedStaff.shop_id && isValidUUID(selectedStaff.shop_id) ? selectedStaff.shop_id : '550e8400-e29b-41d4-a716-446655440001';
+      
+      console.log('📅 Booking with customer ID:', customerId);
+      console.log('🏪 Booking with shop ID:', shopId);
+      
+      const bookingData = {
+        customer_id: customerId,
+        shop_id: shopId,
+        staff_id: selectedStaff.id,
+        booking_date: selectedDate,
+        start_time: selectedTime,
+        end_time: endTime,
+        total_price: totalPrice,
+        services: selectedServices.map(service => ({
+          id: service.id,
+          name: service.name,
+          duration: parseInt(service.duration) || 30,
+          price: parseFloat(service.price) || 0
+        })),
+        notes: `Booking with ${selectedStaff.name} for ${selectedServices.map(s => s.name).join(', ')}`
+      };
+      
+      console.log('📅 Creating booking:', bookingData);
+      
+      // Save booking to Supabase
+      const response = await bookingsAPI.createBooking(bookingData);
+      
+      if (response.success) {
+        console.log('✅ Booking created successfully:', response.data);
+        setShowSuccessModal(true);
+        
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSelectedDate('');
+          setSelectedTime('');
+          // Navigate to bookings screen to see the new booking
+          navigation.navigate('ConsumerTabs', { screen: 'BookingsTab' });
+        }, 2500);
+      } else {
+        console.error('❌ Booking creation failed:', response.error);
+        Alert.alert('Booking Failed', response.error || 'Failed to create booking. Please try again.');
+      }
+      
     } catch (error) {
-      console.error('Booking error:', error);
-      Alert.alert('Error', 'Failed to confirm booking');
+      console.error('❌ Booking error:', error);
+      Alert.alert('Error', 'Failed to confirm booking. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

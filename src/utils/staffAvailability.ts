@@ -26,6 +26,7 @@ export interface StaffMember {
   specialties?: string[];
   role?: string;
   avatar_url?: string;
+  shop_id?: string;
 }
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

@@ -277,18 +277,32 @@ class PremiumService {
   }
 
   /**
-   * Subscribe to real-time subscription changes
+   * Subscribe to real-time subscription changes with token refresh handling
    */
   subscribeToChanges(callback: (subscription: UserSubscription | null) => void): () => void {
     let channel: any = null;
+    let reconnectionAttempts = 0;
+    const maxReconnectionAttempts = 3;
     
-    // Set up real-time subscription after getting user ID
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
+    const setupRealTimeSubscription = async () => {
+      try {
+        // Get fresh user session
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error || !data.user) {
+          console.error('❌ User not authenticated for real-time subscription:', error);
+          return;
+        }
+
         console.log('📡 Setting up real-time subscription for user:', data.user.id);
         
+        // Clean up existing channel
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+        
         // Create unique channel name to avoid conflicts
-        const channelName = `premium-changes-${data.user.id}`;
+        const channelName = `premium-changes-${data.user.id}-${Date.now()}`;
         
         channel = supabase
           .channel(channelName)
@@ -328,21 +342,59 @@ class PremiumService {
           )
           .subscribe((status, err) => {
             console.log('📡 Real-time subscription status:', status);
+            
             if (err) {
               console.error('❌ Real-time subscription error:', err);
+              
+              // Check if error is related to token expiry
+              if (err.message && err.message.includes('expired')) {
+                console.log('🔄 Token expired, attempting to refresh and reconnect...');
+                
+                // Attempt to refresh token and reconnect
+                if (reconnectionAttempts < maxReconnectionAttempts) {
+                  reconnectionAttempts++;
+                  setTimeout(async () => {
+                    try {
+                      // Try to refresh session
+                      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                      
+                      if (refreshError) {
+                        console.error('❌ Failed to refresh session:', refreshError);
+                      } else {
+                        console.log('✅ Session refreshed, reconnecting real-time subscription');
+                        setupRealTimeSubscription(); // Reconnect
+                      }
+                    } catch (refreshError) {
+                      console.error('❌ Error during token refresh:', refreshError);
+                    }
+                  }, 1000 * reconnectionAttempts); // Exponential backoff
+                } else {
+                  console.error('❌ Max reconnection attempts reached. Real-time subscription disabled.');
+                }
+              }
             }
+            
             if (status === 'SUBSCRIBED') {
               console.log('✅ Real-time subscription successfully established');
+              reconnectionAttempts = 0; // Reset on successful connection
             }
           });
+          
+      } catch (error) {
+        console.error('❌ Error setting up real-time subscription:', error);
       }
-    });
+    };
+
+    // Initial setup
+    setupRealTimeSubscription();
 
     return () => {
       console.log('📡 Unsubscribing from premium changes');
       if (channel) {
         supabase.removeChannel(channel);
+        channel = null;
       }
+      reconnectionAttempts = 0;
     };
   }
 
