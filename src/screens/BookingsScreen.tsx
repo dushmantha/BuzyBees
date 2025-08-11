@@ -444,7 +444,7 @@ const BookingsScreen = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<ProcessedBooking | null>(null);
   
-  const { user } = useAuth();
+  const { user, clearAllData, isInitializing, isAuthenticated } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Utility function to check if string is valid UUID
@@ -453,8 +453,20 @@ const BookingsScreen = () => {
     return uuidRegex.test(str);
   };
 
-  // Generate a valid UUID for demo purposes if no real user ID
-  const userId = user?.id && isValidUUID(user.id) ? user.id : '550e8400-e29b-41d4-a716-446655440000';
+  // Use the actual user ID from auth context
+  const userId = user?.id || null;
+  
+  console.log('📱 BookingsScreen - User ID:', userId);
+  console.log('📱 BookingsScreen - User object:', user);
+  console.log('📱 BookingsScreen - User exists?:', !!user);
+  console.log('📱 BookingsScreen - UserId exists?:', !!userId);
+  console.log('📱 BookingsScreen - User ID type:', typeof userId);
+  console.log('📱 BookingsScreen - User ID length:', userId?.length);
+  console.log('📱 BookingsScreen - Auth condition (!user || !userId):', (!user || !userId));
+  console.log('📱 BookingsScreen - User email:', user?.email);
+  console.log('📱 BookingsScreen - User role:', user?.role);
+  console.log('📱 BookingsScreen - isInitializing:', isInitializing);
+  console.log('📱 BookingsScreen - isAuthenticated:', isAuthenticated);
 
   // Single API service function for comprehensive booking data
   const apiService = {
@@ -700,6 +712,21 @@ const BookingsScreen = () => {
       return;
     }
     
+    // Check if user ID is invalid and clear cache if needed
+    if (!isValidUUID(userId)) {
+      console.error('❌ Invalid user ID detected:', userId);
+      console.log('🧹 Clearing all auth data and forcing re-login...');
+      
+      try {
+        await clearAllData();
+        setError('Invalid authentication detected. Please restart the app to re-login.');
+        setIsLoading(false);
+        return;
+      } catch (clearError) {
+        console.error('❌ Failed to clear auth data:', clearError);
+      }
+    }
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -770,7 +797,24 @@ const BookingsScreen = () => {
     fetchBookings();
   }, [fetchBookings]);
 
-  if (!userId && !user) {
+  // Show loading while auth is initializing
+  if (isInitializing) {
+    return (
+      <View style={styles.container}>
+        <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+        <View style={styles.modernHeader}>
+          <Text style={styles.headerTitle}>My Bookings</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Checking authentication...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show login required if not authenticated or no user
+  if (!isAuthenticated || !user || !userId) {
     return (
       <View style={styles.container}>
         <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
@@ -785,6 +829,22 @@ const BookingsScreen = () => {
           <Text style={styles.loginPromptText}>
             Please log in to view your bookings
           </Text>
+          <Text style={[styles.loginPromptText, { marginTop: 10, fontSize: 12, color: '#9CA3AF' }]}>
+            Debug: user={!!user}, userId={!!userId}, isAuth={isAuthenticated}
+          </Text>
+          <TouchableOpacity 
+            style={styles.debugButton}
+            onPress={async () => {
+              console.log('🔄 Force clearing all data and restarting auth...');
+              await clearAllData();
+              // Force reload after clearing
+              setTimeout(() => {
+                fetchBookings();
+              }, 2000);
+            }}
+          >
+            <Text style={styles.debugButtonText}>Clear All Data & Retry</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1451,6 +1511,18 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  debugButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  debugButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

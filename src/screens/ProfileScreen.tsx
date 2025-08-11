@@ -169,10 +169,14 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   });
   
   
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { showImagePickerOptions, isLoading: isImageLoading } = useImagePicker();
 
-  const userId = '1';
+  // Use real user ID from auth context
+  const userId = user?.id || null;
+  
+  console.log('👤 ProfileScreen - User ID:', userId);
+  console.log('👤 ProfileScreen - User object:', user);
 
 
   // Default mock profile data for fallback scenarios

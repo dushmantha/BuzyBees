@@ -15,7 +15,6 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-enabled = true
 # Port to use for the local database URL.
 port = 54322
 # Port used by db diff command to initialize the shadow database.
@@ -66,7 +65,7 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 # Whether the storage provider is enabled.
-image_transformation = true
+image_transformation = { enabled = true }
 
 [auth]
 enabled = true
@@ -91,7 +90,7 @@ enable_manual_linking = false
 # Allow/disallow new user signups via email to your project.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email addresses. If disabled, only the new email is required to confirm.
-double_confirm_change = true
+double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 

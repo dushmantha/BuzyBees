@@ -153,52 +153,77 @@ class FavoritesAPI {
     try {
       console.log('📋 Getting favorites for user:', userId);
 
-      const { data, error } = await supabase
+      // First get the user favorites
+      const { data: favorites, error: favoritesError } = await supabase
         .from('user_favorites')
-        .select(`
-          id,
-          shop_id,
-          created_at,
-          provider_businesses (
-            name,
-            category,
-            image_url,
-            logo_url,
-            city,
-            country
-          )
-        `)
+        .select('id, shop_id, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Error getting user favorites:', error);
+      if (favoritesError) {
+        console.error('❌ Error getting user favorites:', favoritesError);
         return {
           success: false,
-          error: error.message,
+          error: favoritesError.message,
           data: []
         };
       }
 
-      // Transform the data to match FavoriteShop interface
-      const favorites: FavoriteShop[] = data.map((item: any) => ({
-        favorite_id: item.id,
-        shop_id: item.shop_id,
-        shop_name: item.provider_businesses?.name || 'Unknown Shop',
-        shop_category: item.provider_businesses?.category || 'Unknown Category',
-        shop_image_url: item.provider_businesses?.image_url || '',
-        shop_logo_url: item.provider_businesses?.logo_url || '',
-        shop_rating: 4.5, // Default rating since rating column doesn't exist
-        shop_city: item.provider_businesses?.city || '',
-        shop_country: item.provider_businesses?.country || '',
-        created_at: item.created_at
-      }));
+      if (!favorites || favorites.length === 0) {
+        console.log('📋 No favorites found for user');
+        return {
+          success: true,
+          data: [],
+          message: 'No favorites found'
+        };
+      }
 
-      console.log('✅ Got user favorites:', favorites.length);
+      // Get shop IDs from favorites
+      const shopIds = favorites.map(fav => fav.shop_id);
+
+      // Now get the shop details for these IDs
+      const { data: shops, error: shopsError } = await supabase
+        .from('provider_businesses')
+        .select('id, name, category, image_url, logo_url, city, country')
+        .in('id', shopIds);
+
+      if (shopsError) {
+        console.error('❌ Error getting shop details:', shopsError);
+        return {
+          success: false,
+          error: shopsError.message,
+          data: []
+        };
+      }
+
+      // Create a map of shop details for quick lookup
+      const shopMap = new Map();
+      if (shops) {
+        shops.forEach(shop => shopMap.set(shop.id, shop));
+      }
+
+      // Transform the favorites with shop details
+      const favoriteShops: FavoriteShop[] = favorites.map((favorite) => {
+        const shop = shopMap.get(favorite.shop_id);
+        return {
+          favorite_id: favorite.id,
+          shop_id: favorite.shop_id,
+          shop_name: shop?.name || 'Unknown Shop',
+          shop_category: shop?.category || 'Unknown Category',
+          shop_image_url: shop?.image_url || '',
+          shop_logo_url: shop?.logo_url || '',
+          shop_rating: 4.5, // Default rating since rating column doesn't exist
+          shop_city: shop?.city || '',
+          shop_country: shop?.country || '',
+          created_at: favorite.created_at
+        };
+      });
+
+      console.log('✅ Got user favorites:', favoriteShops.length);
 
       return {
         success: true,
-        data: favorites
+        data: favoriteShops
       };
     } catch (error) {
       console.error('❌ Get favorites error:', error);

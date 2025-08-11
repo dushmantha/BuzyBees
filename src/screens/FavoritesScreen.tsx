@@ -16,23 +16,38 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { favoritesAPI, FavoriteShop } from '../services/api/favorites/favoritesAPI';
+import { useAuth } from '../context/AuthContext';
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Favorites'>;
 
 const FavoritesScreen = () => {
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
+  const { user, isAuthenticated, isInitializing } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteShop[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Get user ID from auth context
+  const userId = user?.id || null;
+  
+  console.log('❤️ FavoritesScreen - User ID:', userId);
+  console.log('❤️ FavoritesScreen - User object:', user);
+  console.log('❤️ FavoritesScreen - isAuthenticated:', isAuthenticated);
+  console.log('❤️ FavoritesScreen - isInitializing:', isInitializing);
+
   const loadFavorites = useCallback(async (showLoader = true) => {
+    if (!userId) {
+      console.log('❤️ No user ID available, skipping favorites load');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       if (showLoader) setLoading(true);
       
-      // Get current user - for now using mock user ID, replace with actual auth user
-      const mockUserId = '12345678-1234-1234-1234-123456789012'; // Replace with actual auth.uid()
-      
-      const response = await favoritesAPI.getUserFavorites(mockUserId);
+      console.log('❤️ Loading favorites for user:', userId);
+      const response = await favoritesAPI.getUserFavorites(userId);
       
       if (!response.success) {
         Alert.alert('Error', response.error || 'Failed to load favorites');
@@ -47,7 +62,7 @@ const FavoritesScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [userId]);
 
   const handleRemoveFavorite = async (shopId: string) => {
     Alert.alert(
@@ -60,8 +75,12 @@ const FavoritesScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const mockUserId = '12345678-1234-1234-1234-123456789012'; // Replace with actual auth.uid()
-              const response = await favoritesAPI.removeFavorite(mockUserId, shopId);
+              if (!userId) {
+                Alert.alert('Error', 'Please log in to manage favorites');
+                return;
+              }
+              
+              const response = await favoritesAPI.removeFavorite(userId, shopId);
               
               if (!response.success) {
                 Alert.alert('Error', response.error || 'Failed to remove favorite');
@@ -162,9 +181,47 @@ const FavoritesScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      loadFavorites();
-    }, [loadFavorites])
+      if (isAuthenticated && userId) {
+        loadFavorites();
+      }
+    }, [loadFavorites, isAuthenticated, userId])
   );
+
+  // Show loading while auth is initializing
+  if (isInitializing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Favorites</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.loadingText}>Checking authentication...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show login required if not authenticated
+  if (!isAuthenticated || !user || !userId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Favorites</Text>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="person-circle-outline" size={80} color="#E5E7EB" />
+          <Text style={styles.emptyTitle}>Login Required</Text>
+          <Text style={styles.emptyText}>
+            Please log in to view your favorites
+          </Text>
+          <Text style={[styles.emptyText, { marginTop: 10, fontSize: 12, color: '#9CA3AF' }]}>
+            Debug: user={!!user}, userId={!!userId}, isAuth={isAuthenticated}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading && !refreshing) {
     return (

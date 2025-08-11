@@ -1189,6 +1189,7 @@ const ServiceDetailScreen: React.FC = () => {
           const discount = discountsData[0]; // Take the first discount
           console.log('✅ Real discount found:', discount);
           const discountInfo = {
+            id: discount.id, // Include the actual UUID from database
             title: discount.title,
             discount_percentage: discount.value,
             description: discount.description,
@@ -1352,14 +1353,23 @@ const ServiceDetailScreen: React.FC = () => {
     const selectedStaffMember = staffMembers.find(staff => staff.id === selectedStaff);
     const priceBreakdown = calculatePriceBreakdown();
     
+    // Debug: Log available data for shop ID determination
+    console.log('🔍 ServiceDetail Debug - shopData:', shopData);
+    console.log('🔍 ServiceDetail Debug - selectedStaffMember:', selectedStaffMember);
+    console.log('🔍 ServiceDetail Debug - service.id:', service.id);
+    
     // Prepare booking details
+    // Note: 'service' here is actually a shop object from getShopById, so service.id IS the shop ID
+    const shopId = service.id; // This is the correct shop ID
     const bookingDetails = {
-      serviceId: service.id,
-      shopId: service.id,
-      shopName: service.salon_name || service.name,
-      shopAddress: service.location || 'Address not available',
+      serviceId: service.id, // This is also the shop ID (confusing naming)
+      shopId: shopId,
+      shopName: shopData?.name || service.salon_name || service.name,
+      shopAddress: shopData?.address || service.location || 'Address not available',
       shopContact: shopData?.phone || 'Contact not available'
     };
+    
+    console.log('🔍 ServiceDetail Debug - Final bookingDetails:', bookingDetails);
     
     navigation.navigate('BookingSummary', {
       selectedServices,
@@ -1967,13 +1977,13 @@ const ServiceDetailScreen: React.FC = () => {
                     <TouchableOpacity 
                       style={[
                         styles.selectDiscountButton,
-                        selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) && styles.selectedDiscountButton
+                        selectedDiscount?.id === discountData.id && styles.selectedDiscountButton
                       ]}
                       onPress={() => {
-                        const discountId = discountData.code || `discount-${discountData.discount_percentage}`;
+                        const discountId = discountData.id; // Use the actual UUID from database
                         console.log('🔧 Button pressed - Current selectedDiscount:', selectedDiscount);
                         console.log('🔧 discountId:', discountId);
-                        console.log('🔧 Are they equal?', selectedDiscount?.id === discountId);
+                        console.log('🔧 discountData:', discountData);
                         
                         if (selectedDiscount?.id === discountId) {
                           console.log('🔧 Removing discount');
@@ -1981,7 +1991,7 @@ const ServiceDetailScreen: React.FC = () => {
                         } else {
                           console.log('🔧 Applying discount');
                           setSelectedDiscount({
-                            id: discountId,
+                            id: discountId, // Use the actual UUID
                             percentage: discountData.discount_percentage,
                             title: discountData.title
                           });
@@ -1990,9 +2000,9 @@ const ServiceDetailScreen: React.FC = () => {
                     >
                       <Text style={[
                         styles.selectDiscountText,
-                        selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) && styles.selectedDiscountText
+                        selectedDiscount?.id === discountData.id && styles.selectedDiscountText
                       ]}>
-                        {selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) ? 'Remove Discount' : 'Apply Discount'}
+                        {selectedDiscount?.id === discountData.id ? 'Remove Discount' : 'Apply Discount'}
                       </Text>
                     </TouchableOpacity>
                   </View>

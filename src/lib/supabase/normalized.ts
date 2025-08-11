@@ -1637,6 +1637,9 @@ class NormalizedShopService {
     notes?: string;
     timezone?: string;
     service_option_ids?: string[];
+    discount_id?: string;
+    service_name?: string;
+    price?: number;
   }): Promise<ServiceResponse<any>> {
     try {
       console.log('📅 Creating booking:', bookingData);
@@ -1681,6 +1684,74 @@ class NormalizedShopService {
         };
       }
 
+      // Get the provider_id from the shop
+      let providerId = null;
+      try {
+        console.log('🔍 Looking for shop with ID:', bookingData.shop_id);
+        
+        const { data: shop, error: shopError } = await this.client
+          .from('provider_businesses')
+          .select('id, provider_id, name')
+          .eq('id', bookingData.shop_id)
+          .single();
+        
+        console.log('🔍 Shop query result:', { shop, shopError });
+        
+        if (shopError || !shop) {
+          console.error('❌ Could not find shop with ID:', bookingData.shop_id);
+          console.error('❌ Shop error:', shopError);
+          
+          // Try to find any shop as fallback
+          const { data: anyShop, error: anyShopError } = await this.client
+            .from('provider_businesses')
+            .select('id, provider_id, name')
+            .eq('is_active', true)
+            .limit(1)
+            .single();
+            
+          if (anyShopError || !anyShop) {
+            console.error('❌ No shops found at all');
+            return {
+              success: false,
+              error: 'Shop not found - please check the shop ID'
+            };
+          }
+          
+          console.log('⚠️ Using fallback shop:', anyShop);
+          providerId = anyShop.provider_id;
+          
+          // Update the booking data to use the correct shop
+          bookingData.shop_id = anyShop.id;
+        } else {
+          providerId = shop.provider_id;
+          console.log('✅ Found shop:', shop.name, 'with provider_id:', providerId);
+        }
+      } catch (error) {
+        console.error('❌ Error getting shop provider:', error);
+        return {
+          success: false,
+          error: 'Failed to get shop information'
+        };
+      }
+      
+      // Validate provider_id - if null, try to use the authenticated user as provider
+      if (!providerId) {
+        console.warn('⚠️ Provider ID is null in shop record, using authenticated user as fallback');
+        providerId = user.id; // Use the current authenticated user as the provider
+        
+        // Update the shop record to have this provider_id for future bookings
+        const { error: updateError } = await this.client
+          .from('provider_businesses')
+          .update({ provider_id: user.id })
+          .eq('id', bookingData.shop_id);
+          
+        if (updateError) {
+          console.warn('⚠️ Could not update shop provider_id:', updateError);
+        } else {
+          console.log('✅ Updated shop with provider_id:', user.id);
+        }
+      }
+
       // Find or create customer record
       let customerId = null;
       try {
@@ -1689,6 +1760,7 @@ class NormalizedShopService {
           .from('customers')
           .select('id')
           .eq('phone', bookingData.customer_phone)
+          .eq('provider_id', providerId) // Use provider_id from shop
           .single();
 
         if (existingCustomer) {
@@ -1702,7 +1774,7 @@ class NormalizedShopService {
               name: bookingData.customer_name,
               phone: bookingData.customer_phone,
               email: bookingData.customer_email || null,
-              provider_id: user.id,
+              provider_id: providerId, // Use provider_id from shop
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -1727,7 +1799,7 @@ class NormalizedShopService {
         // Primary relationships
         customer_id: customerId, // Use found/created customer or null for anonymous
         shop_id: bookingData.shop_id,
-        provider_id: user.id, // Provider who owns the shop
+        provider_id: providerId, // Provider who owns the shop (from shop lookup)
         staff_id: bookingData.assigned_staff_id || null, // Can be null for "any staff"
         service_id: bookingData.service_id,
         
@@ -2305,11 +2377,7 @@ class NormalizedShopService {
 
       let query = this.client
         .from('shop_bookings')
-        .select(`
-          *,
-          shop_services(name, duration, price),
-          shop_staff(name, email)
-        `)
+        .select('*')
         .order('booking_date', { ascending: true })
         .order('start_time', { ascending: true });
 
@@ -2404,12 +2472,7 @@ class NormalizedShopService {
 
       let query = this.client
         .from('shop_bookings')
-        .select(`
-          *,
-          shop_services!inner(name, location_type, category),
-          shop_staff(name, email, phone),
-          provider_businesses!inner(name, address, city)
-        `)
+        .select('*')
         .eq('provider_id', providerId)
         .order('booking_date', { ascending: true })
         .order('start_time', { ascending: true });
@@ -2454,20 +2517,10 @@ class NormalizedShopService {
 
         return {
           ...booking,
-          service_name: booking.shop_services?.name,
-          service_location_type: booking.shop_services?.location_type,
-          service_category: booking.shop_services?.category,
+          service_name: booking.service_name || 'Service',
           service_options: service_options, // Add service options to the booking data
-          staff: booking.shop_staff ? {
-            name: booking.shop_staff.name,
-            email: booking.shop_staff.email,
-            phone: booking.shop_staff.phone
-          } : null,
-          shop: booking.provider_businesses ? {
-            name: booking.provider_businesses.name,
-            address: booking.provider_businesses.address,
-            city: booking.provider_businesses.city
-          } : null
+          staff: null, // Staff data not available without join
+          shop: null // Shop data not available without join
         };
       }));
 
@@ -3763,7 +3816,7 @@ class NormalizedShopService {
         // Recent bookings
         this.client
           .from('shop_bookings')
-          .select('*, shop_services(name)')
+          .select('*')
           .eq('provider_id', providerId)
           .order('created_at', { ascending: false })
           .limit(limit),
@@ -3795,7 +3848,7 @@ class NormalizedShopService {
               id: `booking-${booking.id}`,
               type: 'new_booking',
               title: 'New Booking Request',
-              description: `${booking.customer_name} requested ${booking.shop_services?.name || 'a service'} for ${booking.booking_date}`,
+              description: `${booking.customer_name} requested ${booking.service_name || 'a service'} for ${booking.booking_date}`,
               timestamp: booking.created_at,
               customer: booking.customer_name,
               priority: 'high'

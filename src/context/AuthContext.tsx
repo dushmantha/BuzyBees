@@ -79,10 +79,10 @@ interface AuthProviderProps {
 const AUTH_TOKEN_KEY = '@auth_token';
 const USER_DATA_KEY = '@user';
 
-// Demo users for testing
+// Demo users for testing - using proper UUIDs
 const DEMO_USERS = {
   'admin@example.com': {
-    id: 'demo-admin-1',
+    id: '550e8400-e29b-41d4-a716-446655440000',
     email: 'admin@example.com',
     full_name: 'Demo Admin',
     phone: '+1234567890',
@@ -92,7 +92,7 @@ const DEMO_USERS = {
     created_at: new Date().toISOString(),
   },
   'consumer@example.com': {
-    id: 'demo-consumer-1',
+    id: '797445af-97d4-4c03-8088-747628282993',
     email: 'consumer@example.com',
     full_name: 'Demo Consumer',
     phone: '+1234567891',
@@ -102,7 +102,7 @@ const DEMO_USERS = {
     created_at: new Date().toISOString(),
   },
   'provider@example.com': {
-    id: 'demo-provider-1',
+    id: '550e8400-e29b-41d4-a716-446655440002',
     email: 'provider@example.com',
     full_name: 'Demo Provider',
     phone: '+1234567892',
@@ -112,7 +112,7 @@ const DEMO_USERS = {
     created_at: new Date().toISOString(),
   },
   'test@example.com': {
-    id: 'demo-tester-1',
+    id: '550e8400-e29b-41d4-a716-446655440003',
     email: 'test@example.com',
     full_name: 'Demo Tester',
     phone: '+1234567893',
@@ -176,10 +176,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Load token and user data from storage on app start
   const loadAuthData = useCallback(async () => {
     try {
+      console.log('🔄 Loading auth data from storage...');
+      
       const [token, user] = await Promise.all([
         AsyncStorage.getItem(AUTH_TOKEN_KEY),
         AsyncStorage.getItem(USER_DATA_KEY),
       ]);
+
+      console.log('🔍 Storage token exists:', !!token);
+      console.log('🔍 Storage user exists:', !!user);
+      console.log('🔍 Raw storage user data:', user);
 
       // Small delay to ensure smooth transition
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -214,6 +220,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       await clearAuthData();
+      
+      // Auto-login with demo consumer for testing
+      console.log('🎭 Auto-logging in with demo consumer for testing...');
+      console.log('🔍 Available demo users:', Object.keys(DEMO_USERS));
+      console.log('🔍 Demo consumer user:', DEMO_USERS['consumer@example.com']);
+      
+      try {
+        const demoUser = transformUser(DEMO_USERS['consumer@example.com']);
+        console.log('🔍 Transformed demo user:', demoUser);
+        
+        const demoToken = `demo-token-${Date.now()}-${demoUser.id}`;
+        console.log('🔍 Generated demo token:', demoToken);
+        
+        const saveResult = await saveAuthData(demoToken, demoUser);
+        console.log('🔍 Save auth data result:', saveResult);
+        
+        setData({
+          user: demoUser,
+          token: demoToken,
+          isLoading: false,
+          isAuthenticated: true,
+          isInitializing: false,
+        });
+        
+        console.log('✅ Auto-login successful with demo user:', demoUser.email);
+        console.log('✅ Final user ID set:', demoUser.id);
+        return;
+      } catch (autoLoginError) {
+        console.error('❌ Auto-login failed:', autoLoginError);
+      }
+      
       setData({
         user: null,
         token: null,

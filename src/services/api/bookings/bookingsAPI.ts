@@ -33,6 +33,8 @@ export interface BookingCreateRequest {
   total_price: number;
   services: BookingService[];
   notes?: string;
+  discount_id?: string;
+  service_option_ids?: string[];
 }
 
 export interface ApiResponse<T> {
@@ -77,10 +79,14 @@ class BookingsAPI {
         booking_date: bookingData.booking_date,
         start_time: bookingData.start_time,
         end_time: bookingData.end_time,
+        duration: totalDuration,
+        service_price: firstService.price || 0,
         total_price: bookingData.total_price,
         service_name: firstService?.name || 'Service',
         notes: bookingData.notes,
-        timezone: 'UTC'
+        timezone: 'UTC',
+        discount_id: bookingData.discount_id,
+        service_option_ids: bookingData.service_option_ids || []
       };
 
       // Use the new normalized service method
@@ -132,7 +138,7 @@ class BookingsAPI {
           end_time,
           status,
           total_price,
-          services,
+          service_name,
           notes,
           created_at,
           updated_at
@@ -196,15 +202,11 @@ class BookingsAPI {
         const shop = shopMap.get(booking.shop_id);
         const staffMember = staffMap.get(booking.staff_id);
         
-        // Extract service names from the services JSONB array
-        const serviceNames = Array.isArray(booking.services) 
-          ? booking.services.map(s => s.name).join(', ') 
-          : 'Unknown Service';
+        // Use service_name directly from the booking
+        const serviceNames = booking.service_name || 'Unknown Service';
 
         const staffNames = staffMember?.name || 'Unknown Staff';
-        const duration = Array.isArray(booking.services) 
-          ? booking.services.reduce((total, s) => total + (s.duration || 30), 0) 
-          : 60;
+        const duration = 60; // Default duration since we don't have services array
 
         return {
           ...booking,

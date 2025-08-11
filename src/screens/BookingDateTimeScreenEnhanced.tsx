@@ -24,6 +24,7 @@ import {
 } from '../utils/staffAvailability';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 type RootStackParamList = {
   BookingDateTimeEnhanced: {
@@ -218,11 +219,92 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
       };
 
       // Prepare booking data with valid UUIDs
-      const customerId = user?.id && isValidUUID(user.id) ? user.id : '550e8400-e29b-41d4-a716-446655440000';
-      const shopId = selectedStaff.shop_id && isValidUUID(selectedStaff.shop_id) ? selectedStaff.shop_id : '550e8400-e29b-41d4-a716-446655440001';
+      console.log('🔍 Current user from auth context:', user);
+      console.log('🔍 Current user ID:', user?.id);
+      console.log('🔍 User email:', user?.email);
+      console.log('🔍 User role:', user?.role);
+      console.log('🔍 Is user ID valid UUID?:', user?.id ? isValidUUID(user.id) : 'No user ID');
+      
+      // Use the actual user ID - don't use a fallback UUID
+      const customerId = user?.id || null;
+      
+      if (!customerId) {
+        console.error('❌ No user ID available for booking');
+        Alert.alert('Authentication Error', 'Please log in to create a booking.');
+        setLoading(false);
+        return;
+      }
+      
+      // Debug: Log all available data to understand what we have
+      console.log('🔍 Debug - bookingDetails:', bookingDetails);
+      console.log('🔍 Debug - selectedStaff:', selectedStaff);
+      console.log('🔍 Debug - selectedServices:', selectedServices);
+      
+      // Use shop ID from booking details, or from staff, or try service ID as fallback
+      let shopId = null;
+      
+      if (bookingDetails?.shopId && isValidUUID(bookingDetails.shopId)) {
+        console.log('✅ Using shop ID from bookingDetails');
+        shopId = bookingDetails.shopId;
+      } else if (selectedStaff.shop_id && isValidUUID(selectedStaff.shop_id)) {
+        console.log('✅ Using shop ID from selectedStaff');
+        shopId = selectedStaff.shop_id;
+      } else if (selectedServices[0]?.id && isValidUUID(selectedServices[0].id)) {
+        // Note: selectedServices here are actual service objects, not shop objects
+        console.log('⚠️ Warning: Using service ID as last resort - this may be incorrect');
+        shopId = selectedServices[0].id;
+      } else {
+        // If no valid shop ID, try to get any existing shop from database
+        console.warn('⚠️ No valid UUID found in passed data, trying database lookup...');
+        console.error('bookingDetails?.shopId:', bookingDetails?.shopId);
+        console.error('selectedStaff.shop_id:', selectedStaff.shop_id);
+        console.error('selectedServices[0]?.id:', selectedServices[0]?.id);
+        
+        try {
+          // First check if provider_businesses table has any records at all
+          const { data: allShops, error: allShopsError } = await supabase
+            .from('provider_businesses')
+            .select('id, name, is_active')
+            .limit(5);
+            
+          console.log('🔍 All shops in database:', allShops);
+          console.log('🔍 Database error (if any):', allShopsError);
+          
+          if (allShopsError) {
+            console.error('❌ Database error:', allShopsError);
+            Alert.alert('Database Error', `Unable to access provider database: ${allShopsError.message}`);
+            setLoading(false);
+            return;
+          }
+          
+          if (!allShops || allShops.length === 0) {
+            console.error('❌ No shops found in provider_businesses table');
+            Alert.alert('Setup Required', 'No service providers are configured in the system. Please contact support.');
+            setLoading(false);
+            return;
+          }
+          
+          // Try to find an active shop first
+          const activeShop = allShops.find(shop => shop.is_active);
+          const shopToUse = activeShop || allShops[0];
+          
+          shopId = shopToUse.id;
+          console.log('✅ Using database shop as fallback:', shopToUse);
+        } catch (error) {
+          console.error('❌ Database lookup failed:', error);
+          Alert.alert('Booking Error', 'Unable to connect to database. Please check your connection.');
+          setLoading(false);
+          return;
+        }
+      }
       
       console.log('📅 Booking with customer ID:', customerId);
       console.log('🏪 Booking with shop ID:', shopId);
+      
+      // Prepare services data
+      const firstService = selectedServices[0];
+      const totalDuration = selectedServices.reduce((sum, service) => sum + (parseInt(service.duration) || 30), 0);
+      const finalPrice = priceBreakdown ? priceBreakdown.finalTotal : totalPrice;
       
       const bookingData = {
         customer_id: customerId,
@@ -231,47 +313,52 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         booking_date: selectedDate,
         start_time: selectedTime,
         end_time: endTime,
-        total_price: priceBreakdown ? priceBreakdown.finalTotal : totalPrice,
+        total_price: finalPrice,
         services: selectedServices.map(service => ({
           id: service.id,
           name: service.name,
           duration: parseInt(service.duration) || 30,
           price: parseFloat(service.price) || 0
         })),
-        // Pricing breakdown details
-        pricing_details: priceBreakdown ? {
-          subtotal: priceBreakdown.subtotal,
-          discount_amount: priceBreakdown.discountAmount,
-          discount_percentage: selectedDiscount?.percentage || 0,
-          discount_code: selectedDiscount?.id || null,
-          gst_amount: priceBreakdown.gstAmount,
-          gst_rate: 15, // 15% GST
-          final_total: priceBreakdown.finalTotal
-        } : {
-          subtotal: totalPrice,
-          discount_amount: 0,
-          discount_percentage: 0,
-          discount_code: null,
-          gst_amount: Math.round(totalPrice * 0.15),
-          gst_rate: 15,
-          final_total: Math.round(totalPrice * 1.15)
-        },
-        // Shop details
-        shop_details: {
-          name: bookingDetails?.shopName || 'Service Provider',
-          address: bookingDetails?.shopAddress || 'Address not available',
-          contact: bookingDetails?.shopContact || 'Contact not available'
-        },
-        // Discount details if applied
-        applied_discount: selectedDiscount ? {
-          id: selectedDiscount.id,
-          title: selectedDiscount.title,
-          percentage: selectedDiscount.percentage
-        } : null,
-        notes: `Booking with ${selectedStaff.name} for ${selectedServices.map(s => s.name).join(', ')}${selectedDiscount ? ` (${selectedDiscount.percentage}% discount applied)` : ''}`
+        notes: `Booking with ${selectedStaff.name} for ${selectedServices.map(s => s.name).join(', ')}${selectedDiscount ? ` (${selectedDiscount.percentage}% discount applied)` : ''}`,
+        discount_id: (selectedDiscount?.id && isValidUUID(selectedDiscount.id)) ? selectedDiscount.id : undefined,
+        service_option_ids: []
       };
       
       console.log('📅 Creating booking:', bookingData);
+      
+      // Validate that the shop exists before creating booking
+      console.log('🔍 Validating shop exists:', shopId);
+      const { data: shopExists, error: shopError } = await supabase
+        .from('provider_businesses')
+        .select('id, name')
+        .eq('id', shopId)
+        .single();
+        
+      if (shopError || !shopExists) {
+        console.error('❌ Shop validation failed:', shopError);
+        console.log('❌ Trying to find any shop from provider_businesses...');
+        
+        // Try to find any active shop as a fallback
+        const { data: anyShop, error: anyShopError } = await supabase
+          .from('provider_businesses')
+          .select('id, name')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+          
+        if (anyShopError || !anyShop) {
+          console.error('❌ No shops found in provider_businesses table');
+          Alert.alert('Booking Error', 'No shops available for booking. Please try again later.');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('⚠️ Using fallback shop:', anyShop);
+        shopId = anyShop.id;
+      } else {
+        console.log('✅ Shop validated:', shopExists);
+      }
       
       // Save booking to Supabase
       const response = await bookingsAPI.createBooking(bookingData);
