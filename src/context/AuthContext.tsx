@@ -102,7 +102,7 @@ const DEMO_USERS = {
     created_at: new Date().toISOString(),
   },
   'provider@example.com': {
-    id: '550e8400-e29b-41d4-a716-446655440002',
+    id: '664d9c32-ec81-4a00-afd1-f9903db141a',
     email: 'provider@example.com',
     full_name: 'Demo Provider',
     phone: '+1234567892',

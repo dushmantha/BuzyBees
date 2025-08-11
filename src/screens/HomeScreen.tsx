@@ -940,9 +940,9 @@ const HomeScreen = () => {
                 {searchResults.categories.length > 0 && (
                   <View style={styles.searchResultSection}>
                     <Text style={styles.searchResultSectionTitle}>Categories</Text>
-                    {searchResults.categories.slice(0, 3).map((category) => (
+                    {searchResults.categories.slice(0, 3).map((category, index) => (
                       <TouchableOpacity
-                        key={category.id}
+                        key={`search-category-${category.id}-${index}`}
                         style={styles.searchResultItem}
                         onPress={() => handleSearchResultPress('category', category)}
                       >
@@ -962,9 +962,9 @@ const HomeScreen = () => {
                 {searchResults.services.length > 0 && (
                   <View style={styles.searchResultSection}>
                     <Text style={styles.searchResultSectionTitle}>Services</Text>
-                    {searchResults.services.slice(0, 4).map((service) => (
+                    {searchResults.services.slice(0, 4).map((service, index) => (
                       <TouchableOpacity
-                        key={service.id}
+                        key={`search-service-${service.id}-${index}`}
                         style={styles.searchResultItem}
                         onPress={() => handleSearchResultPress('service', service)}
                       >
@@ -986,9 +986,9 @@ const HomeScreen = () => {
                 {searchResults.professionals.length > 0 && (
                   <View style={styles.searchResultSection}>
                     <Text style={styles.searchResultSectionTitle}>Providers</Text>
-                    {searchResults.professionals.slice(0, 3).map((professional) => (
+                    {searchResults.professionals.slice(0, 3).map((professional, index) => (
                       <TouchableOpacity
-                        key={professional.id}
+                        key={`search-professional-${professional.id}-${index}`}
                         style={styles.searchResultItem}
                         onPress={() => handleSearchResultPress('professional', professional)}
                       >
@@ -1093,7 +1093,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.upcomingBookings}
               renderItem={renderUpcomingBooking}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `upcoming-bookings-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.bookingsList}
@@ -1110,7 +1110,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.promotions}
               renderItem={renderPromotionCard}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `promotions-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.promotionsList}
@@ -1130,7 +1130,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.trendingServices}
               renderItem={renderServiceCard}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `trending-services-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.servicesList}
@@ -1145,7 +1145,7 @@ const HomeScreen = () => {
           </View>
           <View style={styles.categoriesContainer}>
             {homeData.categories.map((category, index) => (
-              <View key={category.id} style={styles.categoryWrapper}>
+              <View key={`categories-${category.id}-${index}`} style={styles.categoryWrapper}>
                 {renderCategoryCard({ item: category })}
               </View>
             ))}
@@ -1164,7 +1164,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.popularServices}
               renderItem={renderServiceCard}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `popular-services-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.servicesList}
@@ -1184,7 +1184,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.recommendedServices}
               renderItem={renderServiceCard}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `recommended-services-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.servicesList}

@@ -20,6 +20,7 @@ import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { useAccount } from '../../navigation/AppNavigator';
 import { normalizedShopService } from '../../lib/supabase/normalized';
+import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const chartWidth = width - 52; // Optimized width for better chart positioning
@@ -63,6 +64,7 @@ interface PeakHours {
 const AnalyticsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { userProfile } = useAccount();
+  const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -89,14 +91,24 @@ const AnalyticsScreen: React.FC = () => {
 
   // Fetch real analytics data from database
   const fetchAnalyticsData = useCallback(async () => {
+    console.log('🔍 Analytics Debug - userProfile:', userProfile);
+    console.log('🔍 Analytics Debug - userProfile.id:', userProfile?.id);
+    console.log('🔍 Analytics Debug - user from auth:', user);
+    console.log('🔍 Analytics Debug - user.id:', user?.id);
+    console.log('🔍 Analytics Debug - user role:', user?.role);
+    console.log('🔍 Analytics Debug - user account_type:', user?.account_type);
+    console.log('🔍 Analytics Debug - selectedPeriod:', selectedPeriod);
+    
     if (!userProfile?.id) {
       console.warn('⚠️ No user profile available for analytics');
       return null;
     }
 
     try {
-      console.log('📊 Fetching real analytics data for period:', selectedPeriod);
+      console.log('📊 Fetching real analytics data for provider:', userProfile.id, 'period:', selectedPeriod);
       const response = await normalizedShopService.getAnalyticsData(userProfile.id, selectedPeriod);
+      
+      console.log('🔍 Analytics API response:', response);
       
       if (response.success && response.data) {
         console.log('✅ Analytics data fetched successfully:', response.data);
@@ -163,6 +175,13 @@ const AnalyticsScreen: React.FC = () => {
     const incomeData = generateSampleIncomeData();
     const totalRevenue = incomeData.reduce((sum, item) => sum + item.amount, 0);
     const revenueGrowth = incomeData.reduce((sum, item) => sum + item.growth, 0) / incomeData.length;
+    
+    console.log('🎭 SAMPLE DATA GENERATION:');
+    console.log('  - Selected period:', selectedPeriod);
+    console.log('  - Income data length:', incomeData.length);
+    console.log('  - Individual amounts:', incomeData.map(item => item.amount));
+    console.log('  - Calculated total revenue:', totalRevenue);
+    console.log('  - Revenue growth:', revenueGrowth);
 
     return {
       incomeData,
@@ -534,9 +553,14 @@ please use the web dashboard or contact support.
       <View style={[styles.overviewCard, styles.primaryCard]}>
         <View style={styles.cardHeader}>
           <Ionicons name="trending-up" size={20} color="#FFFFFF" />
-          <Text style={styles.primaryCardTitle}>Total Revenue</Text>
+          <Text style={styles.primaryCardTitle}>
+            Total Revenue {isShowingSampleData && '(Sample)'}
+          </Text>
         </View>
         <Text style={styles.primaryCardValue}>{formatCurrency(totalRevenue)}</Text>
+        {isShowingSampleData && (
+          <Text style={styles.sampleDataIndicator}>Using demo data</Text>
+        )}
         <View style={styles.growthContainer}>
           <Ionicons 
             name={revenueGrowth > 0 ? "arrow-up" : "arrow-down"} 
@@ -1032,6 +1056,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 8,
     textAlign: 'center',
+  },
+  sampleDataIndicator: {
+    fontSize: 12,
+    color: '#FEF3C7',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 4,
   },
   growthContainer: {
     flexDirection: 'row',

@@ -152,6 +152,8 @@ class FavoritesAPI {
   async getUserFavorites(userId: string): Promise<FavoritesResponse<FavoriteShop[]>> {
     try {
       console.log('📋 Getting favorites for user:', userId);
+      console.log('📋 User ID type:', typeof userId);
+      console.log('📋 User ID length:', userId.length);
 
       // First get the user favorites
       const { data: favorites, error: favoritesError } = await supabase
@@ -159,6 +161,9 @@ class FavoritesAPI {
         .select('id, shop_id, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
+
+      console.log('📋 Raw favorites query result:', favorites);
+      console.log('📋 Favorites query error:', favoritesError);
 
       if (favoritesError) {
         console.error('❌ Error getting user favorites:', favoritesError);

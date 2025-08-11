@@ -5275,6 +5275,23 @@ class NormalizedShopService {
       const bookings = bookingsResult.data || [];
       const services = servicesResult.data || [];
       const hourlyBookings = bookingsByHourResult.data || [];
+      
+      // If no payments found for this provider, try to fetch all bookings for demo purposes
+      if (payments.length === 0) {
+        console.log('⚠️ No payments found for provider:', providerId);
+        console.log('🔍 Trying to fetch all bookings for demo...');
+        
+        const { data: allBookings } = await this.client
+          .from('shop_bookings')
+          .select('*')
+          .gte('booking_date', startDate.toISOString().split('T')[0])
+          .limit(10);
+          
+        console.log('🔍 All available bookings:', allBookings);
+        if (allBookings && allBookings.length > 0) {
+          console.log('🔍 Provider IDs in bookings:', [...new Set(allBookings.map(b => b.provider_id))]);
+        }
+      }
 
       console.log('📊 Fetched data:', {
         payments: payments.length,
@@ -5282,6 +5299,11 @@ class NormalizedShopService {
         services: services.length,
         hourlyBookings: hourlyBookings.length
       });
+      
+      console.log('📊 Analytics Debug - Provider ID used:', providerId);
+      console.log('📊 Analytics Debug - Payments data:', payments);
+      console.log('📊 Analytics Debug - First payment total_price:', payments[0]?.total_price);
+      console.log('📊 Analytics Debug - All payment prices:', payments.map(p => p.total_price));
 
       // Generate income data
       const incomeData = this.generateIncomeData(payments, period, periodCount);
@@ -5301,6 +5323,12 @@ class NormalizedShopService {
       // Calculate totals - use total_price from shop_bookings table
       const totalRevenue = payments.reduce((sum, p) => sum + (Number(p.total_price) || 0), 0);
       const revenueGrowth = this.calculateRevenueGrowth(incomeData);
+      
+      console.log('📊 Total Revenue Calculation:');
+      console.log('  - Payments used for calculation:', payments.length);
+      console.log('  - Individual prices:', payments.map(p => `${p.total_price} (${typeof p.total_price})`));
+      console.log('  - Calculated total:', totalRevenue);
+      console.log('  - Revenue growth:', revenueGrowth);
 
       return {
         success: true,

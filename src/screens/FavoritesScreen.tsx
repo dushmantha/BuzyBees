@@ -176,6 +176,48 @@ const FavoritesScreen = () => {
       >
         <Text style={styles.browseButtonText}>Browse Shops</Text>
       </TouchableOpacity>
+      
+      {/* Debug button to test favorites */}
+      <TouchableOpacity
+        style={[styles.browseButton, { backgroundColor: '#EF4444', marginTop: 10 }]}
+        onPress={async () => {
+          if (!userId) return;
+          
+          console.log('🧪 Creating test favorite for user:', userId);
+          
+          try {
+            // Try to get any shop ID from provider_businesses
+            const { data: shops } = await require('../lib/supabase/normalized').supabase
+              .from('provider_businesses')
+              .select('id, name')
+              .limit(1);
+              
+            console.log('🧪 Available shops:', shops);
+              
+            if (shops && shops.length > 0) {
+              const testShopId = shops[0].id;
+              console.log('🧪 Using shop:', shops[0].name, 'ID:', testShopId);
+              
+              // Create test favorite
+              const response = await favoritesAPI.toggleFavorite(userId, testShopId);
+              console.log('🧪 Toggle favorite result:', response);
+              
+              if (response.success) {
+                // Reload favorites
+                loadFavorites();
+              }
+            } else {
+              console.log('🧪 No shops found in database');
+              Alert.alert('Debug', 'No shops found in provider_businesses table');
+            }
+          } catch (error) {
+            console.error('🧪 Test favorite error:', error);
+            Alert.alert('Debug Error', error.message);
+          }
+        }}
+      >
+        <Text style={styles.browseButtonText}>🧪 Test Add Favorite</Text>
+      </TouchableOpacity>
     </View>
   );
 
