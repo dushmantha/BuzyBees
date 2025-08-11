@@ -1797,7 +1797,7 @@ class NormalizedShopService {
       // Create booking record compatible with enhanced schema
       const bookingRecord = {
         // Primary relationships
-        customer_id: customerId, // Use found/created customer or null for anonymous
+        customer_id: user.id, // Use authenticated user ID for booking lookup
         shop_id: bookingData.shop_id,
         provider_id: providerId, // Provider who owns the shop (from shop lookup)
         staff_id: bookingData.assigned_staff_id || null, // Can be null for "any staff"
@@ -1833,7 +1833,8 @@ class NormalizedShopService {
 
       // All fields are now set in the bookingRecord object above
 
-      console.log('📝 Creating booking with minimal fields:', Object.keys(bookingRecord));
+      console.log('📝 Creating booking with customer_id:', user.id);
+      console.log('📝 Booking record keys:', Object.keys(bookingRecord));
 
       const { data, error } = await this.client
         .from('shop_bookings')
@@ -1850,6 +1851,7 @@ class NormalizedShopService {
           
           // Fallback to minimal booking creation with only existing columns
           const fallbackRecord: any = {
+            customer_id: user.id, // Use authenticated user ID for booking lookup
             shop_id: bookingData.shop_id,
             customer_name: bookingData.customer_name,
             customer_phone: bookingData.customer_phone,

@@ -8,8 +8,6 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   RefreshControl,
-  Modal,
-  TextInput,
   Image,
   Dimensions,
   Animated,
@@ -17,12 +15,14 @@ import {
   StatusBar
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList, ConsumerTabParamList } from '../navigation/AppNavigator';
 import mockService from '../services/api/mock/index';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../navigation/AppNavigator';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
+import { reviewsAPI } from '../services/api/reviews/reviewsAPI';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -77,235 +77,90 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-// Star Rating Component
+// Enhanced Star Rating Component with animations
 const StarRating = ({ 
   rating, 
   onRatingChange, 
   size = 24, 
-  readonly = false 
+  readonly = false,
+  showAnimation = false
 }: { 
   rating: number; 
   onRatingChange?: (rating: number) => void; 
   size?: number; 
   readonly?: boolean;
+  showAnimation?: boolean;
 }) => {
+  const [animationValues] = useState([1, 2, 3, 4, 5].map(() => new Animated.Value(1)));
+
+  const animateStar = (index: number) => {
+    if (!showAnimation) return;
+    
+    Animated.sequence([
+      Animated.timing(animationValues[index], {
+        toValue: 1.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animationValues[index], {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleStarPress = (star: number) => {
+    if (readonly) return;
+    animateStar(star - 1);
+    onRatingChange && onRatingChange(star);
+  };
+
   return (
     <View style={styles.starContainer}>
-      {[1, 2, 3, 4, 5].map((star) => (
+      {[1, 2, 3, 4, 5].map((star, index) => (
         <TouchableOpacity
           key={star}
-          onPress={() => !readonly && onRatingChange && onRatingChange(star)}
+          onPress={() => handleStarPress(star)}
           disabled={readonly}
+          style={styles.starTouchable}
         >
-          <Ionicons
-            name={star <= rating ? "star" : "star-outline"}
-            size={size}
-            color={star <= rating ? "#F59E0B" : "#D1D5DB"}
-          />
+          <Animated.View
+            style={[
+              styles.starWrapper,
+              {
+                transform: [{ scale: showAnimation ? animationValues[index] : 1 }]
+              }
+            ]}
+          >
+            <Ionicons
+              name={star <= rating ? "star" : "star-outline"}
+              size={size}
+              color={star <= rating ? "#FFB800" : "#E5E7EB"}
+              style={[
+                styles.starIcon,
+                star <= rating && styles.activeStarIcon
+              ]}
+            />
+            {star <= rating && (
+              <View style={[styles.starGlow, { width: size + 4, height: size + 4 }]} />
+            )}
+          </Animated.View>
         </TouchableOpacity>
       ))}
     </View>
   );
 };
 
-// Review Modal Component
-const ReviewModal = ({ 
-  visible, 
-  booking, 
-  onClose, 
-  onSubmit 
-}: {
-  visible: boolean;
-  booking: ProcessedBooking | null;
-  onClose: () => void;
-  onSubmit: (reviewData: ReviewData) => void;
-}) => {
-  const [reviewData, setReviewData] = useState<ReviewData>({
-    rating: 5,
-    comment: '',
-    serviceQuality: 5,
-    punctuality: 5,
-    cleanliness: 5,
-    valueForMoney: 5
-  });
-
-  const slideAnim = new Animated.Value(0);
-
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    } else {
-      slideAnim.setValue(0);
-    }
-  }, [visible, slideAnim]);
-
-  const handleSubmit = () => {
-    if (reviewData.comment.trim().length < 10) {
-      Alert.alert('Review Required', 'Please write at least 10 characters in your review.');
-      return;
-    }
-    onSubmit(reviewData);
-    onClose();
-  };
-
-  const modalTransform = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [screenWidth, 0],
-  });
-
-  if (!booking) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <Animated.View 
-          style={[
-            styles.reviewModalContent,
-            {
-              transform: [{ translateX: modalTransform }]
-            }
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.reviewModalHeader}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <Text style={styles.reviewModalTitle}>Rate Your Experience</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          <ScrollView style={styles.reviewModalScroll} showsVerticalScrollIndicator={false}>
-            {/* Service Info */}
-            <View style={styles.reviewServiceInfo}>
-              <View style={styles.reviewServiceHeader}>
-                <Text style={styles.reviewServiceName}>{booking.service}</Text>
-                <Text style={styles.reviewServiceDetails}>
-                  with {booking.professional} at {booking.salon}
-                </Text>
-                <Text style={styles.reviewServiceDate}>{booking.date}</Text>
-              </View>
-            </View>
-
-            {/* Overall Rating */}
-            <View style={styles.reviewSection}>
-              <Text style={styles.reviewSectionTitle}>Overall Rating</Text>
-              <View style={styles.overallRatingContainer}>
-                <StarRating 
-                  rating={reviewData.rating} 
-                  onRatingChange={(rating) => setReviewData({...reviewData, rating})}
-                  size={32}
-                />
-                <Text style={styles.ratingText}>
-                  {reviewData.rating === 5 ? 'Excellent' :
-                   reviewData.rating === 4 ? 'Very Good' :
-                   reviewData.rating === 3 ? 'Good' :
-                   reviewData.rating === 2 ? 'Fair' : 'Poor'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Detailed Ratings */}
-            <View style={styles.reviewSection}>
-              <Text style={styles.reviewSectionTitle}>Rate Different Aspects</Text>
-              
-              <View style={styles.detailedRatingItem}>
-                <Text style={styles.detailedRatingLabel}>Service Quality</Text>
-                <StarRating 
-                  rating={reviewData.serviceQuality} 
-                  onRatingChange={(rating) => setReviewData({...reviewData, serviceQuality: rating})}
-                  size={20}
-                />
-              </View>
-
-              <View style={styles.detailedRatingItem}>
-                <Text style={styles.detailedRatingLabel}>Punctuality</Text>
-                <StarRating 
-                  rating={reviewData.punctuality} 
-                  onRatingChange={(rating) => setReviewData({...reviewData, punctuality: rating})}
-                  size={20}
-                />
-              </View>
-
-              <View style={styles.detailedRatingItem}>
-                <Text style={styles.detailedRatingLabel}>Cleanliness</Text>
-                <StarRating 
-                  rating={reviewData.cleanliness} 
-                  onRatingChange={(rating) => setReviewData({...reviewData, cleanliness: rating})}
-                  size={20}
-                />
-              </View>
-
-              <View style={styles.detailedRatingItem}>
-                <Text style={styles.detailedRatingLabel}>Value for Money</Text>
-                <StarRating 
-                  rating={reviewData.valueForMoney} 
-                  onRatingChange={(rating) => setReviewData({...reviewData, valueForMoney: rating})}
-                  size={20}
-                />
-              </View>
-            </View>
-
-            {/* Written Review */}
-            <View style={styles.reviewSection}>
-              <Text style={styles.reviewSectionTitle}>Write Your Review</Text>
-              <TextInput
-                style={styles.reviewTextInput}
-                placeholder="Share your experience with others... (minimum 10 characters)"
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={4}
-                value={reviewData.comment}
-                onChangeText={(text) => setReviewData({...reviewData, comment: text})}
-                textAlignVertical="top"
-                maxLength={500}
-              />
-              <Text style={styles.characterCount}>
-                {reviewData.comment.length}/500 characters
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Submit Button */}
-          <View style={styles.reviewModalFooter}>
-            <TouchableOpacity 
-              style={[
-                styles.submitReviewButton,
-                reviewData.comment.trim().length < 10 && styles.submitReviewButtonDisabled
-              ]}
-              onPress={handleSubmit}
-              disabled={reviewData.comment.trim().length < 10}
-            >
-              <Text style={styles.submitReviewButtonText}>Submit Review</Text>
-              <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-};
 
 // Enhanced Booking Card Component
 const BookingCard = ({ 
   booking, 
   isPast = false, 
-  onCancel,
   onReview
 }: { 
   booking: ProcessedBooking; 
   isPast?: boolean;
-  onCancel?: (id: string) => void;
   onReview?: (booking: ProcessedBooking) => void;
 }) => {
   const getStatusColor = (status: string) => {
@@ -400,15 +255,7 @@ const BookingCard = ({
         </View>
         
         <View style={styles.actionsContainer}>
-          {booking.status === 'Confirmed' && onCancel && (
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => onCancel(booking.id)}
-            >
-              <Ionicons name="close" size={14} color="#EF4444" />
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          )}
+          {/* Cancel button removed as requested */}
           
           {booking.status === 'Completed' && onReview && !booking.rating && (
             <TouchableOpacity 
@@ -435,17 +282,18 @@ const BookingCard = ({
   );
 };
 
+type BookingsScreenRouteProp = RouteProp<ConsumerTabParamList, 'BookingsTab'>;
+
 const BookingsScreen = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
   const [upcomingBookings, setUpcomingBookings] = useState<ProcessedBooking[]>([]);
   const [pastBookings, setPastBookings] = useState<ProcessedBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedBookingForReview, setSelectedBookingForReview] = useState<ProcessedBooking | null>(null);
   
   const { user, clearAllData, isInitializing, isAuthenticated } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<BookingsScreenRouteProp>();
 
   // Utility function to check if string is valid UUID
   const isValidUUID = (str: string): boolean => {
@@ -626,12 +474,50 @@ const BookingsScreen = () => {
 
   // Handle review submission
   const handleReviewSubmit = async (reviewData: ReviewData) => {
-    if (!selectedBookingForReview) return;
+    if (!selectedBookingForReview || !user) return;
     
     try {
-      const response = await apiService.submitReview({
-        bookingId: selectedBookingForReview.id,
-        ...reviewData
+      // Get the booking details to extract shop_id, provider_id etc.
+      const bookingResponse = await bookingsAPI.getCustomerBookings(user.id);
+      if (!bookingResponse.success) {
+        Alert.alert('Error', 'Could not verify booking details');
+        return;
+      }
+
+      const booking = bookingResponse.data?.find(b => b.id === selectedBookingForReview.id);
+      if (!booking) {
+        Alert.alert('Error', 'Booking not found');
+        return;
+      }
+
+      console.log('📝 Submitting review with data:', {
+        booking_id: selectedBookingForReview.id,
+        shop_id: booking.shop_id,
+        customer_name: user.full_name,
+        customer_email: user.email,
+        customer_phone: user.phone,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        service_quality: reviewData.serviceQuality,
+        punctuality: reviewData.punctuality,
+        cleanliness: reviewData.cleanliness,
+        value_for_money: reviewData.valueForMoney
+      });
+
+      const response = await reviewsAPI.submitReview({
+        booking_id: selectedBookingForReview.id,
+        shop_id: booking.shop_id,
+        provider_id: booking.provider_id || booking.shop_id, // Fallback if provider_id not available
+        service_id: booking.service_id,
+        customer_name: user.full_name,
+        customer_email: user.email,
+        customer_phone: user.phone,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        service_quality: reviewData.serviceQuality,
+        punctuality: reviewData.punctuality,
+        cleanliness: reviewData.cleanliness,
+        value_for_money: reviewData.valueForMoney
       });
 
       if (!response.success) {
@@ -639,66 +525,77 @@ const BookingsScreen = () => {
         return;
       }
       
+      console.log('✅ Review submitted successfully:', response.data?.id);
+      
       // Update local state to show the review was submitted
       const updateBookings = (bookings: ProcessedBooking[]) =>
-        bookings.map(booking =>
-          booking.id === selectedBookingForReview.id
-            ? { ...booking, rating: reviewData.rating, review: reviewData.comment }
-            : booking
+        bookings.map(bookingItem =>
+          bookingItem.id === selectedBookingForReview.id
+            ? { ...bookingItem, rating: reviewData.rating, review: reviewData.comment }
+            : bookingItem
         );
       
       setUpcomingBookings(updateBookings);
       setPastBookings(updateBookings);
       
-      Alert.alert('Review Submitted', 'Thank you for your feedback!');
+      Alert.alert('Review Submitted', 'Thank you for your feedback! Your review has been saved to the database.');
     } catch (error) {
       console.error('Error submitting review:', error);
       Alert.alert('Error', 'Failed to submit review. Please try again.');
     }
   };
 
-  // Handle review button press
-  const handleReviewPress = (booking: ProcessedBooking) => {
-    setSelectedBookingForReview(booking);
-    setShowReviewModal(true);
+  // Handle review button press - Navigate to ReviewScreen
+  const handleReviewPress = async (booking: ProcessedBooking) => {
+    console.log('🌟 Review button pressed for booking:', booking.id);
+    
+    // Fetch the complete booking data with database IDs needed for review submission
+    try {
+      const bookingResponse = await bookingsAPI.getCustomerBookings(user?.id || '');
+      if (!bookingResponse.success || !bookingResponse.data) {
+        Alert.alert('Error', 'Could not load booking details for review');
+        return;
+      }
+
+      // Find the specific booking with all database fields
+      const fullBookingData = bookingResponse.data.find(b => b.id === booking.id);
+      if (!fullBookingData) {
+        Alert.alert('Error', 'Booking details not found');
+        return;
+      }
+
+      console.log('📝 Navigating to ReviewScreen with complete booking data:', {
+        id: fullBookingData.id,
+        shop_id: fullBookingData.shop_id,
+        staff_id: fullBookingData.staff_id,
+        service_name: fullBookingData.service_names || booking.service
+      });
+      
+      // Navigate to the ReviewScreen with complete booking data including database IDs
+      navigation.navigate('Review', {
+        booking: {
+          id: fullBookingData.id,
+          shop_id: fullBookingData.shop_id,
+          staff_id: fullBookingData.staff_id,
+          service: fullBookingData.service_names || booking.service,
+          professional: fullBookingData.staff_names || booking.professional,
+          salon: fullBookingData.shop_name || booking.salon,
+          date: booking.date,
+          status: booking.status
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error fetching booking details for review:', error);
+      Alert.alert('Error', 'Could not load booking details. Please try again.');
+    }
   };
 
-  // Cancel booking
-  const handleCancelBooking = async (bookingId: string) => {
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Use real bookingsAPI to cancel booking
-              const response = await bookingsAPI.cancelBooking(bookingId);
-              
-              if (!response.success) {
-                Alert.alert('Error', response.error || 'Failed to cancel booking');
-                return;
-              }
-              
-              fetchBookings();
-              Alert.alert('Booking Cancelled', 'Your booking has been cancelled successfully.');
-            } catch (err) {
-              console.error('Error cancelling booking:', err);
-              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
-            }
-          }
-        }
-      ]
-    );
-  };
+  // Cancel booking function removed as cancel button was removed
 
   // Handle navigation
   const handleNavigation = () => {
     if (navigation?.navigate) {
-      navigation.navigate('MainTabs', { screen: 'HomeTab' });
+      navigation.navigate('ConsumerTabs', { screen: 'HomeTab' });
     } else {
       Alert.alert('Navigation', 'Navigate to home to book services');
     }
@@ -734,37 +631,77 @@ const BookingsScreen = () => {
       console.log('📅 Fetching bookings for user:', userId);
       console.log('🔍 User ID is valid UUID:', isValidUUID(userId));
       console.log('👤 Auth user:', user?.id || 'No user');
+      console.log('🔄 Current timestamp:', new Date().toISOString());
       
       // Use real bookingsAPI to fetch from Supabase
       const response = await bookingsAPI.getCustomerBookings(userId);
       
+      console.log('📊 Bookings API Response:', {
+        success: response.success,
+        error: response.error,
+        dataLength: response.data?.length || 0,
+        data: response.data
+      });
+      
       if (!response.success) {
+        console.error('❌ Bookings API error:', response.error);
         throw new Error(response.error || 'Failed to load bookings');
       }
       
       if (response.data && response.data.length > 0) {
         console.log('✅ Found', response.data.length, 'bookings');
+        console.log('📋 Booking details:', response.data.map(b => ({
+          id: b.id,
+          customer_id: b.customer_id,
+          service_name: b.service_name,
+          booking_date: b.booking_date,
+          status: b.status,
+          created_at: b.created_at
+        })));
         
-        // Convert Supabase booking format to component format
-        const processedBookings = response.data.map(booking => ({
-          id: booking.id,
-          service: booking.service_names || 'Service',
-          date: new Date(booking.booking_date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short', 
-            day: 'numeric'
-          }),
-          time: booking.start_time,
-          professional: booking.staff_names || 'Staff Member',
-          salon: booking.shop_name || 'Salon',
-          price: booking.total_price,
-          status: booking.status === 'confirmed' ? 'Confirmed' : 
-                 booking.status === 'completed' ? 'Completed' :
-                 booking.status === 'cancelled' ? 'Cancelled' : 'Pending',
-          originalDate: new Date(`${booking.booking_date}T${booking.start_time}`),
-          duration: booking.duration || 60,
-          image: booking.shop_image_url || 'https://via.placeholder.com/150',
-          notes: booking.notes || ''
+        // Convert Supabase booking format to component format and check for existing reviews
+        const processedBookings = await Promise.all(response.data.map(async booking => {
+          let rating = undefined;
+          let review = undefined;
+
+          // Check if this booking has been reviewed (only for completed bookings)
+          if (booking.status === 'completed') {
+            try {
+              const reviewResponse = await reviewsAPI.getBookingReview(booking.id);
+              if (reviewResponse.success && reviewResponse.data) {
+                rating = reviewResponse.data.rating;
+                // Extract comment from review, removing detailed ratings JSON if present
+                const comment = reviewResponse.data.comment || '';
+                const cleanComment = comment.replace(/\[DETAILED_RATINGS\].*?\[\/DETAILED_RATINGS\]/g, '').trim();
+                review = cleanComment;
+              }
+            } catch (reviewError) {
+              console.warn('⚠️ Error checking review for booking:', booking.id, reviewError);
+            }
+          }
+
+          return {
+            id: booking.id,
+            service: booking.service_names || 'Service',
+            date: new Date(booking.booking_date).toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short', 
+              day: 'numeric'
+            }),
+            time: booking.start_time,
+            professional: booking.staff_names || 'Staff Member',
+            salon: booking.shop_name || 'Salon',
+            price: booking.total_price,
+            status: booking.status === 'confirmed' ? 'Confirmed' : 
+                   booking.status === 'completed' ? 'Completed' :
+                   booking.status === 'cancelled' ? 'Cancelled' : 'Pending',
+            originalDate: new Date(`${booking.booking_date}T${booking.start_time}`),
+            duration: booking.duration || 60,
+            image: booking.shop_image_url || 'https://via.placeholder.com/150',
+            notes: booking.notes || '',
+            rating,
+            review
+          };
         }));
         
         const now = new Date();
@@ -781,7 +718,8 @@ const BookingsScreen = () => {
         setUpcomingBookings(upcoming);
         setPastBookings(past);
       } else {
-        console.log('📅 No bookings found for user');
+        console.log('📅 No bookings found for user:', userId);
+        console.log('🔍 Response data:', response.data);
         setUpcomingBookings([]);
         setPastBookings([]);
       }
@@ -796,6 +734,40 @@ const BookingsScreen = () => {
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  // Add focus listener to refresh bookings when screen comes back into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('📅 BookingsScreen focused - refreshing bookings...');
+      if (userId) {
+        fetchBookings();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, userId, fetchBookings]);
+
+  // Handle review completion from ReviewScreen
+  useEffect(() => {
+    if (route.params?.reviewCompleted) {
+      const { bookingId, rating, comment } = route.params.reviewCompleted;
+      console.log('✅ Review completed for booking:', bookingId, 'Rating:', rating);
+      
+      // Update local state to show the review was completed
+      const updateBookingWithReview = (bookings: ProcessedBooking[]) =>
+        bookings.map(booking =>
+          booking.id === bookingId
+            ? { ...booking, rating, review: comment }
+            : booking
+        );
+      
+      setUpcomingBookings(updateBookingWithReview);
+      setPastBookings(updateBookingWithReview);
+      
+      // Clear the navigation params to prevent re-processing
+      navigation.setParams({ reviewCompleted: undefined });
+    }
+  }, [route.params?.reviewCompleted, navigation]);
 
   // Show loading while auth is initializing
   if (isInitializing) {
@@ -943,7 +915,6 @@ const BookingsScreen = () => {
                 <BookingCard 
                   key={booking.id} 
                   booking={booking} 
-                  onCancel={handleCancelBooking}
                   onReview={handleReviewPress}
                 />
               ))}
@@ -992,16 +963,6 @@ const BookingsScreen = () => {
         )}
       </ScrollView>
 
-      {/* Review Modal */}
-      <ReviewModal
-        visible={showReviewModal}
-        booking={selectedBookingForReview}
-        onClose={() => {
-          setShowReviewModal(false);
-          setSelectedBookingForReview(null);
-        }}
-        onSubmit={handleReviewSubmit}
-      />
     </View>
   );
 };
@@ -1257,148 +1218,308 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  // Enhanced Star Rating Styles
   starContainer: {
     flexDirection: 'row',
-    gap: 2,
+    gap: 4,
+    justifyContent: 'center',
   },
-  modalOverlay: {
+  starTouchable: {
+    padding: 2,
+  },
+  starWrapper: {
+    position: 'relative',
+  },
+  starIcon: {
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  activeStarIcon: {
+    textShadowColor: 'rgba(255, 184, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  starGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 184, 0, 0.1)',
+    zIndex: -1,
+  },
+
+  // Modern Modal Overlay
+  modernModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  reviewModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 34,
-    borderWidth: 2,
-    borderColor: '#FCD34D',
-  },
-  reviewModalHeader: {
-    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  reviewModalTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  reviewModalScroll: {
-    flex: 1,
-  },
-  reviewServiceInfo: {
     padding: 20,
-    backgroundColor: '#FEF3C7',
   },
-  reviewServiceHeader: {
+  modernReviewModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: '100%',
+    maxHeight: '90%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+
+  // Modern Header
+  modernModalHeader: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  modalHeaderGradient: {
+    backgroundColor: '#F59E0B',
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    position: 'relative',
+  },
+  modernCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  reviewServiceName: {
+  headerContent: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  modernModalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modernModalSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+
+  // Modern Scroll View
+  modernModalScroll: {
+    flex: 1,
+  },
+
+  // Service Info Card
+  serviceInfoCard: {
+    flexDirection: 'row',
+    margin: 20,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  serviceIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  serviceDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  modernServiceName: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 4,
-    textAlign: 'center',
+    marginBottom: 6,
   },
-  reviewServiceDetails: {
+  modernServiceProvider: {
     fontSize: 14,
     color: '#6B7280',
-    marginBottom: 2,
-    textAlign: 'center',
+    marginBottom: 3,
+    fontWeight: '500',
   },
-  reviewServiceDate: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
+  modernServiceLocation: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 3,
+    fontWeight: '500',
   },
-  reviewSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEF3C7',
+  modernServiceDate: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-  reviewSectionTitle: {
+
+  // Modern Review Sections
+  modernReviewSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  modernSectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  overallRatingContainer: {
+
+  // Overall Rating Card
+  overallRatingCard: {
+    backgroundColor: '#FEFCE8',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+  },
+  ratingDisplayContainer: {
     alignItems: 'center',
     gap: 12,
   },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4B5563',
+  ratingEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
   },
-  detailedRatingItem: {
+  modernRatingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+
+  // Detailed Ratings Grid
+  detailedRatingsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  detailedRatingsList: {
+    gap: 16,
+  },
+  detailedRatingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
   },
-  detailedRatingLabel: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  reviewTextInput: {
-    backgroundColor: '#FEF3C7',
+  ratingGridItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    fontSize: 14,
-    color: '#1F2937',
-    minHeight: 100,
-    textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  characterCount: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  reviewModalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#FCD34D',
-  },
-  submitReviewButton: {
-    backgroundColor: '#F59E0B',
-    borderRadius: 12,
-    paddingVertical: 16,
+  ratingItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 12,
     gap: 8,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  submitReviewButtonDisabled: {
+  modernRatingLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+
+  // Text Input Container
+  textInputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  modernTextInput: {
+    padding: 16,
+    fontSize: 16,
+    color: '#1F2937',
+    minHeight: 120,
+    textAlignVertical: 'top',
+    lineHeight: 24,
+  },
+  inputFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  modernCharacterCount: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  validCharacterCount: {
+    color: '#10B981',
+  },
+
+  // Modern Footer
+  modernModalFooter: {
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  modernSubmitButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 18,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modernSubmitButtonDisabled: {
     backgroundColor: '#9CA3AF',
     shadowOpacity: 0.1,
   },
-  submitReviewButtonText: {
+  submitButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  modernSubmitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
   },
   loadingContainer: {
     flex: 1,

@@ -21,6 +21,7 @@ import UpgradeModal from '../../components/UpgradeModal';
 import { CancellationBanner } from '../../components/CancellationBanner';
 import { authService } from '../../lib/supabase/index';
 import { normalizedShopService } from '../../lib/supabase/normalized';
+import { reviewsAPI } from '../../services/api/reviews/reviewsAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -76,6 +77,19 @@ interface DashboardStats {
   totalReviews?: number;
   averageResponseTimeMinutes?: number;
   averageResponseTime?: string;
+  // Review statistics
+  reviewStats?: {
+    total_reviews: number;
+    average_rating: number;
+    total_businesses_with_reviews: number;
+    businesses: Array<{
+      provider_business_id: string;
+      business_name: string;
+      total_reviews: number;
+      average_rating: number;
+      latest_review_date: string;
+    }>;
+  };
 }
 
 interface ActivityItem {
@@ -218,7 +232,7 @@ const ProviderHomeScreen: React.FC = () => {
         console.log('📊 Fetching real dashboard data from Supabase...');
         
         // Get real data in parallel
-        const [shopsResponse, statsResponse, activityResponse, revenueResponse, shopStatsResponse] = await Promise.all([
+        const [shopsResponse, statsResponse, activityResponse, revenueResponse, shopStatsResponse, reviewStatsResponse] = await Promise.all([
           // Get shops
           authService.getProviderBusinesses(providerId),
           // Get dashboard stats
@@ -228,7 +242,9 @@ const ProviderHomeScreen: React.FC = () => {
           // Get monthly revenue for shops
           normalizedShopService.getShopMonthlyRevenue(),
           // Get shop statistics (rating, reviews, staff, services)
-          normalizedShopService.getShopStatistics()
+          normalizedShopService.getShopStatistics(),
+          // Get review statistics
+          reviewsAPI.getAllProviderReviewStats(providerId)
         ]);
         
         console.log('📥 Shops response:', shopsResponse);
@@ -236,6 +252,7 @@ const ProviderHomeScreen: React.FC = () => {
         console.log('📋 Activity response:', activityResponse);
         console.log('💰 Revenue response:', revenueResponse);
         console.log('📊 Shop statistics response:', shopStatsResponse);
+        console.log('⭐ Review statistics response:', reviewStatsResponse);
         
         // Debug: Check if revenue response has any data
         if (revenueResponse.success && revenueResponse.data) {
@@ -352,12 +369,22 @@ const ProviderHomeScreen: React.FC = () => {
           console.warn('⚠️ Failed to get real shops data:', shopsResponse.error);
         }
         
+        // Get review statistics
+        const reviewStatsData = reviewStatsResponse.success ? reviewStatsResponse.data : null;
+        console.log('⭐ Review stats data:', reviewStatsData);
+
         // Use real stats from the API
-        const realStats = statsResponse.success && statsResponse.data ? statsResponse.data : {
+        const realStats = statsResponse.success && statsResponse.data ? {
+          ...statsResponse.data,
+          reviewStats: reviewStatsData,
+          // Update customer rating and total reviews from review stats if available
+          customerRating: reviewStatsData?.average_rating || statsResponse.data.customerRating || 0,
+          totalReviews: reviewStatsData?.total_reviews || statsResponse.data.totalReviews || 0,
+        } : {
           totalEarnings: 0,
           activeJobs: 0,
           completedJobs: 0,
-          customerRating: 4.5,
+          customerRating: reviewStatsData?.average_rating || 0,
           pendingBookings: 0,
           thisMonthEarnings: 0,
           responseRate: 95,
@@ -366,6 +393,8 @@ const ProviderHomeScreen: React.FC = () => {
           growthPercentage: 0,
           weeklyBookings: 0,
           monthlyGrowth: 0,
+          totalReviews: reviewStatsData?.total_reviews || 0,
+          reviewStats: reviewStatsData,
         };
         
         console.log('📊 Final dashboard stats:', realStats);
@@ -1154,6 +1183,94 @@ const ProviderHomeScreen: React.FC = () => {
       </View>
     </View>
   );
+
+  const renderReviewStatistics = () => {
+    const reviewStats = dashboardStats.reviewStats;
+    
+    if (!reviewStats || reviewStats.total_reviews === 0) {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Customer Reviews</Text>
+          <View style={styles.noReviewsCard}>
+            <View style={styles.noReviewsIcon}>
+              <Ionicons name="star-outline" size={32} color="#9CA3AF" />
+            </View>
+            <Text style={styles.noReviewsTitle}>No Reviews Yet</Text>
+            <Text style={styles.noReviewsSubtext}>
+              Start receiving bookings to collect customer reviews
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Customer Reviews</Text>
+        <View style={styles.reviewStatsGrid}>
+          <View style={[styles.reviewStatCard, styles.primaryReviewCard]}>
+            <View style={styles.reviewStatHeader}>
+              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Text style={styles.reviewStatLabel}>Overall Rating</Text>
+            </View>
+            <Text style={styles.reviewStatValue}>
+              {reviewStats.average_rating.toFixed(1)}
+            </Text>
+            <Text style={styles.reviewStatSubtext}>
+              Based on {reviewStats.total_reviews} review{reviewStats.total_reviews !== 1 ? 's' : ''}
+            </Text>
+          </View>
+
+          <View style={styles.reviewStatCard}>
+            <View style={styles.reviewStatHeader}>
+              <Ionicons name="business-outline" size={16} color="#4B5563" />
+              <Text style={styles.reviewStatLabelSmall}>Businesses</Text>
+            </View>
+            <Text style={styles.reviewStatValueSmall}>
+              {reviewStats.total_businesses_with_reviews}
+            </Text>
+            <Text style={styles.reviewStatSubtextSmall}>with reviews</Text>
+          </View>
+
+          <View style={styles.reviewStatCard}>
+            <View style={styles.reviewStatHeader}>
+              <Ionicons name="chatbubbles-outline" size={16} color="#4B5563" />
+              <Text style={styles.reviewStatLabelSmall}>Total Reviews</Text>
+            </View>
+            <Text style={styles.reviewStatValueSmall}>
+              {reviewStats.total_reviews}
+            </Text>
+            <Text style={styles.reviewStatSubtextSmall}>across all shops</Text>
+          </View>
+        </View>
+
+        {/* Individual Business Reviews */}
+        {reviewStats.businesses.length > 0 && (
+          <View style={styles.businessReviewsList}>
+            <Text style={styles.businessReviewsTitle}>Shop Performance</Text>
+            {reviewStats.businesses.slice(0, 3).map((business) => (
+              <View key={business.provider_business_id} style={styles.businessReviewItem}>
+                <View style={styles.businessReviewContent}>
+                  <Text style={styles.businessReviewName}>{business.business_name}</Text>
+                  <View style={styles.businessReviewStats}>
+                    <View style={styles.businessReviewRating}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Text style={styles.businessReviewRatingText}>
+                        {business.average_rating.toFixed(1)}
+                      </Text>
+                    </View>
+                    <Text style={styles.businessReviewCount}>
+                      {business.total_reviews} review{business.total_reviews !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderBusinessOverview = () => (
     <View style={styles.section}>
@@ -2043,6 +2160,146 @@ const styles = StyleSheet.create({
   upgradeDescription: {
     fontSize: 12,
     color: '#A16207',
+  },
+
+  // Review Statistics Styles
+  noReviewsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  noReviewsIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  noReviewsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  reviewStatsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  reviewStatCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+    flex: 1,
+  },
+  primaryReviewCard: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  reviewStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewStatLabel: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  reviewStatLabelSmall: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  reviewStatValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  reviewStatValueSmall: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  reviewStatSubtext: {
+    fontSize: 13,
+    color: '#A16207',
+    fontWeight: '500',
+  },
+  reviewStatSubtextSmall: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  businessReviewsList: {
+    marginTop: 8,
+  },
+  businessReviewsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  businessReviewItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  businessReviewContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  businessReviewName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  businessReviewStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  businessReviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  businessReviewRatingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  businessReviewCount: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 
   // Bottom Spacing

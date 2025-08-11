@@ -344,6 +344,27 @@ class BookingsAPI {
    */
   async cancelBooking(bookingId: string): Promise<ApiResponse<Booking>> {
     try {
+      console.log('🚫 Attempting to cancel booking:', bookingId);
+      
+      // First check if the booking exists
+      const { data: existingBooking, error: findError } = await supabase
+        .from('shop_bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .single();
+
+      if (findError || !existingBooking) {
+        console.error('❌ Booking not found for cancellation:', bookingId, findError);
+        return {
+          data: null,
+          error: 'Booking not found or already cancelled',
+          success: false
+        };
+      }
+
+      console.log('📋 Found booking to cancel:', existingBooking);
+
+      // Now update the booking
       const { data, error } = await supabase
         .from('shop_bookings')
         .update({ 

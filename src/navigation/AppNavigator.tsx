@@ -25,6 +25,7 @@ import BookingDateTimeEnhancedScreen from '../screens/BookingDateTimeScreenEnhan
 import BookingsScreen from '../screens/BookingsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ReviewScreen from '../screens/ReviewScreen';
 
 // Provider-specific screens
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
@@ -533,6 +534,13 @@ export type RootStackParamList = {
   // Main App Screens
   ConsumerTabs: {
     screen?: 'HomeTab' | 'BookingsTab' | 'FavoritesTab' | 'ProfileTab';
+    params?: {
+      reviewCompleted?: {
+        bookingId: string;
+        rating: number;
+        comment: string;
+      };
+    };
   } | undefined;
   ProviderTabs: {
     screen?: 'ProviderHomeTab' | 'QueueTab' | 'ServicesTab' | 'EarningsTab' | 'ProfileTab';
@@ -573,9 +581,20 @@ export type RootStackParamList = {
     totalPrice: number;
     selectedStaff: any;
   };
-  Bookings: undefined;
   Favorites: undefined;
   Profile: undefined;
+  Review: {
+    booking: {
+      id: string;
+      shop_id: string;
+      staff_id: string;
+      service: string;
+      professional: string;
+      salon: string;
+      date: string;
+      status: string;
+    };
+  };
   
   // Provider Screens
   ProviderHome: undefined;
@@ -611,9 +630,15 @@ export type RootStackParamList = {
   };
 };
 
-type ConsumerTabParamList = {
+export type ConsumerTabParamList = {
   HomeTab: undefined;
-  BookingsTab: undefined;
+  BookingsTab: {
+    reviewCompleted?: {
+      bookingId: string;
+      rating: number;
+      comment: string;
+    };
+  } | undefined;
   FavoritesTab: undefined;
   ProfileTab: undefined;
 };
@@ -977,6 +1002,14 @@ const AppNavigator = () => {
               title: 'Select Date & Time',
               headerShown: false,
               ...getHeaderStyle(),
+            }}
+          />
+          <RootStack.Screen 
+            name="Review" 
+            component={ReviewScreen}
+            options={{
+              headerShown: false,
+              presentation: 'card',
             }}
           />
         </>
