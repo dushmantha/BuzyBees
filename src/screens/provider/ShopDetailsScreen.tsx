@@ -1647,13 +1647,29 @@ const ShopDetailsScreen: React.FC = () => {
   };
 
   const handleImageResponse = async (response: ImagePickerResponse) => {
+    console.log('📸 Image picker response:', response);
+    
+    if (response.didCancel) {
+      console.log('📸 User cancelled image picker');
+      return;
+    }
+    
+    if (response.errorMessage) {
+      console.error('📸 Image picker error:', response.errorMessage);
+      Alert.alert('Error', 'Failed to select image: ' + response.errorMessage);
+      return;
+    }
+    
     if (response.assets && response.assets[0]) {
       const asset = response.assets[0];
+      console.log('📸 Selected asset:', asset);
+      
       if (asset.uri) {
         try {
           if (imageUploadType === 'staff') {
             console.log('🔄 Setting staff avatar immediately:', asset.uri);
-            // Show the image immediately first
+            
+            // Show the image immediately first - use React's functional update to ensure latest state
             setStaffForm(prev => {
               console.log('🔄 Staff form before update:', prev.avatar_url);
               const updated = { ...prev, avatar_url: asset.uri! };
@@ -1661,8 +1677,14 @@ const ShopDetailsScreen: React.FC = () => {
               return updated;
             });
             
-            // Force re-render
-            setAvatarRefresh(prev => prev + 1);
+            // Force re-render with a slight delay to ensure state is updated
+            setTimeout(() => {
+              setAvatarRefresh(prev => {
+                const newRefresh = prev + 1;
+                console.log('🔄 Avatar refresh updated to:', newRefresh);
+                return newRefresh;
+              });
+            }, 100);
             
             // Then compress avatar image in background
             try {
@@ -3279,7 +3301,16 @@ const ShopDetailsScreen: React.FC = () => {
                   <View key={safeId} style={styles.staffCard}>
                     <View style={styles.staffHeader}>
                       <View style={styles.staffAvatar}>
-                        <Ionicons name="person" size={24} color="#6B7280" />
+                        {item.avatar_url ? (
+                          <Image 
+                            source={{ uri: item.avatar_url }} 
+                            style={styles.avatarImage}
+                            onError={(error) => console.log('❌ Staff avatar failed to load:', error)}
+                            onLoad={() => console.log('✅ Staff avatar loaded:', item.name)}
+                          />
+                        ) : (
+                          <Ionicons name="person" size={24} color="#6B7280" />
+                        )}
                       </View>
                       <View style={styles.staffInfo}>
                         <Text style={styles.staffName}>{safeName}</Text>

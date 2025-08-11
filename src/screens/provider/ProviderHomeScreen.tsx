@@ -22,6 +22,7 @@ import { CancellationBanner } from '../../components/CancellationBanner';
 import { authService } from '../../lib/supabase/index';
 import { normalizedShopService } from '../../lib/supabase/normalized';
 import { reviewsAPI } from '../../services/api/reviews/reviewsAPI';
+import { responseTimeAPI, responseTimeUtils } from '../../services/api/responseTime/responseTimeAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -77,6 +78,19 @@ interface DashboardStats {
   totalReviews?: number;
   averageResponseTimeMinutes?: number;
   averageResponseTime?: string;
+  // Response time statistics
+  responseTimeStats?: {
+    avg_response_time_minutes: number;
+    response_rate: number;
+    min_response_time: number;
+    max_response_time: number;
+    total_bookings: number;
+    responded_bookings: number;
+    excellent_responses: number;
+    good_responses: number;
+    fair_responses: number;
+    poor_responses: number;
+  };
   // Review statistics
   reviewStats?: {
     total_reviews: number;
@@ -247,12 +261,16 @@ const ProviderHomeScreen: React.FC = () => {
           reviewsAPI.getAllProviderReviewStats(providerId)
         ]);
         
+        // Temporarily disabled until database migration is deployed
+        const responseTimeResponse = { success: false, data: null };
+        
         console.log('📥 Shops response:', shopsResponse);
         console.log('📊 Stats response:', statsResponse);
         console.log('📋 Activity response:', activityResponse);
         console.log('💰 Revenue response:', revenueResponse);
         console.log('📊 Shop statistics response:', shopStatsResponse);
         console.log('⭐ Review statistics response:', reviewStatsResponse);
+        console.log('⏱️ Response time statistics response:', responseTimeResponse);
         
         // Debug: Check if revenue response has any data
         if (revenueResponse.success && revenueResponse.data) {
@@ -373,13 +391,24 @@ const ProviderHomeScreen: React.FC = () => {
         const reviewStatsData = reviewStatsResponse.success ? reviewStatsResponse.data : null;
         console.log('⭐ Review stats data:', reviewStatsData);
 
+        // Get response time statistics
+        const responseTimeStatsData = responseTimeResponse.success ? responseTimeResponse.data : null;
+        console.log('⏱️ Response time stats data:', responseTimeStatsData);
+
         // Use real stats from the API
         const realStats = statsResponse.success && statsResponse.data ? {
           ...statsResponse.data,
           reviewStats: reviewStatsData,
+          responseTimeStats: responseTimeStatsData,
           // Update customer rating and total reviews from review stats if available
           customerRating: reviewStatsData?.average_rating || statsResponse.data.customerRating || 0,
           totalReviews: reviewStatsData?.total_reviews || statsResponse.data.totalReviews || 0,
+          // Update response rate and response time from response time stats
+          responseRate: responseTimeStatsData?.response_rate || statsResponse.data.responseRate || 0,
+          averageResponseTimeMinutes: responseTimeStatsData?.avg_response_time_minutes || statsResponse.data.averageResponseTimeMinutes || 0,
+          averageResponseTime: responseTimeStatsData?.avg_response_time_minutes ? 
+            responseTimeUtils.formatResponseTime(responseTimeStatsData.avg_response_time_minutes) : 
+            statsResponse.data.averageResponseTime || 'No data',
         } : {
           totalEarnings: 0,
           activeJobs: 0,
@@ -387,7 +416,7 @@ const ProviderHomeScreen: React.FC = () => {
           customerRating: reviewStatsData?.average_rating || 0,
           pendingBookings: 0,
           thisMonthEarnings: 0,
-          responseRate: 95,
+          responseRate: responseTimeStatsData?.response_rate || 0,
           totalCustomers: 0,
           averageJobValue: 0,
           growthPercentage: 0,
@@ -395,6 +424,11 @@ const ProviderHomeScreen: React.FC = () => {
           monthlyGrowth: 0,
           totalReviews: reviewStatsData?.total_reviews || 0,
           reviewStats: reviewStatsData,
+          responseTimeStats: responseTimeStatsData,
+          averageResponseTimeMinutes: responseTimeStatsData?.avg_response_time_minutes || 0,
+          averageResponseTime: responseTimeStatsData?.avg_response_time_minutes ? 
+            responseTimeUtils.formatResponseTime(responseTimeStatsData.avg_response_time_minutes) : 
+            'No data',
         };
         
         console.log('📊 Final dashboard stats:', realStats);
@@ -1334,9 +1368,25 @@ const ProviderHomeScreen: React.FC = () => {
           <Text style={styles.overviewValue}>
             {dashboardStats.averageResponseTime || 'No data'}
           </Text>
-          <Text style={styles.overviewSubtext}>
-            {dashboardStats.responseRate || 0}% response rate
-          </Text>
+          <View style={styles.responseTimeDetails}>
+            <Text style={styles.overviewSubtext}>
+              {dashboardStats.responseRate || 0}% response rate
+            </Text>
+            {dashboardStats.responseTimeStats && (
+              <View style={styles.responseTimeCategory}>
+                <View style={[
+                  styles.responseCategoryDot, 
+                  { backgroundColor: responseTimeUtils.getResponseTimeCategory(dashboardStats.averageResponseTimeMinutes || 0).color }
+                ]} />
+                <Text style={[
+                  styles.responseCategoryText,
+                  { color: responseTimeUtils.getResponseTimeCategory(dashboardStats.averageResponseTimeMinutes || 0).color }
+                ]}>
+                  {responseTimeUtils.getResponseTimeCategory(dashboardStats.averageResponseTimeMinutes || 0).label}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </View>
@@ -1365,7 +1415,7 @@ const ProviderHomeScreen: React.FC = () => {
             source={{ uri: item.image || item.imageUrl || item.image_url || item.logo_url }} 
             style={styles.shopImage}
             onError={(error) => {
-              console.warn('❌ Image load error:', error.nativeEvent.error);
+              console.warn('❌ Image load error:', error.nativeEvent?.error || 'Unknown error');
             }}
             onLoad={() => {
               console.log('✅ Image loaded successfully:', item.image || item.imageUrl || item.image_url || item.logo_url);
@@ -1900,6 +1950,24 @@ const styles = StyleSheet.create({
   },
   overviewChangeText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  responseTimeDetails: {
+    gap: 4,
+  },
+  responseTimeCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  responseCategoryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  responseCategoryText: {
+    fontSize: 11,
     fontWeight: '600',
   },
 

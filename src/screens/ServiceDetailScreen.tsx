@@ -193,12 +193,11 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
         />
       </TouchableOpacity>
 
-      {/* Image Counter and Type */}
+      {/* Image Counter */}
       {imageList.length > 1 && (
         <View style={styles.imageCounter}>
           <Text style={styles.imageCounterText}>
             {currentIndex + 1} / {imageList.length}
-            {currentImageLabel && ` • ${currentImageLabel}`}
           </Text>
         </View>
       )}
@@ -649,6 +648,7 @@ const ServiceDetailScreen: React.FC = () => {
   const [servicesLoading, setServicesLoading] = useState(false);
   const [shopData, setShopData] = useState<CompleteShopData | null>(null);
   const [businessHoursForHeader, setBusinessHoursForHeader] = useState<any[]>([]);
+  const [reviewStats, setReviewStats] = useState<{total_reviews: number; average_rating: number} | null>(null);
 
   // Helper function to check if business is currently open
   const isBusinessOpen = () => {
@@ -745,6 +745,24 @@ const ServiceDetailScreen: React.FC = () => {
         if (favoriteResponse.success) {
           serviceData.is_favorite = favoriteResponse.data?.is_favorite || false;
           setService(serviceData);
+        }
+
+        // Load review statistics
+        try {
+          const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
+          const reviewStatsResponse = await reviewsAPI.getProviderReviewStats(routeServiceId);
+          if (reviewStatsResponse.success && reviewStatsResponse.data) {
+            setReviewStats({
+              total_reviews: reviewStatsResponse.data.total_reviews,
+              average_rating: reviewStatsResponse.data.average_rating
+            });
+          } else {
+            // Set default stats if no reviews found
+            setReviewStats({ total_reviews: 0, average_rating: 0 });
+          }
+        } catch (reviewError) {
+          console.error('❌ Error loading review stats:', reviewError);
+          setReviewStats({ total_reviews: 0, average_rating: 0 });
         }
       } catch (err) {
         console.error('❌ Error loading service:', err);
@@ -1718,59 +1736,79 @@ const ServiceDetailScreen: React.FC = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {/* Image Carousel */}
-        <ImageCarousel
-          images={allServiceImages}
-          service={service}
-          onBackPress={() => navigation.goBack()}
-          onFavoritePress={handleFavoritePress}
-        />
+        {/* Image Carousel with Overlapping Discount */}
+        <View style={styles.imageContainer}>
+          <ImageCarousel
+            images={allServiceImages}
+            service={service}
+            onBackPress={() => navigation.goBack()}
+            onFavoritePress={handleFavoritePress}
+          />
+          
+          {/* Overlapping Discount Tag - Right Side */}
+          {(service.discounts && service.discounts !== null && typeof service.discounts === 'object') && (
+            <View style={styles.overlappingDiscountTag}>
+              <View style={styles.discountTagTop}>
+                <Ionicons name="flash" size={16} color="#FFFFFF" />
+                <Text style={styles.discountTagText}>FLASH SALE</Text>
+              </View>
+              <View style={styles.discountTagBottom}>
+                <Text style={styles.discountPercentageTag}>
+                  {service.discounts?.discount_percentage || 
+                   shopData?.discounts?.discount_percentage || 
+                   '29'}%
+                </Text>
+                <Text style={styles.discountOffText}>OFF</Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Service Info */}
         <View style={styles.contentContainer}>
-          {/* Main Header Section */}
+          {/* Enhanced Header Section */}
           <View style={styles.serviceHeaderSection}>
-            {/* Shop Logo and Name Row */}
-            <View style={styles.shopLogoAndName}>
-              {shopData?.logo_url ? (
-                <Image 
-                  source={{ uri: shopData.logo_url }} 
-                  style={styles.shopLogo}
-                  onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
-                  onLoad={() => console.log('✅ Logo loaded successfully')}
-                />
-              ) : (
-                <View style={styles.shopLogoPlaceholder}>
-                  <Ionicons name="storefront" size={32} color="#F59E0B" />
-                </View>
-              )}
-              <View style={styles.shopNameSection}>
-                <Text style={styles.serviceName}>{service.name}</Text>
-                
-                {/* Service Description */}
-                {(service.description || shopData?.description) && (
-                  <Text style={styles.serviceDescription}>
-                    {service.description || shopData?.description}
-                  </Text>
+            {/* Shop Info and Business Hours Row */}
+            <View style={styles.shopInfoRow}>
+              <View style={styles.shopInfoLeft}>
+                {shopData?.logo_url ? (
+                  <Image 
+                    source={{ uri: shopData.logo_url }} 
+                    style={styles.shopLogoLarge}
+                    onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
+                    onLoad={() => console.log('✅ Logo loaded successfully')}
+                  />
+                ) : (
+                  <View style={styles.shopLogoPlaceholderLarge}>
+                    <Ionicons name="storefront" size={40} color="#F59E0B" />
+                  </View>
                 )}
+                <View style={styles.shopNameSection}>
+                  <Text style={styles.serviceName}>{service.name}</Text>
+                  {(service.description || shopData?.description) && (
+                    <Text style={styles.serviceDescription}>
+                      {service.description || shopData?.description}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Business Hours Badge */}
+              <View style={styles.businessHoursContainer}>
+                <View style={[styles.statusBadge, isBusinessOpen() ? styles.openBadge : styles.closedBadge]}>
+                  <View style={[styles.statusIndicator, isBusinessOpen() ? styles.openIndicator : styles.closedIndicator]} />
+                  <Text style={styles.statusText}>
+                    {isBusinessOpen() ? 'Open' : 'Closed'}
+                  </Text>
+                </View>
+                <Text style={styles.businessHoursText}>
+                  {isBusinessOpen() ? 'Closes at 6:00 PM' : 'Opens at 9:00 AM'}
+                </Text>
               </View>
             </View>
 
-            {/* Status and Category Row */}
-            <View style={styles.statusRow}>
-              {/* Open/Closed Status */}
-              <View style={[styles.statusBadge, isBusinessOpen() ? styles.openBadge : styles.closedBadge]}>
-                <Ionicons 
-                  name={isBusinessOpen() ? "checkmark-circle" : "close-circle"} 
-                  size={14} 
-                  color="white" 
-                />
-                <Text style={styles.statusText}>
-                  {isBusinessOpen() ? 'Open' : 'Closed'}
-                </Text>
-              </View>
-              
-              {/* Category Badge */}
+            {/* Category Badge */}
+            <View style={styles.categoryRow}>
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>
                   {service.category || shopData?.category || 'Beauty & Wellness'}
@@ -1778,44 +1816,35 @@ const ServiceDetailScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Rating and Price Row */}
-            <View style={styles.ratingPriceRow}>
+            {/* Clean Rating and Price Section */}
+            <View style={styles.statsSection}>
               {/* Rating */}
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={18} color="#FFC107" />
-                <Text style={styles.ratingText}>{service.rating || 4.5}</Text>
-                <Text style={styles.reviewsText}>({service.reviews_count || 0} reviews)</Text>
+              <View style={styles.statItem}>
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={20} color="#F59E0B" />
+                  <Text style={styles.ratingValue}>
+                    {reviewStats?.average_rating?.toFixed(1) || service.rating || 4.5}
+                  </Text>
+                </View>
+                <Text style={styles.statLabel}>
+                  {reviewStats?.total_reviews || service.reviews_count || 0} reviews
+                </Text>
               </View>
-              
-              {/* Price and Duration */}
-              <View style={styles.priceContainer}>
-                <Text style={styles.priceText}>From {service.price || 32} SEK</Text>
-                <Text style={styles.timeText}>{service.duration || 60} min</Text>
+
+              {/* Price */}
+              <View style={styles.statItem}>
+                <Text style={styles.priceValue}>From {service.price || 32} SEK</Text>
+                <Text style={styles.statLabel}>{service.duration || 60} minutes</Text>
+              </View>
+
+              {/* Status */}
+              <View style={styles.statItem}>
+                <View style={[styles.statusDot, isBusinessOpen() ? styles.openDot : styles.closedDot]} />
+                <Text style={styles.statLabel}>
+                  {isBusinessOpen() ? 'Open now' : 'Closed'}
+                </Text>
               </View>
             </View>
-
-            {/* Discount Banner - Only show if real discount data exists */}
-            {(service.discounts && service.discounts !== null && typeof service.discounts === 'object') && (
-              <View style={styles.discountBanner}>
-                <View style={styles.discountContent}>
-                  <View style={styles.discountIconContainer}>
-                    <Ionicons name="flash" size={20} color="#FF6B35" />
-                  </View>
-                  <View style={styles.discountInfo}>
-                    <Text style={styles.discountTitle}>
-                      {service.discounts?.title || 
-                       shopData?.discounts?.title || 
-                       'Flash Sale'}
-                    </Text>
-                    <Text style={styles.discountPercentage}>
-                      {service.discounts?.discount_percentage || 
-                       shopData?.discounts?.discount_percentage || 
-                       '25'}% OFF
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
         </View>
 
@@ -1854,7 +1883,14 @@ const ServiceDetailScreen: React.FC = () => {
               style={[styles.scrollableTab, activeTab === 'reviews' && styles.activeTab]}
               onPress={() => scrollToSection('reviews')}
             >
-              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+              <View style={styles.simpleTabContent}>
+                <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+                {reviewStats && reviewStats.total_reviews > 0 && (
+                  <View style={styles.cleanBadge}>
+                    <Text style={styles.badgeText}>{reviewStats.total_reviews}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.scrollableTab, activeTab === 'offers' && styles.activeTab]}
@@ -2081,7 +2117,14 @@ const ServiceDetailScreen: React.FC = () => {
               style={[styles.scrollableTab, activeTab === 'reviews' && styles.activeTab]}
               onPress={() => scrollToSection('reviews')}
             >
-              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+              <View style={styles.simpleTabContent}>
+                <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+                {reviewStats && reviewStats.total_reviews > 0 && (
+                  <View style={styles.cleanBadge}>
+                    <Text style={styles.badgeText}>{reviewStats.total_reviews}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.scrollableTab, activeTab === 'offers' && styles.activeTab]}
@@ -2135,14 +2178,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F3F4F6',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
   },
   fixedStickyTabsContainer: {
     position: 'absolute',
@@ -2172,13 +2210,53 @@ const styles = StyleSheet.create({
   activeTab: {
     backgroundColor: '#F59E0B', // Primary amber/honey
   },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tabIcon: {
+    marginRight: 2,
+  },
   tabText: {
     fontSize: 14,
     color: '#6B7280', // Dark gray for inactive tabs
     fontWeight: '500',
   },
+  reviewBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 4,
+    minWidth: 18,
+    alignItems: 'center',
+  },
+  reviewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   activeTabText: {
-    color: '#1F2937', // Dark accent charcoal black
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  simpleTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cleanBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+    minWidth: 16,
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '600',
   },
   tabContent: {
@@ -2502,6 +2580,57 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   // Rest of existing styles
+  imageContainer: {
+    position: 'relative',
+  },
+  overlappingDiscountTag: {
+    position: 'absolute',
+    top: 20,
+    right: 16,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 10,
+  },
+  discountTagTop: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discountTagText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  discountTagBottom: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  discountPercentageTag: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 24,
+  },
+  discountOffText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginTop: -2,
+  },
   contentContainer: {
     padding: 16,
   },
@@ -2519,6 +2648,24 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  durationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginTop: 4,
   },
   ratingText: {
     fontSize: 16,
@@ -2623,15 +2770,120 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
   },
   serviceHeaderSection: {
-    padding: 20,
-    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
-  ratingPriceRow: {
+  shopInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  shopInfoLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    flex: 1,
+    marginRight: 16,
+  },
+  shopLogoLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  shopLogoPlaceholderLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  businessHoursContainer: {
+    alignItems: 'flex-end',
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  openIndicator: {
+    backgroundColor: '#10B981',
+  },
+  closedIndicator: {
+    backgroundColor: '#EF4444',
+  },
+  businessHoursText: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     marginBottom: 8,
+  },
+  statsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  ratingValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 4,
+  },
+  priceValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  openDot: {
+    backgroundColor: '#10B981',
+  },
+  closedDot: {
+    backgroundColor: '#EF4444',
   },
   section: {
     marginBottom: 24,
