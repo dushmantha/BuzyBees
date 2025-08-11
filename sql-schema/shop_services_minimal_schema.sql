@@ -7,6 +7,7 @@ CREATE TABLE shop_services (
     -- Primary identifiers
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shop_id UUID, -- Will add foreign key constraint if provider_businesses exists
+    provider_id UUID, -- Links to auth.users (provider who owns this service)
     
     -- Basic Service Information (Required in UI)
     name TEXT NOT NULL,
@@ -52,6 +53,7 @@ END $$;
 
 -- Essential indexes for performance
 CREATE INDEX idx_shop_services_shop_id ON shop_services(shop_id);
+CREATE INDEX idx_shop_services_provider_id ON shop_services(provider_id);
 CREATE INDEX idx_shop_services_category ON shop_services(category);
 CREATE INDEX idx_shop_services_location_type ON shop_services(location_type);
 CREATE INDEX idx_shop_services_is_active ON shop_services(is_active);
@@ -89,6 +91,35 @@ GRANT ALL ON shop_services TO service_role;
 
 -- Force PostgREST schema reload
 NOTIFY pgrst, 'reload schema';
+
+-- Migration: Add provider_id column if table already exists
+DO $$
+BEGIN
+    -- Add provider_id column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'shop_services' 
+        AND column_name = 'provider_id'
+    ) THEN
+        ALTER TABLE shop_services ADD COLUMN provider_id UUID;
+        RAISE NOTICE 'Added provider_id column to shop_services';
+        
+        -- Add index
+        CREATE INDEX IF NOT EXISTS idx_shop_services_provider_id ON shop_services(provider_id);
+        RAISE NOTICE 'Added index for provider_id';
+        
+        -- Update existing services to have provider_id based on shop owner
+        UPDATE shop_services 
+        SET provider_id = pb.provider_id 
+        FROM provider_businesses pb 
+        WHERE shop_services.shop_id = pb.id 
+        AND shop_services.provider_id IS NULL;
+        
+        RAISE NOTICE 'Updated existing services with provider_id';
+    ELSE
+        RAISE NOTICE 'provider_id column already exists';
+    END IF;
+END $$;
 
 -- Test insert using NULL shop_id to avoid foreign key issues
 INSERT INTO shop_services (

@@ -19,7 +19,7 @@ export interface ServiceWithOptions {
   name: string;
   description?: string;
   has_options: boolean;
-  base_price?: number;
+  price?: number;
   base_duration?: number;
   options: ServiceOption[];
 }

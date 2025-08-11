@@ -19,7 +19,7 @@ export interface Shop {
     name: string;
     description: string;
     price: number;
-    duration_minutes: number;
+    duration: number;
     category: string;
     location_type: 'in_house' | 'on_location';
     is_active: boolean;
@@ -89,7 +89,7 @@ export interface Shop {
     name: serviceData.name,
     description: serviceData.description || '',
     price: serviceData.price,
-    duration_minutes: serviceData.duration || 60,
+    duration: serviceData.duration || 60,
     category: serviceData.category || 'General',
     location_type: serviceData.location_type || 'in_house',
     is_active: serviceData.is_active ?? true,
@@ -172,7 +172,7 @@ export interface Shop {
           name: serviceData.name || '',
           description: serviceData.description || '',
           price: serviceData.price || 0,
-          duration: serviceData.duration_minutes || 60,
+          duration: serviceData.duration || 60,
           category: serviceData.category || 'General',
           assigned_staff: [],
           location_type: serviceData.location_type || 'in_house',
@@ -213,7 +213,7 @@ export interface Shop {
           name: serviceData.name,
           description: serviceData.description,
           price: serviceData.price,
-          duration: serviceData.duration_minutes,
+          duration: serviceData.duration,
           category: serviceData.category,
           location_type: serviceData.location_type,
           is_active: serviceData.is_active,
@@ -368,9 +368,7 @@ export interface Shop {
           booking_date: bookingData.date,
           start_time: startTime,
           end_time: endTime,
-          duration_minutes: duration,
-          service_price: bookingData.price,
-          total_amount: bookingData.price,
+          total_price: bookingData.price,
           notes: bookingData.notes
         });
 
@@ -611,8 +609,8 @@ export interface Shop {
             date: booking.booking_date,
             time: booking.start_time,
             scheduled_time: `${booking.booking_date} ${booking.start_time}`,
-            duration: `${booking.duration_minutes} min`,
-            price: booking.total_amount,
+            duration: `${booking.duration} min`,
+            price: booking.total_price,
             status: booking.status,
             priority: booking.status === 'confirmed' ? 'high' : 'medium',
             notes: booking.notes || '',

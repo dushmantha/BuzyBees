@@ -2091,10 +2091,8 @@ const ShopDetailsScreen: React.FC = () => {
     const serviceData = {
       name: serviceForm.name!.trim(),
       description: serviceForm.description || '',
-      base_price: serviceForm.price || 0, // Allow 0 if service options exist
-      price: serviceForm.price || 0, // For backward compatibility
-      duration_minutes: serviceForm.duration || 60, // Map to correct column name
-      duration: serviceForm.duration || 60, // For backward compatibility
+      price: serviceForm.price || 0,
+      duration: serviceForm.duration || 60,
       category: serviceForm.category || shop.category,
       assigned_staff: serviceForm.assigned_staff || [],
       location_type: serviceForm.location_type || 'in_house',
@@ -3188,7 +3186,7 @@ const ShopDetailsScreen: React.FC = () => {
               <View style={styles.serviceDetails}>
                 <View style={styles.serviceDetail}>
                   <Ionicons name="cash-outline" size={16} color="#10B981" />
-                  <Text style={styles.serviceDetailText}>${item.price || item.base_price || 0}</Text>
+                  <Text style={styles.serviceDetailText}>${item.price || 0}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
                   <Ionicons name="time-outline" size={16} color="#6B7280" />

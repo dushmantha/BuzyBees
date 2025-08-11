@@ -11,9 +11,9 @@ export interface ShopService {
   category?: string;
   
   // Pricing and Duration
-  base_price: number;
-  currency: string;
-  duration_minutes: number;
+  price: number;
+  currency?: string;
+  duration: number;
   
   // Service Type and Location
   service_type: 'appointment' | 'walk_in' | 'both';
@@ -73,13 +73,15 @@ export interface ServiceOption {
 
 export interface ShopBooking {
   id: string;
-  booking_reference: string;
+  booking_reference?: string;
   
   // Relationships
   shop_id: string;
   service_id: string;
   provider_id: string;
-  assigned_staff_id?: string;
+  staff_id?: string;
+  service_option_ids?: string[];
+  discount_id?: string;
   
   // Customer Information
   customer_id?: string;
@@ -91,47 +93,24 @@ export interface ShopBooking {
   booking_date: string; // Date string
   start_time: string; // Time string
   end_time: string; // Time string
-  timezone: string;
+  timezone?: string;
   
   // Service Details
   service_name: string;
-  base_duration_minutes: number;
-  total_duration_minutes: number;
   
   // Pricing
-  base_price: number;
-  options_price: number;
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  total_amount: number;
-  currency: string;
+  total_price: number;
   
-  // Booking Type and Status
-  booking_type: 'standard' | 'quick' | 'recurring' | 'walk_in';
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  
-  // Payment Information
-  payment_status: 'pending' | 'paid' | 'partially_paid' | 'refunded' | 'failed';
-  payment_method?: string;
-  payment_reference?: string;
-  
-  // Communication
-  notification_sent: boolean;
-  reminder_sent: boolean;
-  confirmation_sent: boolean;
+  // Booking Status
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   
   // Notes
-  customer_notes?: string;
-  internal_notes?: string;
+  notes?: string;
   cancellation_reason?: string;
+  cancelled_at?: string;
+  cancelled_by?: string;
   
   // Timestamps
-  booked_at: string;
-  confirmed_at?: string;
-  started_at?: string;
-  completed_at?: string;
-  cancelled_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -146,7 +125,7 @@ export interface BookingServiceOption {
   quantity: number;
   unit_price: number;
   total_price: number;
-  duration_minutes: number;
+  duration: number;
   
   // Timestamps
   created_at: string;
@@ -156,7 +135,10 @@ export interface BookingServiceOption {
 export interface CreateBookingRequest {
   shop_id: string;
   service_id: string;
-  assigned_staff_id?: string;
+  provider_id: string;
+  staff_id?: string;
+  service_option_ids?: string[];
+  discount_id?: string;
   
   // Customer info
   customer_name: string;
@@ -171,15 +153,7 @@ export interface CreateBookingRequest {
   
   // Service details
   service_name: string;
-  duration_minutes: number;
-  service_price: number;
-  total_amount: number;
-  
-  // Options
-  selected_options?: {
-    option_id: string;
-    quantity: number;
-  }[];
+  total_price: number;
   
   // Notes
   notes?: string;

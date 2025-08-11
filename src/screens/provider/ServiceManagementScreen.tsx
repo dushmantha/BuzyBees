@@ -201,7 +201,7 @@ const QuickBookingModal = ({
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [shopStaff, setShopStaff] = useState<any[]>([]);
   const [serviceOptions, setServiceOptions] = useState<any[]>([]);
-  const [selectedServiceOption, setSelectedServiceOption] = useState<any>(null);
+  const [selectedServiceOptions, setSelectedServiceOptions] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingStaff, setLoadingStaff] = useState<boolean>(false);
 
@@ -295,7 +295,7 @@ const QuickBookingModal = ({
       loadServiceOptions(selectedService.id);
     } else {
       setServiceOptions([]);
-      setSelectedServiceOption(null);
+      setSelectedServiceOptions([]);
     }
   }, [selectedService?.id, visible]);
 
@@ -493,18 +493,28 @@ const QuickBookingModal = ({
             }
           } else {
             // Fallback to regular time slot generation if staff data is incomplete
+            // Calculate total duration including selected options
+            const baseDuration = selectedService.duration_minutes || 60;
+            const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
+            const effectiveDuration = selectedServiceOptions.length > 0 ? (baseDuration + totalOptionsDuration) : baseDuration;
+            
             slots = generateTimeSlotsForDate(
               selectedDate, 
               serviceAvailability, 
-              selectedService.duration_minutes
+              effectiveDuration
             );
           }
         } else {
           // No specific staff selected, use regular availability
+          // Calculate total duration including selected options
+          const baseDuration = selectedService.duration_minutes || 60;
+          const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
+          const effectiveDuration = selectedServiceOptions.length > 0 ? (baseDuration + totalOptionsDuration) : baseDuration;
+          
           slots = generateTimeSlotsForDate(
             selectedDate, 
             serviceAvailability, 
-            selectedService.duration_minutes
+            effectiveDuration
           );
         }
         
@@ -557,10 +567,8 @@ const QuickBookingModal = ({
       
       if (response.success && response.data) {
         setServiceOptions(response.data);
-        // Auto-select first option if available
-        if (response.data.length > 0) {
-          setSelectedServiceOption(response.data[0]);
-        }
+        // Don't auto-select options anymore since we support multiple selection
+        // Users can manually select the options they want
       } else {
         console.log('No service options found or error:', response.message);
         setServiceOptions([]);
@@ -615,10 +623,20 @@ const QuickBookingModal = ({
         return;
       }
 
-      // Use selected service option if available, otherwise use base service
-      const effectivePrice = selectedServiceOption ? selectedServiceOption.price : (selectedService.price || selectedService.base_price || 0);
-      const effectiveDuration = selectedServiceOption ? selectedServiceOption.duration : selectedService.duration_minutes;
-      const serviceName = selectedServiceOption ? `${selectedService.name} - ${selectedServiceOption.option_name}` : selectedService.name;
+      // Calculate total price and duration from selected options or base service
+      const basePrice = selectedService.price || selectedService.base_price || 0;
+      const baseDuration = selectedService.duration_minutes || 60;
+      
+      const optionsPrice = selectedServiceOptions.reduce((sum, option) => sum + (option.price || 0), 0);
+      const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
+      
+      const effectivePrice = selectedServiceOptions.length > 0 ? (basePrice + optionsPrice) : basePrice;
+      const effectiveDuration = selectedServiceOptions.length > 0 ? (baseDuration + totalOptionsDuration) : baseDuration;
+      
+      const optionsText = selectedServiceOptions.length > 0 
+        ? ` + ${selectedServiceOptions.map(opt => opt.option_name).join(', ')}`
+        : '';
+      const serviceName = `${selectedService.name}${optionsText}`;
 
       const bookingData: QuickBooking = {
         service_id: selectedService.id,
@@ -632,7 +650,7 @@ const QuickBookingModal = ({
         price: effectivePrice,
         notes: notes.trim() || undefined,
         assigned_staff_id: selectedStaffId || undefined,
-        service_option_id: selectedServiceOption?.id || undefined
+        service_option_ids: selectedServiceOptions.map(option => option.id)
       };
       
       console.log('🔍 Booking data being sent:', bookingData);
@@ -683,7 +701,7 @@ const QuickBookingModal = ({
     setAvailableSlots([]);
     setShopStaff([]);
     setServiceOptions([]);
-    setSelectedServiceOption(null);
+    setSelectedServiceOptions([]);
   }, []);
 
   const formatDisplayDate = useCallback((dateStr) => {
@@ -793,10 +811,20 @@ const QuickBookingModal = ({
             <View style={styles.serviceNameText}>
               <Text style={styles.serviceTitle}>{selectedService.name}</Text>
               <Text style={styles.serviceSubtitle}>
-                {selectedServiceOption 
-                  ? `${selectedServiceOption.duration} min • $${selectedServiceOption.price}`
-                  : `${String(selectedService.duration_minutes)} min • $${String(selectedService.price || selectedService.base_price || 0)}`
-                }
+                {(() => {
+                  const basePrice = selectedService.price || selectedService.base_price || 0;
+                  const baseDuration = selectedService.duration_minutes || 60;
+                  
+                  if (selectedServiceOptions.length > 0) {
+                    const optionsPrice = selectedServiceOptions.reduce((sum, option) => sum + (option.price || 0), 0);
+                    const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
+                    const totalPrice = basePrice + optionsPrice;
+                    const totalDuration = baseDuration + totalOptionsDuration;
+                    return `${totalDuration} min • $${totalPrice}`;
+                  } else {
+                    return `${baseDuration} min • $${basePrice}`;
+                  }
+                })()}
               </Text>
             </View>
           )}
@@ -809,39 +837,59 @@ const QuickBookingModal = ({
                 <ActivityIndicator size="small" color="#007AFF" style={styles.optionLoader} />
               ) : (
                 <View style={styles.serviceOptionsContainer}>
-                  {serviceOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.id}
-                      style={[
-                        styles.serviceOptionButton,
-                        selectedServiceOption?.id === option.id && styles.serviceOptionButtonSelected
-                      ]}
-                      onPress={() => setSelectedServiceOption(option)}
-                    >
-                      <View style={styles.serviceOptionContent}>
-                        <Text style={[
-                          styles.serviceOptionName,
-                          selectedServiceOption?.id === option.id && styles.serviceOptionNameSelected
-                        ]}>
-                          {option.option_name}
-                        </Text>
-                        <Text style={[
-                          styles.serviceOptionDetails,
-                          selectedServiceOption?.id === option.id && styles.serviceOptionDetailsSelected
-                        ]}>
-                          {option.duration} min • ${option.price}
-                        </Text>
-                        {option.option_description && (
+                  {serviceOptions.map((option) => {
+                    const isSelected = selectedServiceOptions.some(selected => selected.id === option.id);
+                    return (
+                      <TouchableOpacity
+                        key={option.id}
+                        style={[
+                          styles.serviceOptionButton,
+                          isSelected && styles.serviceOptionButtonSelected
+                        ]}
+                        onPress={() => {
+                          if (isSelected) {
+                            // Remove option from selection
+                            setSelectedServiceOptions(prev => prev.filter(selected => selected.id !== option.id));
+                          } else {
+                            // Add option to selection
+                            setSelectedServiceOptions(prev => [...prev, option]);
+                          }
+                        }}
+                      >
+                        <View style={styles.serviceOptionContent}>
+                          <View style={styles.serviceOptionHeader}>
+                            <Text style={[
+                              styles.serviceOptionName,
+                              isSelected && styles.serviceOptionNameSelected
+                            ]}>
+                              {option.option_name}
+                            </Text>
+                            {isSelected && (
+                              <Ionicons 
+                                name="checkmark-circle" 
+                                size={20} 
+                                color="#10B981" 
+                              />
+                            )}
+                          </View>
                           <Text style={[
-                            styles.serviceOptionDescription,
-                            selectedServiceOption?.id === option.id && styles.serviceOptionDescriptionSelected
+                            styles.serviceOptionDetails,
+                            isSelected && styles.serviceOptionDetailsSelected
                           ]}>
-                            {option.option_description}
+                            {option.duration} min • ${option.price}
                           </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                          {option.option_description && (
+                            <Text style={[
+                              styles.serviceOptionDescription,
+                              isSelected && styles.serviceOptionDescriptionSelected
+                            ]}>
+                              {option.option_description}
+                            </Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -2539,6 +2587,12 @@ const styles = StyleSheet.create({
   },
   serviceOptionContent: {
     flexDirection: 'column',
+  },
+  serviceOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   serviceOptionName: {
     fontSize: 16,

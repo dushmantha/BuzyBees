@@ -31,6 +31,11 @@ interface QueueItem {
   booking_id: string;
   title: string;
   service_type: string;
+  service_options?: Array<{
+    id: string;
+    option_name: string;
+    price: number;
+  }>;
   client: string;
   client_phone: string;
   client_email: string;
@@ -237,14 +242,15 @@ const ServiceQueueScreen = ({ navigation }) => {
           booking_id: booking.id,
           title: booking.service_name || 'Service',
           service_type: booking.service_category || 'General Service',
+          service_options: booking.service_options || [],
           client: booking.customer_name,
           client_phone: booking.customer_phone,
           client_email: booking.customer_email || '',
           date: booking.booking_date,
           time: booking.start_time,
           scheduled_time: `${booking.booking_date} ${booking.start_time}`,
-          duration: `${booking.duration_minutes} min`,
-          price: booking.total_amount,
+          duration: `${booking.duration || 60} min`,
+          price: booking.total_price,
           status: booking.status,
           priority: booking.status === 'pending' ? 'high' : 'medium',
           notes: booking.notes || '',
@@ -629,7 +635,7 @@ const ServiceQueueScreen = ({ navigation }) => {
                   notes: item.notes,
                   location_type: item.location_type,
                   location: item.location,
-                  payment_status: 'pending' // Ensure completed items show as pending payments
+                  payment_status: 'pending' // Set as pending for newly completed items
                 });
 
                 if (paymentResponse.success) {
@@ -783,7 +789,7 @@ const ServiceQueueScreen = ({ navigation }) => {
             notes: item.notes,
             location_type: item.location_type,
             location: item.location,
-            payment_status: 'pending' // Explicitly set as pending for invoiced payments
+            payment_status: 'pending' // Set as pending for invoiced items
           });
 
           if (paymentResponse.success) {
@@ -1024,6 +1030,20 @@ const ServiceQueueScreen = ({ navigation }) => {
           <View style={styles.queueTitleContainer}>
             <Text style={styles.queueTitle}>{item.title}</Text>
             <Text style={styles.serviceType}>{item.service_type}</Text>
+            {item.service_options && item.service_options.length > 0 && (
+              <View style={styles.serviceOptionsContainer}>
+                {item.service_options.map((option, index) => (
+                  <View key={option.id} style={styles.serviceOptionTag}>
+                    <Text style={styles.serviceOptionText}>
+                      + {option.option_name}
+                    </Text>
+                    <Text style={styles.serviceOptionPrice}>
+                      ${option.price}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
           <View style={[styles.statusBadge, statusStyle.badge]}>
             <Text style={[styles.statusText, statusStyle.text]}>
@@ -1244,7 +1264,7 @@ const ServiceQueueScreen = ({ navigation }) => {
       onPress={() => {
         Alert.alert(
           'Payment Details',
-          `Service: ${item.service_title}\nClient: ${item.client_name}\nAmount: $${item.amount}\nStatus: ${item.payment_status}`
+          `Service: ${item.service_title}\nClient: ${item.client_name}\nAmount: $${item.amount}\nStatus: ${item.payment_status?.toUpperCase()}`
         );
       }}
     >
@@ -1773,6 +1793,31 @@ const styles = StyleSheet.create({
   serviceType: {
     fontSize: 14,
     color: '#4B5563',
+  },
+  serviceOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 6,
+  },
+  serviceOptionTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  serviceOptionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#92400E',
+  },
+  serviceOptionPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
   },
   statusBadge: {
     paddingHorizontal: 8,

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -459,6 +460,27 @@ const EarningsScreen = ({ navigation }) => {
     fetchAllData();
   }, [selectedPeriod, user?.id]);
 
+  // Refresh data when screen comes into focus (e.g., after marking payment as paid)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        console.log('🔄 Screen focused, refreshing earnings data');
+        const fetchAllData = async () => {
+          try {
+            await Promise.all([
+              fetchEarningsData(selectedPeriod),
+              fetchTransactions(selectedPeriod),
+              fetchMonthlyData()
+            ]);
+          } catch (error) {
+            console.error('❌ Error refreshing data on focus:', error);
+            setError('Failed to refresh earnings data');
+          }
+        };
+        fetchAllData();
+      }
+    }, [selectedPeriod, user?.id])
+  );
 
   const periodButtons = [
     { key: 'week', label: 'Week' },
@@ -748,10 +770,35 @@ const EarningsScreen = ({ navigation }) => {
             </View>
           )}
         </View>
-        <TouchableOpacity 
-          style={styles.exportButton}
-          onPress={() => !isPremium && handleUpgradePress('export')}
-        >
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await Promise.all([
+                  fetchEarningsData(selectedPeriod),
+                  fetchTransactions(selectedPeriod),
+                  fetchMonthlyData()
+                ]);
+              } catch (error) {
+                console.error('❌ Error refreshing data:', error);
+                setError('Failed to refresh earnings data');
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <Ionicons 
+              name="refresh-outline" 
+              size={24} 
+              color="#10B981" 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.exportButton}
+            onPress={() => !isPremium && handleUpgradePress('export')}
+          >
           <Ionicons 
             name="download-outline" 
             size={24} 
@@ -766,6 +813,7 @@ const EarningsScreen = ({ navigation }) => {
             />
           )}
         </TouchableOpacity>
+      </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -934,6 +982,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#F59E0B',
     fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshButton: {
+    padding: 8,
   },
   exportButton: {
     padding: 8,

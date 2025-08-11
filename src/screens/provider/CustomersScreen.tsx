@@ -176,10 +176,8 @@ const CustomersScreen: React.FC = () => {
           // Update customer statistics
           customer.totalBookings += 1;
           
-          // Add to total spent if payment status is paid
-          if (booking.payment_status === 'paid') {
-            customer.totalSpent += booking.total_amount || 0;
-          }
+          // Add to total spent (all bookings since payment_status doesn't exist)
+          customer.totalSpent += booking.total_price || 0;
           
           // Update last booking date if this booking is more recent
           if (new Date(booking.booking_date) > new Date(customer.lastBooking)) {

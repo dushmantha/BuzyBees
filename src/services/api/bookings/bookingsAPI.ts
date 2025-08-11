@@ -77,9 +77,7 @@ class BookingsAPI {
         booking_date: bookingData.booking_date,
         start_time: bookingData.start_time,
         end_time: bookingData.end_time,
-        duration_minutes: totalDuration,
-        service_price: firstService?.price || 0,
-        total_amount: bookingData.total_price,
+        total_price: bookingData.total_price,
         service_name: firstService?.name || 'Service',
         notes: bookingData.notes,
         timezone: 'UTC'
