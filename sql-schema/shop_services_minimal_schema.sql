@@ -12,7 +12,9 @@ CREATE TABLE shop_services (
     name TEXT NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    base_price DECIMAL(10,2), -- For backward compatibility with app code
     duration INTEGER NOT NULL DEFAULT 60, -- in minutes
+    duration_minutes INTEGER, -- For backward compatibility with app code
     category TEXT,
     
     -- Service Location Type (UI Radio Buttons)
