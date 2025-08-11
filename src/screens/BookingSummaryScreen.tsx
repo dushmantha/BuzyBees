@@ -15,6 +15,22 @@ type RootStackParamList = {
     }>;
     totalPrice: number;
     selectedStaff?: any;
+    selectedDiscount?: any;
+    priceBreakdown?: {
+      subtotal: number;
+      discountAmount: number;
+      discountedSubtotal: number;
+      gstAmount: number;
+      finalTotal: number;
+      hasDiscount: boolean;
+    };
+    bookingDetails?: {
+      serviceId: string;
+      shopId: string;
+      shopName: string;
+      shopAddress: string;
+      shopContact: string;
+    };
   };
   BookingDateTimeEnhanced: {
     selectedServices: Array<{
@@ -25,6 +41,22 @@ type RootStackParamList = {
     }>;
     totalPrice: number;
     selectedStaff: any;
+    selectedDiscount?: any;
+    priceBreakdown?: {
+      subtotal: number;
+      discountAmount: number;
+      discountedSubtotal: number;
+      gstAmount: number;
+      finalTotal: number;
+      hasDiscount: boolean;
+    };
+    bookingDetails: {
+      serviceId: string;
+      shopId: string;
+      shopName: string;
+      shopAddress: string;
+      shopContact: string;
+    };
   };
   // Add other screen params as needed
   [key: string]: any;
@@ -43,7 +75,7 @@ interface ApiResponse<T> {
 const BookingSummaryScreen = () => {
   const navigation = useNavigation<BookingSummaryScreenNavigationProp>();
   const route = useRoute<BookingSummaryScreenRouteProp>();
-  const { selectedServices, totalPrice, selectedStaff } = route.params;
+  const { selectedServices, totalPrice, selectedStaff, selectedDiscount, priceBreakdown, bookingDetails } = route.params;
 
   // Single API service function for booking data
   const apiService = {
@@ -110,7 +142,16 @@ const BookingSummaryScreen = () => {
         navigation.navigate('BookingDateTimeEnhanced', {
           selectedServices,
           totalPrice,
-          selectedStaff
+          selectedStaff,
+          selectedDiscount,
+          priceBreakdown,
+          bookingDetails: bookingDetails || {
+            serviceId: 'unknown',
+            shopId: 'unknown',
+            shopName: 'Service Provider',
+            shopAddress: 'Address not available',
+            shopContact: 'Contact not available'
+          }
         });
       } else {
         Alert.alert('Navigation', 'Continue to Date & Time selection');
@@ -223,23 +264,66 @@ const BookingSummaryScreen = () => {
               <Text style={styles.pricingValue}>{formatDuration(totalDuration)}</Text>
             </View>
             
-            {/* Subtotal */}
-            <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>Subtotal</Text>
-              <Text style={styles.pricingValue}>${totalPrice.toFixed(2)}</Text>
-            </View>
-            
-            {/* Tax (8%) */}
-            <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>Tax (8%)</Text>
-              <Text style={styles.pricingValue}>${(totalPrice * 0.08).toFixed(2)}</Text>
-            </View>
-            
-            {/* Total */}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalAmount}>${(totalPrice * 1.08).toFixed(2)}</Text>
-            </View>
+            {/* Pricing Breakdown */}
+            {priceBreakdown ? (
+              <>
+                {/* Subtotal */}
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>Subtotal</Text>
+                  <Text style={styles.pricingValue}>${priceBreakdown.subtotal.toFixed(2)}</Text>
+                </View>
+                
+                {/* Discount */}
+                {priceBreakdown.hasDiscount && (
+                  <View style={styles.pricingRow}>
+                    <Text style={[styles.pricingLabel, styles.discountLabel]}>
+                      Discount ({selectedDiscount?.percentage}%)
+                    </Text>
+                    <Text style={[styles.pricingValue, styles.discountValue]}>
+                      -${priceBreakdown.discountAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* After Discount */}
+                {priceBreakdown.hasDiscount && (
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>After Discount</Text>
+                    <Text style={styles.pricingValue}>${priceBreakdown.discountedSubtotal.toFixed(2)}</Text>
+                  </View>
+                )}
+                
+                {/* GST (15%) */}
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>GST (15%)</Text>
+                  <Text style={styles.pricingValue}>${priceBreakdown.gstAmount.toFixed(2)}</Text>
+                </View>
+                
+                {/* Total */}
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total Amount</Text>
+                  <Text style={styles.totalAmount}>${priceBreakdown.finalTotal.toFixed(2)}</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Fallback - Original calculation */}
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>Subtotal</Text>
+                  <Text style={styles.pricingValue}>${totalPrice.toFixed(2)}</Text>
+                </View>
+                
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>GST (15%)</Text>
+                  <Text style={styles.pricingValue}>${(totalPrice * 0.15).toFixed(2)}</Text>
+                </View>
+                
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total Amount</Text>
+                  <Text style={styles.totalAmount}>${(totalPrice * 1.15).toFixed(2)}</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -295,7 +379,9 @@ const BookingSummaryScreen = () => {
       <View style={styles.footer}>
         <View style={styles.footerContent}>
           <View style={styles.footerSummary}>
-            <Text style={styles.footerTotalLabel}>Total: ${(totalPrice * 1.08).toFixed(2)}</Text>
+            <Text style={styles.footerTotalLabel}>
+              Total: ${priceBreakdown ? priceBreakdown.finalTotal.toFixed(2) : (totalPrice * 1.15).toFixed(2)}
+            </Text>
             <Text style={styles.footerDuration}>{formatDuration(totalDuration)}</Text>
           </View>
           <TouchableOpacity 
@@ -482,6 +568,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1F2937',
     fontWeight: '600',
+  },
+  discountLabel: {
+    color: '#059669', // Green for discount label
+  },
+  discountValue: {
+    color: '#059669', // Green for discount value
   },
   pricingDivider: {
     height: 1,

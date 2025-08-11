@@ -50,47 +50,154 @@ class ShopAPI {
 
   async getShopsWithDiscounts(): Promise<ShopApiResponse> {
     try {
-      console.log('💰 Creating demo shops with discounts...');
+      console.log('💰 Fetching shops with real discount data...');
       
-      // Since discounts table doesn't exist, let's get all shops and add demo discounts
+      // First, get all active discounts
+      const discountsResult = await this.supabase.client
+        .from('shop_discounts')
+        .select('*')
+        .eq('is_active', true)
+        .limit(6) // Get more for better selection
+        .order('value', { ascending: false }); // Order by highest discount first
+        
+      console.log('💰 Discount query details:', {
+        table: 'shop_discounts',
+        filters: 'is_active = true',
+        limit: 6
+      });
+        
+      if (discountsResult.error) {
+        console.error('❌ Error fetching discounts:', discountsResult.error);
+        console.error('❌ Error details:', discountsResult.error.message, discountsResult.error.details);
+        // Fallback to regular shops if discount query fails
+        return await this.getAllShops();
+      }
+      
+      console.log('💰 Raw discount query result:', discountsResult.data?.length || 0, 'records');
+      if (discountsResult.data && discountsResult.data.length > 0) {
+        console.log('💰 Sample discount data:', discountsResult.data[0]);
+      }
+      
+      // Get unique shop IDs from discounts
+      const shopIds = [...new Set((discountsResult.data || []).map((discount: any) => discount.shop_id))];
+      console.log('💰 Unique shop IDs with discounts:', shopIds);
+      
+      if (shopIds.length === 0) {
+        console.log('⚠️ No shop IDs found in discounts, falling back to regular shops');
+        return await this.getAllShops();
+      }
+      
+      // Fetch shop details for these IDs
       const shopsResult = await this.supabase.client
         .from('provider_businesses')
         .select('*')
-        .eq('is_active', true)
-        .limit(4) // Only get 4 for special offers
-        .order('created_at', { ascending: false });
-        
+        .in('id', shopIds)
+        .eq('is_active', true);
+      
       if (shopsResult.error) {
-        console.error('❌ Error fetching shops:', shopsResult.error);
-        return { data: null, error: shopsResult.error.message, status: 500 };
+        console.error('❌ Error fetching shops for discounts:', shopsResult.error);
+        return { data: [], error: shopsResult.error.message, status: 500 };
       }
       
-      const shops = shopsResult.data || [];
-      console.log('🏪 Found shops for discounts:', shops.length);
+      console.log('💰 Found shops for discounts:', shopsResult.data?.length || 0);
+      console.log('💰 Shop IDs we looked for:', shopIds);
+      console.log('💰 Shop IDs we found:', (shopsResult.data || []).map((s: any) => s.id));
       
-      if (shops.length === 0) {
-        return { data: [], error: null, status: 200 };
-      }
-      
-      // Add demo discounts to shops
-      const discountedShops = shops.map((shop: any, index: number) => {
-        const discountPercentages = [25, 20, 15, 10];
-        const discountTitles = ['Flash Sale', 'Summer Special', 'Weekend Deal', 'Limited Offer'];
-        
-        return {
-          ...shop,
-          discounts: {
-            id: `demo-discount-${index + 1}`,
-            discount_percentage: discountPercentages[index] || 10,
-            discount_code: `SAVE${discountPercentages[index] || 10}`,
-            title: discountTitles[index] || 'Special Offer',
-            description: `${discountPercentages[index] || 10}% off all services`,
-            valid_from: new Date().toISOString(),
-            valid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString(),
-            is_active: true
+      // Combine discounts with their shop data
+      const discountedShops = (discountsResult.data || [])
+        .slice(0, 4) // Only take first 4 for special offers
+        .map((discount: any) => {
+          const shop = shopsResult.data?.find((s: any) => s.id === discount.shop_id);
+          if (!shop) {
+            console.warn('⚠️ Shop not found for discount:', discount.id);
+            return null;
           }
-        };
-      });
+          
+          return {
+            ...shop,
+            discounts: {
+              id: discount.id,
+              discount_percentage: discount.value,
+              discount_code: discount.code,
+              title: discount.title,
+              description: discount.description,
+              type: discount.type,
+              valid_from: discount.start_date,
+              valid_until: discount.end_date,
+              is_active: discount.is_active,
+              conditions: discount.conditions,
+              usage_limit: discount.usage_limit,
+              used_count: discount.used_count
+            }
+          };
+        })
+        .filter(Boolean); // Remove null entries
+      
+      console.log('💰 Found', discountedShops.length, 'shops with active discounts');
+      
+      // If no discounted shops found due to ID mismatch, use regular shops with discount data
+      if (discountedShops.length === 0) {
+        console.log('⚠️ No matching shops found for discount IDs, applying discounts to available shops');
+        
+        const allShopsResult = await this.supabase.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('is_active', true)
+          .limit(4)
+          .order('created_at', { ascending: false });
+          
+        if (!allShopsResult.error && allShopsResult.data && discountsResult.data) {
+          // Apply first discounts to first shops
+          allShopsResult.data.forEach((shop: any, index: number) => {
+            const discount = discountsResult.data[index];
+            if (discount) {
+              discountedShops.push({
+                ...shop,
+                discounts: {
+                  id: discount.id,
+                  discount_percentage: discount.value,
+                  discount_code: discount.code,
+                  title: discount.title,
+                  description: discount.description,
+                  type: discount.type,
+                  valid_from: discount.start_date,
+                  valid_until: discount.end_date,
+                  is_active: discount.is_active,
+                  conditions: discount.conditions,
+                  usage_limit: discount.usage_limit,
+                  used_count: discount.used_count
+                }
+              });
+            } else {
+              discountedShops.push({
+                ...shop,
+                discounts: null
+              });
+            }
+          });
+        }
+      }
+      
+      // If we don't have enough discounted shops, fill with regular shops
+      if (discountedShops.length < 4) {
+        console.log('⚠️ Only found', discountedShops.length, 'discounted shops, filling with regular shops');
+        
+        const regularShopsResult = await this.supabase.client
+          .from('provider_businesses')
+          .select('*')
+          .eq('is_active', true)
+          .not('id', 'in', `(${discountedShops.map(s => `"${s.id}"`).join(',')})`)
+          .limit(4 - discountedShops.length)
+          .order('created_at', { ascending: false });
+          
+        if (!regularShopsResult.error && regularShopsResult.data) {
+          const regularShops = regularShopsResult.data.map((shop: any) => ({
+            ...shop,
+            discounts: null // No discount for these shops
+          }));
+          discountedShops.push(...regularShops);
+        }
+      }
       
       // Transform to Shop interface
       const transformedShops: Shop[] = discountedShops.map((shop: any) => ({
@@ -115,9 +222,9 @@ class ShopAPI {
         discounts: shop.discounts,
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
-        rating: 4.5,
-        reviews_count: Math.floor(Math.random() * 100) + 10,
-        distance: `${(Math.random() * 5 + 0.5).toFixed(1)} km`,
+        rating: shop.rating || 0,
+        reviews_count: shop.reviews_count || 0,
+        distance: shop.distance || '0 km',
         created_at: shop.created_at,
         updated_at: shop.updated_at
       }));
@@ -194,9 +301,9 @@ class ShopAPI {
         discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
-        rating: 4.5, // Default rating for now
-        reviews_count: Math.floor(Math.random() * 100) + 10, // Random for now
-        distance: `${(Math.random() * 5 + 0.5).toFixed(1)} km`, // Random distance for now
+        rating: shop.rating || 0,
+        reviews_count: shop.reviews_count || 0,
+        distance: shop.distance || '0 km',
         created_at: shop.created_at,
         updated_at: shop.updated_at
       }));
@@ -289,9 +396,9 @@ class ShopAPI {
         discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
-        rating: 4.5,
-        reviews_count: Math.floor(Math.random() * 100) + 10,
-        distance: `${(Math.random() * 5 + 0.5).toFixed(1)} km`,
+        rating: shop.rating || 0,
+        reviews_count: shop.reviews_count || 0,
+        distance: shop.distance || '0 km',
         created_at: shop.created_at,
         updated_at: shop.updated_at
       }));
@@ -450,9 +557,9 @@ class ShopAPI {
         discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
-        rating: 4.5,
-        reviews_count: Math.floor(Math.random() * 100) + 10,
-        distance: `${(Math.random() * 5 + 0.5).toFixed(1)} km`,
+        rating: shop.rating || 0,
+        reviews_count: shop.reviews_count || 0,
+        distance: shop.distance || '0 km',
         created_at: shop.created_at,
         updated_at: shop.updated_at
       }));

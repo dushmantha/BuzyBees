@@ -30,6 +30,22 @@ type RootStackParamList = {
     selectedServices: any[];
     totalPrice: number;
     selectedStaff: StaffMember;
+    selectedDiscount?: any;
+    priceBreakdown?: {
+      subtotal: number;
+      discountAmount: number;
+      discountedSubtotal: number;
+      gstAmount: number;
+      finalTotal: number;
+      hasDiscount: boolean;
+    };
+    bookingDetails?: {
+      serviceId: string;
+      shopId: string;
+      shopName: string;
+      shopAddress: string;
+      shopContact: string;
+    };
   };
   [key: string]: any;
 };
@@ -55,7 +71,32 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp>();
   const { user } = useAuth();
-  const { selectedServices, totalPrice, selectedStaff } = route.params;
+  const { 
+    selectedServices, 
+    totalPrice, 
+    selectedStaff, 
+    selectedDiscount, 
+    priceBreakdown, 
+    bookingDetails 
+  } = route.params || {};
+
+  // Early return if required params are missing
+  if (!selectedServices || !totalPrice || !selectedStaff) {
+    console.error('❌ Missing required booking parameters');
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Missing booking information. Please go back and try again.</Text>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -190,14 +231,44 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         booking_date: selectedDate,
         start_time: selectedTime,
         end_time: endTime,
-        total_price: totalPrice,
+        total_price: priceBreakdown ? priceBreakdown.finalTotal : totalPrice,
         services: selectedServices.map(service => ({
           id: service.id,
           name: service.name,
           duration: parseInt(service.duration) || 30,
           price: parseFloat(service.price) || 0
         })),
-        notes: `Booking with ${selectedStaff.name} for ${selectedServices.map(s => s.name).join(', ')}`
+        // Pricing breakdown details
+        pricing_details: priceBreakdown ? {
+          subtotal: priceBreakdown.subtotal,
+          discount_amount: priceBreakdown.discountAmount,
+          discount_percentage: selectedDiscount?.percentage || 0,
+          discount_code: selectedDiscount?.id || null,
+          gst_amount: priceBreakdown.gstAmount,
+          gst_rate: 15, // 15% GST
+          final_total: priceBreakdown.finalTotal
+        } : {
+          subtotal: totalPrice,
+          discount_amount: 0,
+          discount_percentage: 0,
+          discount_code: null,
+          gst_amount: Math.round(totalPrice * 0.15),
+          gst_rate: 15,
+          final_total: Math.round(totalPrice * 1.15)
+        },
+        // Shop details
+        shop_details: {
+          name: bookingDetails?.shopName || 'Service Provider',
+          address: bookingDetails?.shopAddress || 'Address not available',
+          contact: bookingDetails?.shopContact || 'Contact not available'
+        },
+        // Discount details if applied
+        applied_discount: selectedDiscount ? {
+          id: selectedDiscount.id,
+          title: selectedDiscount.title,
+          percentage: selectedDiscount.percentage
+        } : null,
+        notes: `Booking with ${selectedStaff.name} for ${selectedServices.map(s => s.name).join(', ')}${selectedDiscount ? ` (${selectedDiscount.percentage}% discount applied)` : ''}`
       };
       
       console.log('📅 Creating booking:', bookingData);
@@ -441,9 +512,50 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               
               <View style={styles.summaryDivider} />
               
+              {/* Pricing breakdown */}
+              {priceBreakdown && priceBreakdown.hasDiscount && (
+                <>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Subtotal</Text>
+                    <Text style={styles.summaryValue}>${priceBreakdown.subtotal}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, styles.discountText]}>
+                      Discount ({selectedDiscount?.percentage}%)
+                    </Text>
+                    <Text style={[styles.summaryValue, styles.discountText]}>
+                      -${priceBreakdown.discountAmount}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>After Discount</Text>
+                    <Text style={styles.summaryValue}>${priceBreakdown.discountedSubtotal}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>GST (15%)</Text>
+                    <Text style={styles.summaryValue}>${priceBreakdown.gstAmount}</Text>
+                  </View>
+                </>
+              )}
+              
+              {!priceBreakdown?.hasDiscount && (
+                <>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Subtotal</Text>
+                    <Text style={styles.summaryValue}>${totalPrice}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>GST (15%)</Text>
+                    <Text style={styles.summaryValue}>${Math.round(totalPrice * 0.15)}</Text>
+                  </View>
+                </>
+              )}
+              
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total Amount</Text>
-                <Text style={styles.totalAmount}>${totalPrice}</Text>
+                <Text style={styles.totalAmount}>
+                  ${priceBreakdown ? priceBreakdown.finalTotal : Math.round(totalPrice * 1.15)}
+                </Text>
               </View>
             </View>
           </View>
@@ -798,6 +910,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
+  discountText: {
+    color: '#059669', // Green for discount
+  },
   summaryValue: {
     fontSize: 14,
     color: '#1F2937',
@@ -923,6 +1038,29 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

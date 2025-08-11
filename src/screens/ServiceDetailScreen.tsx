@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, FlatList, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, FlatList, ActivityIndicator, Alert, Dimensions, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -22,11 +23,13 @@ const transformShopToService = (shop: CompleteShopData): Service => ({
   price: shop.services && shop.services.length > 0 ? shop.services[0].price : 0,
   duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 0,
   category_id: (shop.category || 'general').toLowerCase().replace(/\s+/g, '-'),
+  category: shop.category || 'General', // Add category field for header display
   image: shop.images && shop.images.length > 0 ? shop.images[0] : '',
   rating: shop.rating || 0,
   reviews_count: shop.reviews_count || 0,
   professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : '',
   salon_name: shop.name || 'Unnamed Shop',
+  discounts: shop.discounts || null, // Add discounts field for header display
   location: `${shop.city || 'Unknown City'}, ${shop.country || 'Unknown Country'}`,
   distance: shop.distance || '',
   available_times: shop.business_hours ? extractAvailableTimes(shop.business_hours) : [],
@@ -280,6 +283,7 @@ const StaffSelectionSection: React.FC<{
 // Tab components with real shop data
 const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
   const [shopData, setShopData] = useState<CompleteShopData | null>(null);
+  const [businessHours, setBusinessHours] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchShopData = async () => {
@@ -293,7 +297,50 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
         console.error('Error fetching shop data for about tab:', error);
       }
     };
+
+    const fetchBusinessHours = async () => {
+      try {
+        console.log('🕐 Fetching business hours from provider_businesses table for shop:', service.id);
+        const { data: providerData, error } = await supabase
+          .from('provider_businesses')
+          .select('business_hours')
+          .eq('id', service.id)
+          .single();
+
+        if (error) {
+          console.error('❌ Error fetching business hours:', error);
+          return;
+        }
+
+        if (providerData?.business_hours) {
+          console.log('✅ Found business hours:', providerData.business_hours);
+          // Ensure business_hours is an array
+          const hours = Array.isArray(providerData.business_hours) 
+            ? providerData.business_hours 
+            : [providerData.business_hours];
+          setBusinessHours(hours);
+        } else {
+          console.log('⚠️ No business hours found for shop, creating default hours');
+          // Create default business hours for demo
+          const defaultHours = [
+            { day: 'Monday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Tuesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Wednesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Thursday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Friday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Saturday', isOpen: true, openTime: '10:00', closeTime: '16:00' },
+            { day: 'Sunday', isOpen: false, openTime: '10:00', closeTime: '16:00' }
+          ];
+          setBusinessHours(defaultHours);
+        }
+      } catch (error) {
+        console.error('Error fetching business hours:', error);
+        setBusinessHours([]);
+      }
+    };
+
     fetchShopData();
+    fetchBusinessHours();
   }, [service?.id]);
 
   return (
@@ -338,6 +385,43 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
               <Text style={styles.contactText}>
                 {shopData.address}, {shopData.city}, {shopData.country}
               </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Opening Hours */}
+        <View style={styles.hoursSection}>
+          <Text style={styles.contactTitle}>Opening Hours</Text>
+          {businessHours && businessHours.length > 0 ? (
+            <View style={styles.hoursContainer}>
+              {businessHours.map((hours: any, index: number) => {
+                // Map day names properly
+                const dayName = hours.day || hours.day_of_week || 'Unknown';
+                const displayDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+                
+                return (
+                  <View 
+                    key={index} 
+                    style={[
+                      styles.hourRow,
+                      index === businessHours.length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                  >
+                    <Text style={styles.dayText}>{displayDay}</Text>
+                    <Text style={styles.timeText}>
+                      {hours.isOpen || hours.is_open
+                        ? `${hours.openTime || hours.open_time || '09:00'} - ${hours.closeTime || hours.close_time || '18:00'}`
+                        : 'Closed'
+                      }
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.noHoursContainer}>
+              <Ionicons name="time-outline" size={24} color="#9CA3AF" />
+              <Text style={styles.noHoursText}>Hours not available</Text>
             </View>
           )}
         </View>
@@ -529,6 +613,7 @@ const ReviewsTab: React.FC<ServiceTabProps> = ({ service }) => (
 const ServiceDetailScreen: React.FC = () => {
   const navigation = useNavigation<ServiceDetailNavigationProp>();
   const route = useRoute<ServiceDetailScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   
   // Get service data from route params - handle both cases safely
   const routeService = route.params?.service || null;
@@ -537,6 +622,23 @@ const ServiceDetailScreen: React.FC = () => {
   const [service, setService] = useState<Service | null>(routeService || null);
   const [loading, setLoading] = useState(!routeService);
   const [error, setError] = useState<string | null>(null);
+  
+  // Scroll and sticky tabs state
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [isTabsSticky, setIsTabsSticky] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Section refs for auto tab switching
+  const sectionRefs = useRef({
+    services: { y: 0 },
+    team: { y: 0 },
+    reviews: { y: 0 },
+    offers: { y: 0 },
+    about: { y: 0 }
+  });
+  
+  // Discount state - only one discount allowed
+  const [selectedDiscount, setSelectedDiscount] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('services');
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [allStaffMembers, setAllStaffMembers] = useState<any[]>([]);
@@ -546,6 +648,40 @@ const ServiceDetailScreen: React.FC = () => {
   const [selectedServicesWithOptions, setSelectedServicesWithOptions] = useState<Map<string, Set<string>>>(new Map());
   const [servicesLoading, setServicesLoading] = useState(false);
   const [shopData, setShopData] = useState<CompleteShopData | null>(null);
+  const [businessHoursForHeader, setBusinessHoursForHeader] = useState<any[]>([]);
+
+  // Helper function to check if business is currently open
+  const isBusinessOpen = () => {
+    if (!businessHoursForHeader || businessHoursForHeader.length === 0) {
+      return false; // Default to closed if no hours available
+    }
+
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+
+    // Find today's hours
+    const todayHours = businessHoursForHeader.find((hours: any) => {
+      const dayName = hours.day || hours.day_of_week || '';
+      return dayName.toLowerCase() === currentDay.toLowerCase();
+    });
+
+    if (!todayHours || (!todayHours.isOpen && !todayHours.is_open)) {
+      return false;
+    }
+
+    // Parse open and close times
+    const openTimeStr = todayHours.openTime || todayHours.open_time || '09:00';
+    const closeTimeStr = todayHours.closeTime || todayHours.close_time || '18:00';
+    
+    const [openHour, openMinute] = openTimeStr.split(':').map(Number);
+    const [closeHour, closeMinute] = closeTimeStr.split(':').map(Number);
+    
+    const openTime = openHour * 60 + (openMinute || 0);
+    const closeTime = closeHour * 60 + (closeMinute || 0);
+    
+    return currentTime >= openTime && currentTime < closeTime;
+  };
   
   // Remove service options hook to fix React hooks order warning
 
@@ -891,25 +1027,52 @@ const ServiceDetailScreen: React.FC = () => {
         // Load options for each service
         const servicesWithOptions = await Promise.all(
           shopServices.map(async (service) => {
-            // Only try to load options if service has a valid ID (UUID)
-            if (!service.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(service.id)) {
-              console.warn('⚠️ Skipping service options for invalid service ID:', service.id, 'Service:', service.name);
-              return service;
-            }
+            // Load service options directly from service_options table
+            console.log('🔍 Loading options for service:', {
+              id: service.id,
+              name: service.name,
+              shop_id: service.shop_id || routeServiceId
+            });
             
-            const { data: options, error } = await serviceOptionsAPI.getServiceOptions(
-              service.id,
-              routeServiceId || service.shop_id
-            );
-            
-            if (error) {
-              console.error('❌ Error loading options for service:', service.name, error);
+            try {
+              // Get options from service_options table using service_id
+              const { data: serviceOptions, error: optionsError } = await supabase
+                .from('service_options')
+                .select('*')
+                .eq('service_id', service.id)
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true });
+              
+              if (optionsError) {
+                console.error('❌ Error loading service options:', optionsError);
+                return service; // Return service without options
+              }
+              
+              if (serviceOptions && serviceOptions.length > 0) {
+                console.log('✅ Found', serviceOptions.length, 'options for service:', service.name);
+                
+                // Transform options to match expected format
+                const transformedOptions = serviceOptions.map(option => ({
+                  id: option.id,
+                  service_id: option.service_id,
+                  option_name: option.option_name,
+                  option_description: option.option_description || '',
+                  price: option.price,
+                  duration: option.duration,
+                  is_active: option.is_active,
+                  sort_order: option.sort_order || 0
+                }));
+                
+                return { ...service, options: transformedOptions };
+              } else {
+                console.log('ℹ️ No options found for service:', service.name);
+                return service; // Return service without options
+              }
+              
+            } catch (error) {
+              console.error('❌ Unexpected error loading service options:', error);
+              return service; // Return service without options on error
             }
-            
-            if (!error && options) {
-              return { ...service, options };
-            }
-            return service;
           })
         );
         
@@ -965,6 +1128,103 @@ const ServiceDetailScreen: React.FC = () => {
       }
     };
     loadShopData();
+  }, [service?.id]);
+
+  // Load business hours and shop data for header
+  useEffect(() => {
+    const loadHeaderData = async () => {
+      if (!service?.id) return;
+
+      try {
+        console.log('🕐 Loading business hours and shop data for header:', service.id);
+        
+        // Fetch business hours from provider_businesses table
+        const { data: providerData, error } = await supabase
+          .from('provider_businesses')
+          .select('business_hours')
+          .eq('id', service.id)
+          .single();
+
+        if (!error && providerData?.business_hours) {
+          const hours = Array.isArray(providerData.business_hours) 
+            ? providerData.business_hours 
+            : [providerData.business_hours];
+          setBusinessHoursForHeader(hours);
+          console.log('✅ Loaded business hours for header:', hours);
+        } else {
+          console.log('⚠️ No business hours found, using default hours');
+          // Default hours fallback
+          const defaultHours = [
+            { day: 'Monday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Tuesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Wednesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+            { day: 'Thursday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Friday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Saturday', isOpen: true, openTime: '10:00', closeTime: '16:00' },
+            { day: 'Sunday', isOpen: false, openTime: '10:00', closeTime: '16:00' }
+          ];
+          setBusinessHoursForHeader(defaultHours);
+        }
+
+        // Fetch complete shop data for discounts and other header info
+        const shopResponse = await normalizedShopService.getShopById(service.id);
+        if (shopResponse.success && shopResponse.data) {
+          console.log('🔍 Header - Shop data loaded:', shopResponse.data);
+          setShopData(shopResponse.data);
+        }
+
+        // Fetch real discounts from shop_discounts table
+        console.log('💰 Fetching real discounts for shop:', service.id);
+        const { data: discountsData, error: discountsError } = await supabase
+          .from('shop_discounts')
+          .select('*')
+          .eq('shop_id', service.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        console.log('💰 Discount query result:', { discountsData, discountsError });
+
+        if (!discountsError && discountsData && discountsData.length > 0) {
+          const discount = discountsData[0]; // Take the first discount
+          console.log('✅ Real discount found:', discount);
+          const discountInfo = {
+            title: discount.title,
+            discount_percentage: discount.value,
+            description: discount.description,
+            type: discount.type,
+            code: discount.code
+          };
+          
+          // Update service with real discount data
+          setService(prev => prev ? {
+            ...prev,
+            discounts: discountInfo,
+            category: prev.category || shopResponse.data?.category
+          } : null);
+          
+          // Also update shopData
+          if (shopResponse.data) {
+            setShopData(prev => prev ? {
+              ...prev,
+              discounts: discountInfo
+            } : null);
+          }
+        } else {
+          console.log('⚠️ No active discounts found in database - will not show discount banner');
+          // Don't set any discount data - let the discount banner conditionally not render
+          setService(prev => prev ? {
+            ...prev,
+            discounts: null, // Explicitly set to null so discount banner won't show
+            category: prev.category || shopResponse.data?.category
+          } : null);
+        }
+      } catch (error) {
+        console.error('Error loading business hours for header:', error);
+      }
+    };
+
+    loadHeaderData();
   }, [service?.id]);
 
   // Show loading state
@@ -1090,11 +1350,24 @@ const ServiceDetailScreen: React.FC = () => {
     });
 
     const selectedStaffMember = staffMembers.find(staff => staff.id === selectedStaff);
+    const priceBreakdown = calculatePriceBreakdown();
+    
+    // Prepare booking details
+    const bookingDetails = {
+      serviceId: service.id,
+      shopId: service.id,
+      shopName: service.salon_name || service.name,
+      shopAddress: service.location || 'Address not available',
+      shopContact: shopData?.phone || 'Contact not available'
+    };
     
     navigation.navigate('BookingSummary', {
       selectedServices,
       totalPrice: calculateTotalPrice(),
-      selectedStaff: selectedStaffMember
+      selectedStaff: selectedStaffMember,
+      selectedDiscount: selectedDiscount,
+      priceBreakdown: priceBreakdown,
+      bookingDetails: bookingDetails
     });
   };
 
@@ -1166,25 +1439,73 @@ const ServiceDetailScreen: React.FC = () => {
 
   // Calculate total price for selected services and options
   const calculateTotalPrice = () => {
-    let total = 0;
+    let subtotal = 0;
     selectedServicesWithOptions.forEach((optionIds, serviceName) => {
       const service = shopServices.find(s => s.name === serviceName);
       if (service) {
         optionIds.forEach(optionId => {
           if (optionId === 'base') {
             // Base service selected
-            total += service.price || 0;
+            subtotal += service.price || 0;
           } else {
             // Option selected
             const option = service.options?.find((opt: any) => opt.id === optionId);
             if (option) {
-              total += option.price || 0;
+              subtotal += option.price || 0;
             }
           }
         });
       }
     });
-    return total;
+    
+    // Apply discount if selected
+    let discountAmount = 0;
+    if (selectedDiscount && selectedDiscount.percentage) {
+      discountAmount = Math.round(subtotal * (selectedDiscount.percentage / 100));
+    }
+    
+    const discountedTotal = subtotal - discountAmount;
+    
+    return discountedTotal;
+  };
+
+  // Calculate price breakdown with all details
+  const calculatePriceBreakdown = () => {
+    let subtotal = 0;
+    selectedServicesWithOptions.forEach((optionIds, serviceName) => {
+      const service = shopServices.find(s => s.name === serviceName);
+      if (service) {
+        optionIds.forEach(optionId => {
+          if (optionId === 'base') {
+            subtotal += service.price || 0;
+          } else {
+            const option = service.options?.find((opt: any) => opt.id === optionId);
+            if (option) {
+              subtotal += option.price || 0;
+            }
+          }
+        });
+      }
+    });
+    
+    // Apply discount if selected
+    let discountAmount = 0;
+    if (selectedDiscount && selectedDiscount.percentage) {
+      discountAmount = Math.round(subtotal * (selectedDiscount.percentage / 100));
+    }
+    
+    const discountedSubtotal = subtotal - discountAmount;
+    const gstAmount = Math.round(discountedSubtotal * 0.15); // 15% GST
+    const finalTotal = discountedSubtotal + gstAmount;
+    
+    return {
+      subtotal,
+      discountAmount,
+      discountedSubtotal,
+      gstAmount,
+      finalTotal,
+      hasDiscount: !!selectedDiscount
+    };
   };
 
   // Removed old renderOptionItem as we're using services view now
@@ -1299,10 +1620,41 @@ const ServiceDetailScreen: React.FC = () => {
         {selectedServicesWithOptions.size > 0 && (
           <View style={styles.selectedOptionSummary}>
             <Text style={styles.summaryTitle}>Selected Services ({selectedServicesWithOptions.size})</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Price</Text>
-              <Text style={styles.summaryValue}>{calculateTotalPrice()} SEK</Text>
-            </View>
+            {(() => {
+              const breakdown = calculatePriceBreakdown();
+              return (
+                <>
+                  {breakdown.hasDiscount && (
+                    <>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Subtotal</Text>
+                        <Text style={styles.summaryValue}>{breakdown.subtotal} SEK</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, styles.discountLabel]}>
+                          Discount ({selectedDiscount.percentage}%)
+                        </Text>
+                        <Text style={[styles.summaryValue, styles.discountValue]}>-{breakdown.discountAmount} SEK</Text>
+                      </View>
+                    </>
+                  )}
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>
+                      {breakdown.hasDiscount ? 'After Discount' : 'Total Price'}
+                    </Text>
+                    <Text style={styles.summaryValue}>{breakdown.discountedSubtotal} SEK</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>GST (15%)</Text>
+                    <Text style={styles.summaryValue}>{breakdown.gstAmount} SEK</Text>
+                  </View>
+                  <View style={[styles.summaryRow, styles.finalTotalRow]}>
+                    <Text style={[styles.summaryLabel, styles.finalTotalLabel]}>Final Total</Text>
+                    <Text style={[styles.summaryValue, styles.finalTotalValue]}>{breakdown.finalTotal} SEK</Text>
+                  </View>
+                </>
+              );
+            })()}
           </View>
         )}
       </View>
@@ -1311,9 +1663,51 @@ const ServiceDetailScreen: React.FC = () => {
 
   // Removed old renderOptionsContent as we're using renderServicesContent now
 
+  // Handle scroll events for sticky tabs and auto tab switching
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        const headerHeight = 350; // Approximate height of image + service info
+        setIsTabsSticky(offsetY > headerHeight);
+        
+        // Auto tab switching based on scroll position
+        const sections = Object.entries(sectionRefs.current);
+        let currentSection = 'services';
+        
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const [sectionName, sectionRef] = sections[i];
+          if (offsetY >= sectionRef.y - 100) { // 100px offset for better UX
+            currentSection = sectionName;
+            break;
+          }
+        }
+        
+        if (currentSection !== activeTab) {
+          setActiveTab(currentSection);
+        }
+      },
+    }
+  );
+  
+  // Function to scroll to specific section
+  const scrollToSection = (sectionName: string) => {
+    const sectionY = sectionRefs.current[sectionName as keyof typeof sectionRefs.current]?.y;
+    if (sectionY !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: sectionY - 50, animated: true });
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView stickyHeaderIndices={[2]}>
+      <ScrollView 
+        ref={scrollViewRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Image Carousel */}
         <ImageCarousel
           images={allServiceImages}
@@ -1324,94 +1718,182 @@ const ServiceDetailScreen: React.FC = () => {
 
         {/* Service Info */}
         <View style={styles.contentContainer}>
-          <View style={styles.header}>
-            <View style={styles.shopInfoSection}>
-              {/* Shop Logo before name */}
-              <View style={styles.shopLogoAndName}>
-                {shopData?.logo_url ? (
-                  <Image 
-                    source={{ uri: shopData.logo_url }} 
-                    style={styles.shopLogo}
-                    onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
-                    onLoad={() => console.log('✅ Logo loaded successfully')}
-                  />
-                ) : (
-                  <View style={styles.shopLogoPlaceholder}>
-                    <Ionicons name="storefront" size={32} color="#F59E0B" />
-                  </View>
+          {/* Main Header Section */}
+          <View style={styles.serviceHeaderSection}>
+            {/* Shop Logo and Name Row */}
+            <View style={styles.shopLogoAndName}>
+              {shopData?.logo_url ? (
+                <Image 
+                  source={{ uri: shopData.logo_url }} 
+                  style={styles.shopLogo}
+                  onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
+                  onLoad={() => console.log('✅ Logo loaded successfully')}
+                />
+              ) : (
+                <View style={styles.shopLogoPlaceholder}>
+                  <Ionicons name="storefront" size={32} color="#F59E0B" />
+                </View>
+              )}
+              <View style={styles.shopNameSection}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                
+                {/* Service Description */}
+                {(service.description || shopData?.description) && (
+                  <Text style={styles.serviceDescription}>
+                    {service.description || shopData?.description}
+                  </Text>
                 )}
-                <View style={styles.shopNameSection}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={18} color="#FFC107" />
-                    <Text style={styles.ratingText}>{service.rating || 0}</Text>
-                    <Text style={styles.reviewsText}>({service.reviews_count || 0} recensioner)</Text>
+              </View>
+            </View>
+
+            {/* Status and Category Row */}
+            <View style={styles.statusRow}>
+              {/* Open/Closed Status */}
+              <View style={[styles.statusBadge, isBusinessOpen() ? styles.openBadge : styles.closedBadge]}>
+                <Ionicons 
+                  name={isBusinessOpen() ? "checkmark-circle" : "close-circle"} 
+                  size={14} 
+                  color="white" 
+                />
+                <Text style={styles.statusText}>
+                  {isBusinessOpen() ? 'Open' : 'Closed'}
+                </Text>
+              </View>
+              
+              {/* Category Badge */}
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>
+                  {service.category || shopData?.category || 'Beauty & Wellness'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Rating and Price Row */}
+            <View style={styles.ratingPriceRow}>
+              {/* Rating */}
+              <View style={styles.ratingContainer}>
+                <Ionicons name="star" size={18} color="#FFC107" />
+                <Text style={styles.ratingText}>{service.rating || 4.5}</Text>
+                <Text style={styles.reviewsText}>({service.reviews_count || 0} reviews)</Text>
+              </View>
+              
+              {/* Price and Duration */}
+              <View style={styles.priceContainer}>
+                <Text style={styles.priceText}>From {service.price || 32} SEK</Text>
+                <Text style={styles.timeText}>{service.duration || 60} min</Text>
+              </View>
+            </View>
+
+            {/* Discount Banner - Only show if real discount data exists */}
+            {(service.discounts && service.discounts !== null && typeof service.discounts === 'object') && (
+              <View style={styles.discountBanner}>
+                <View style={styles.discountContent}>
+                  <View style={styles.discountIconContainer}>
+                    <Ionicons name="flash" size={20} color="#FF6B35" />
+                  </View>
+                  <View style={styles.discountInfo}>
+                    <Text style={styles.discountTitle}>
+                      {service.discounts?.title || 
+                       shopData?.discounts?.title || 
+                       'Flash Sale'}
+                    </Text>
+                    <Text style={styles.discountPercentage}>
+                      {service.discounts?.discount_percentage || 
+                       shopData?.discounts?.discount_percentage || 
+                       '25'}% OFF
+                    </Text>
                   </View>
                 </View>
               </View>
-            </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>From {service.price || 0} SEK</Text>
-              <Text style={styles.timeText}>{service.duration || 0} min</Text>
-            </View>
+            )}
           </View>
         </View>
 
         {/* Sticky Tabs */}
-        <View style={styles.stickyTabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'services' && styles.activeTab]}
-            onPress={() => setActiveTab('services')}
+        <View style={[
+          styles.stickyTabsContainer, 
+          isTabsSticky && { 
+            paddingTop: insets.top,
+            backgroundColor: 'white',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }
+        ]}>
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsScrollContent}
+            style={styles.tabsScrollView}
           >
-            <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>Services</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'team' && styles.activeTab]}
-            onPress={() => setActiveTab('team')}
-          >
-            <Text style={[styles.tabText, activeTab === 'team' && styles.activeTabText]}>Team</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
-            onPress={() => setActiveTab('reviews')}
-          >
-            <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'buy' && styles.activeTab]}
-            onPress={() => setActiveTab('buy')}
-          >
-            <Text style={[styles.tabText, activeTab === 'buy' && styles.activeTabText]}>Buy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'about' && styles.activeTab]}
-            onPress={() => setActiveTab('about')}
-          >
-            <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'services' && styles.activeTab]}
+              onPress={() => scrollToSection('services')}
+            >
+              <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>Services</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'team' && styles.activeTab]}
+              onPress={() => scrollToSection('team')}
+            >
+              <Text style={[styles.tabText, activeTab === 'team' && styles.activeTabText]}>Team</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'reviews' && styles.activeTab]}
+              onPress={() => scrollToSection('reviews')}
+            >
+              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'offers' && styles.activeTab]}
+              onPress={() => scrollToSection('offers')}
+            >
+              <Text style={[styles.tabText, activeTab === 'offers' && styles.activeTabText]}>Offers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'about' && styles.activeTab]}
+              onPress={() => scrollToSection('about')}
+            >
+              <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
-        {/* Tab Content */}
-        <View style={styles.contentContainer}>
-          {activeTab === 'services' && (
-            <>
-              {/* Step 1: Service Selection */}
-              <View style={styles.stepContainer}>
-                <View style={styles.stepHeader}>
-                  <View style={styles.stepNumber}>
-                    <Text style={styles.stepNumberText}>1</Text>
-                  </View>
-                  <Text style={styles.stepTitle}>Select Services</Text>
-                  {selectedServicesWithOptions.size > 0 && (
-                    <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
-                  )}
+        {/* All Sections Content */}
+        <View style={styles.allSectionsContainer}>
+          
+          {/* Services Section */}
+          <View 
+            style={styles.sectionContainer}
+            onLayout={(event) => {
+              sectionRefs.current.services.y = event.nativeEvent.layout.y + 350; // Add header height
+            }}
+          >
+            <Text style={styles.sectionHeader}>Services</Text>
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>1</Text>
                 </View>
-                {renderServicesContent()}
+                <Text style={styles.stepTitle}>Select Services</Text>
+                {selectedServicesWithOptions.size > 0 && (
+                  <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
+                )}
               </View>
-            </>
-          )}
+              {renderServicesContent()}
+            </View>
+          </View>
 
-          {activeTab === 'team' && (
+          {/* Team Section */}
+          <View 
+            style={styles.sectionContainer}
+            onLayout={(event) => {
+              sectionRefs.current.team.y = event.nativeEvent.layout.y + 350;
+            }}
+          >
+            <Text style={styles.sectionHeader}>Team</Text>
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={styles.stepNumber}>
@@ -1447,18 +1929,90 @@ const ServiceDetailScreen: React.FC = () => {
                 </View>
               )}
             </View>
-          )}
+          </View>
 
-          {activeTab === 'reviews' && <ReviewsTab service={service} />}
-          {activeTab === 'buy' && (
-            <View style={styles.tabContent}>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Purchase Options</Text>
-                <Text style={styles.sectionText}>Special offers and packages coming soon.</Text>
-              </View>
+          {/* Reviews Section */}
+          <View 
+            style={styles.sectionContainer}
+            onLayout={(event) => {
+              sectionRefs.current.reviews.y = event.nativeEvent.layout.y + 350;
+            }}
+          >
+            <Text style={styles.sectionHeader}>Reviews</Text>
+            <ReviewsTab service={service} />
+          </View>
+
+          {/* Offers Section */}
+          <View 
+            style={styles.sectionContainer}
+            onLayout={(event) => {
+              sectionRefs.current.offers.y = event.nativeEvent.layout.y + 350;
+            }}
+          >
+            <Text style={styles.sectionHeader}>Special Offers</Text>
+            <View style={styles.offersContent}>
+              {/* Debug: Show what discount data we have */}
+              {console.log('🔍 DEBUG - service.discounts:', service?.discounts)}
+              {console.log('🔍 DEBUG - shopData.discounts:', shopData?.discounts)}
+              {/* Real discount data from database */}
+              {(() => {
+                const discountData = service?.discounts || shopData?.discounts;
+                return discountData ? (
+                  <View style={styles.discountCard}>
+                    <View style={styles.discountBadge}>
+                      <Text style={styles.discountBadgeText}>{discountData.discount_percentage}% OFF</Text>
+                    </View>
+                    <Text style={styles.discountTitle}>{discountData.title}</Text>
+                    <Text style={styles.discountDescription}>{discountData.description}</Text>
+                    <TouchableOpacity 
+                      style={[
+                        styles.selectDiscountButton,
+                        selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) && styles.selectedDiscountButton
+                      ]}
+                      onPress={() => {
+                        const discountId = discountData.code || `discount-${discountData.discount_percentage}`;
+                        console.log('🔧 Button pressed - Current selectedDiscount:', selectedDiscount);
+                        console.log('🔧 discountId:', discountId);
+                        console.log('🔧 Are they equal?', selectedDiscount?.id === discountId);
+                        
+                        if (selectedDiscount?.id === discountId) {
+                          console.log('🔧 Removing discount');
+                          setSelectedDiscount(null);
+                        } else {
+                          console.log('🔧 Applying discount');
+                          setSelectedDiscount({
+                            id: discountId,
+                            percentage: discountData.discount_percentage,
+                            title: discountData.title
+                          });
+                        }
+                      }}
+                    >
+                      <Text style={[
+                        styles.selectDiscountText,
+                        selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) && styles.selectedDiscountText
+                      ]}>
+                        {selectedDiscount?.id === (discountData.code || `discount-${discountData.discount_percentage}`) ? 'Remove Discount' : 'Apply Discount'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.noOffersText}>No special offers available at the moment.</Text>
+                );
+              })()}
             </View>
-          )}
-          {activeTab === 'about' && <AboutTab service={service} />}
+          </View>
+
+          {/* About Section */}
+          <View 
+            style={styles.sectionContainer}
+            onLayout={(event) => {
+              sectionRefs.current.about.y = event.nativeEvent.layout.y + 350;
+            }}
+          >
+            <Text style={styles.sectionHeader}>About & Hours</Text>
+            <AboutTab service={service} />
+          </View>
 
         </View>
 
@@ -1480,7 +2034,7 @@ const ServiceDetailScreen: React.FC = () => {
                     ? 'Select Services to Continue'
                     : !selectedStaff 
                       ? 'Select Staff to Continue'
-                      : `Book Now • ${calculateTotalPrice()} SEK`
+                      : `Book Now • ${calculatePriceBreakdown().finalTotal} SEK`
                   )
                 }
               </Text>
@@ -1491,6 +2045,49 @@ const ServiceDetailScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      {/* Fixed Sticky Tabs Overlay */}
+      {isTabsSticky && (
+        <View style={[styles.fixedStickyTabsContainer, { paddingTop: insets.top }]}>
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsScrollContent}
+            style={styles.tabsScrollView}
+          >
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'services' && styles.activeTab]}
+              onPress={() => scrollToSection('services')}
+            >
+              <Text style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}>Services</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'team' && styles.activeTab]}
+              onPress={() => scrollToSection('team')}
+            >
+              <Text style={[styles.tabText, activeTab === 'team' && styles.activeTabText]}>Team</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'reviews' && styles.activeTab]}
+              onPress={() => scrollToSection('reviews')}
+            >
+              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Reviews</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'offers' && styles.activeTab]}
+              onPress={() => scrollToSection('offers')}
+            >
+              <Text style={[styles.tabText, activeTab === 'offers' && styles.activeTabText]}>Offers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.scrollableTab, activeTab === 'about' && styles.activeTab]}
+              onPress={() => scrollToSection('about')}
+            >
+              <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>About</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 };
@@ -1536,6 +2133,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  fixedStickyTabsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 1000,
   },
   tab: {
     flex: 1,
@@ -1919,6 +2534,95 @@ const styles = StyleSheet.create({
     color: '#6B7280', // Darker gray for better readability
     marginTop: 4,
   },
+  serviceDescription: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 6,
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 0,
+    flexWrap: 'wrap',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  openBadge: {
+    backgroundColor: '#10B981', // Green for open
+  },
+  closedBadge: {
+    backgroundColor: '#EF4444', // Red for closed
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  categoryBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  discountBanner: {
+    backgroundColor: '#FEF3C7', // Light accent cream honey
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+    marginBottom: 8,
+    marginHorizontal: 0,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
+    width: '100%',
+  },
+  discountContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  discountIconContainer: {
+    marginRight: 12,
+  },
+  discountInfo: {
+    flex: 1,
+  },
+  discountTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  discountPercentage: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+  serviceHeaderSection: {
+    padding: 20,
+    marginBottom: 8,
+  },
+  ratingPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
   section: {
     marginBottom: 24,
   },
@@ -2218,6 +2922,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#78350F',
   },
+  discountLabel: {
+    color: '#059669', // Green for discount
+  },
+  discountValue: {
+    color: '#059669', // Green for discount
+  },
+  finalTotalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 8,
+    marginTop: 8,
+  },
+  finalTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  finalTotalValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
   noOptionsContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -2487,8 +3213,8 @@ const styles = StyleSheet.create({
   },
   shopLogoAndName: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
   shopLogo: {
     width: 50,
@@ -2511,6 +3237,7 @@ const styles = StyleSheet.create({
   },
   shopNameSection: {
     flex: 1,
+    marginLeft: 12,
   },
   fixedBookButtonContainer: {
     padding: 16,
@@ -2522,6 +3249,147 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  allSectionsContainer: {
+    backgroundColor: '#FEF3C7', // Match main background
+  },
+  sectionContainer: {
+    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#F59E0B',
+  },
+  offersContent: {
+    gap: 16,
+  },
+  discountCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  discountBadge: {
+    backgroundColor: '#10B981',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  discountBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  discountTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  noOffersText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
+  },
+  discountDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  selectDiscountButton: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  selectedDiscountButton: {
+    backgroundColor: '#EF4444',
+  },
+  selectDiscountText: {
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectedDiscountText: {
+    color: '#FFFFFF',
+  },
+  // Scrollable tabs styles
+  tabsScrollView: {
+    flexGrow: 1,
+  },
+  tabsScrollContent: {
+    paddingHorizontal: 8,
+  },
+  scrollableTab: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  // Opening hours styles
+  hoursSection: {
+    marginTop: 20,
+  },
+  hoursContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  hourRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  dayText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    textTransform: 'capitalize',
+  },
+  timeText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  noHoursContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  noHoursText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

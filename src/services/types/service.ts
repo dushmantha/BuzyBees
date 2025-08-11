@@ -18,6 +18,7 @@ export interface ServiceOption {
     price: number;
     duration: number;
     category_id: string;
+    category?: string; // Category display name for header
     image: string;
     rating: number;
     reviews_count: number;
@@ -36,6 +37,7 @@ export interface ServiceOption {
     created_at: string;
     logo_url?: string; // Shop logo separate from main image
     options?: ServiceOption[]; // Optional: when service includes options
+    discounts?: any; // Discount information for header display
   }
   
   export interface ServiceWithOptions extends Service {

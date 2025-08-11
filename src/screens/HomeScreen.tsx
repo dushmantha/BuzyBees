@@ -196,56 +196,12 @@ const HomeScreen = () => {
         console.log('💰 Shops with discounts:', discountShopsResponse.data?.length || 0);
         console.log('🏪 All shops:', shopsResponse.data?.length || 0);
         
-        // Use discount shops for special offers
+        // Use discount shops for special offers  
         const shopsWithDiscounts = discountShopsResponse.data || [];
         const shopsWithoutDiscounts = shopsResponse.data || [];
-          
-          // For demo: If no shops have discounts, add fake discount to first 3 shops
-          if (shopsWithDiscounts.length === 0 && shopsWithoutDiscounts.length >= 3) {
-            console.log('🧪 Adding demo discounts for testing...');
-            
-            // Add discount to first shop
-            const firstShop = shopsWithoutDiscounts[0];
-            firstShop.discounts = [{
-              id: 'demo-discount-1',
-              discount_percentage: 25,
-              code: 'SAVE25',
-              title: 'Flash Sale',
-              description: '25% off limited time',
-              valid_from: new Date().toISOString(),
-              valid_until: new Date(Date.now() + 7*24*60*60*1000).toISOString(),
-              is_active: true
-            }];
-            
-            // Add discount to second shop
-            const secondShop = shopsWithoutDiscounts[1];
-            secondShop.discounts = [{
-              id: 'demo-discount-2',
-              discount_percentage: 20,
-              code: 'SAVE20',
-              title: 'Summer Special',
-              description: '20% off all services',
-              valid_from: new Date().toISOString(),
-              valid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString(),
-              is_active: true
-            }];
-            
-            // Add discount to third shop
-            const thirdShop = shopsWithoutDiscounts[2];
-            thirdShop.discounts = [{
-              id: 'demo-discount-3',
-              discount_percentage: 15,
-              code: 'WEEKEND15',
-              title: 'Weekend Deal',
-              description: '15% off weekend bookings',
-              valid_from: new Date().toISOString(),
-              valid_until: new Date(Date.now() + 14*24*60*60*1000).toISOString(),
-              is_active: true
-            }];
-            
-            shopsWithDiscounts.push(firstShop, secondShop, thirdShop);
-            shopsWithoutDiscounts.splice(0, 3); // Remove first 3 from without discounts array
-          }
+        
+        console.log('💰 Real shops with discounts found:', shopsWithDiscounts.length);
+        console.log('🏪 Regular shops without discounts:', shopsWithoutDiscounts.length);
           
           // Transform shops to services format
           const transformShopToService = (shop: any, isSpecialOffer = false) => {
