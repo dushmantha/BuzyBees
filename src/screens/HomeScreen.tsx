@@ -1073,7 +1073,7 @@ const HomeScreen = () => {
             <FlatList
               data={homeData.specialOffers}
               renderItem={renderServiceCard}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => `special-offers-${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.servicesList}
