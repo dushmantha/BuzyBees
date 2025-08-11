@@ -47,6 +47,7 @@ export interface Shop {
     price: number;
     notes?: string;
     assigned_staff_id?: string;
+    service_option_ids?: string[];
   }
   
   export interface ServiceAvailability {
@@ -368,8 +369,11 @@ export interface Shop {
           booking_date: bookingData.date,
           start_time: startTime,
           end_time: endTime,
+          duration: duration,
+          service_price: bookingData.price,
           total_price: bookingData.price,
-          notes: bookingData.notes
+          notes: bookingData.notes,
+          service_option_ids: bookingData.service_option_ids || []
         });
 
         if (response.success) {

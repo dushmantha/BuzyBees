@@ -1636,6 +1636,7 @@ class NormalizedShopService {
     total_price: number;
     notes?: string;
     timezone?: string;
+    service_option_ids?: string[];
   }): Promise<ServiceResponse<any>> {
     try {
       console.log('📅 Creating booking:', bookingData);
@@ -1680,10 +1681,51 @@ class NormalizedShopService {
         };
       }
 
+      // Find or create customer record
+      let customerId = null;
+      try {
+        // First try to find existing customer by phone
+        const { data: existingCustomer } = await this.client
+          .from('customers')
+          .select('id')
+          .eq('phone', bookingData.customer_phone)
+          .single();
+
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+          console.log('📱 Found existing customer:', customerId);
+        } else {
+          // Create new customer
+          const { data: newCustomer, error: customerError } = await this.client
+            .from('customers')
+            .insert({
+              name: bookingData.customer_name,
+              phone: bookingData.customer_phone,
+              email: bookingData.customer_email || null,
+              provider_id: user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
+
+          if (customerError) {
+            console.log('⚠️ Could not create customer, using null customer_id:', customerError.message);
+            customerId = null;
+          } else {
+            customerId = newCustomer.id;
+            console.log('✅ Created new customer:', customerId);
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Customer lookup/creation failed, using null customer_id:', error.message);
+        customerId = null;
+      }
+
       // Create booking record compatible with enhanced schema
       const bookingRecord = {
         // Primary relationships
-        customer_id: null, // Allow anonymous customers
+        customer_id: customerId, // Use found/created customer or null for anonymous
         shop_id: bookingData.shop_id,
         provider_id: user.id, // Provider who owns the shop
         staff_id: bookingData.assigned_staff_id || null, // Can be null for "any staff"
@@ -2450,21 +2492,11 @@ class NormalizedShopService {
     try {
       console.log('📅 Getting staff bookings for:', staffId, 'on', date);
 
-      // Temporarily return empty array until assigned_staff_id column is added to database
-      // This prevents the app from crashing
-      console.warn('⚠️ Staff-specific bookings not yet implemented - returning empty array');
-      return {
-        success: true,
-        data: [],
-        message: 'Staff bookings feature pending database update'
-      };
-
-      // Original code commented out until database is updated
-      /*
+      // Query bookings for the specific staff member and date
       const { data, error } = await this.client
         .from('shop_bookings')
         .select('start_time, end_time, status')
-        .eq('assigned_staff_id', staffId)
+        .eq('staff_id', staffId)
         .eq('booking_date', date)
         .in('status', ['confirmed', 'in_progress', 'pending'])
         .order('start_time', { ascending: true });
@@ -2476,23 +2508,18 @@ class NormalizedShopService {
           error: `Failed to get staff bookings: ${error.message}`
         };
       }
-      */
 
-      // Commented out until database is updated
-      /*
       const bookedSlots = data?.map(booking => ({
         start: booking.start_time,
         end: booking.end_time
       })) || [];
-
+      
       console.log('📅 Found', bookedSlots.length, 'existing bookings for staff on', date);
-
       return {
         success: true,
         data: bookedSlots,
         message: 'Staff bookings retrieved successfully'
       };
-      */
 
     } catch (error) {
       console.error('❌ Unexpected error getting staff bookings:', error);

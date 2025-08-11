@@ -19,7 +19,7 @@ export interface Shop {
   services: any[];
   business_hours: any[];
   special_days: any[];
-  discounts: any[];
+  discounts: any[] | any;
   is_active: boolean;
   is_verified: boolean;
   rating?: number;
@@ -47,6 +47,96 @@ export interface HomeShopData {
 
 class ShopAPI {
   private supabase = supabaseService;
+
+  async getShopsWithDiscounts(): Promise<ShopApiResponse> {
+    try {
+      console.log('💰 Creating demo shops with discounts...');
+      
+      // Since discounts table doesn't exist, let's get all shops and add demo discounts
+      const shopsResult = await this.supabase.client
+        .from('provider_businesses')
+        .select('*')
+        .eq('is_active', true)
+        .limit(4) // Only get 4 for special offers
+        .order('created_at', { ascending: false });
+        
+      if (shopsResult.error) {
+        console.error('❌ Error fetching shops:', shopsResult.error);
+        return { data: null, error: shopsResult.error.message, status: 500 };
+      }
+      
+      const shops = shopsResult.data || [];
+      console.log('🏪 Found shops for discounts:', shops.length);
+      
+      if (shops.length === 0) {
+        return { data: [], error: null, status: 200 };
+      }
+      
+      // Add demo discounts to shops
+      const discountedShops = shops.map((shop: any, index: number) => {
+        const discountPercentages = [25, 20, 15, 10];
+        const discountTitles = ['Flash Sale', 'Summer Special', 'Weekend Deal', 'Limited Offer'];
+        
+        return {
+          ...shop,
+          discounts: {
+            id: `demo-discount-${index + 1}`,
+            discount_percentage: discountPercentages[index] || 10,
+            discount_code: `SAVE${discountPercentages[index] || 10}`,
+            title: discountTitles[index] || 'Special Offer',
+            description: `${discountPercentages[index] || 10}% off all services`,
+            valid_from: new Date().toISOString(),
+            valid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+            is_active: true
+          }
+        };
+      });
+      
+      // Transform to Shop interface
+      const transformedShops: Shop[] = discountedShops.map((shop: any) => ({
+        id: shop.id,
+        name: shop.name || 'Unnamed Shop',
+        description: shop.description || '',
+        category: shop.category || 'Beauty & Wellness',
+        address: shop.address || '',
+        city: shop.city || '',
+        state: shop.state || '',
+        country: shop.country || '',
+        phone: shop.phone || '',
+        email: shop.email || '',
+        website_url: shop.website_url || null,
+        image_url: shop.image_url || '',
+        logo_url: shop.logo_url || '',
+        images: Array.isArray(shop.images) ? shop.images : [],
+        staff: Array.isArray(shop.staff) ? shop.staff : [],
+        services: Array.isArray(shop.services) ? shop.services : [],
+        business_hours: Array.isArray(shop.business_hours) ? shop.business_hours : [],
+        special_days: Array.isArray(shop.special_days) ? shop.special_days : [],
+        discounts: shop.discounts,
+        is_active: shop.is_active || false,
+        is_verified: shop.is_verified || false,
+        rating: 4.5,
+        reviews_count: Math.floor(Math.random() * 100) + 10,
+        distance: `${(Math.random() * 5 + 0.5).toFixed(1)} km`,
+        created_at: shop.created_at,
+        updated_at: shop.updated_at
+      }));
+
+      return {
+        data: transformedShops,
+        error: null,
+        status: 200
+      };
+
+    } catch (error) {
+      console.error('❌ Unexpected error fetching shops with discounts:', error);
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: 500
+      };
+    }
+  }
 
   async getAllShops(): Promise<ShopApiResponse> {
     try {
@@ -101,7 +191,7 @@ class ShopAPI {
         services: Array.isArray(shop.services) ? shop.services : [],
         business_hours: Array.isArray(shop.business_hours) ? shop.business_hours : [],
         special_days: Array.isArray(shop.special_days) ? shop.special_days : [],
-        discounts: Array.isArray(shop.discounts) ? shop.discounts : [],
+        discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
         rating: 4.5, // Default rating for now
@@ -154,7 +244,30 @@ class ShopAPI {
 
       console.log('✅ Successfully fetched shops by category:', result.data?.length || 0);
       
-      const shops: Shop[] = (result.data || []).map((shop: any) => ({
+      // Fetch discounts for each shop if they have discount_id
+      const shopsWithDiscounts = await Promise.all(
+        (result.data || []).map(async (shop: any) => {
+          if (shop.discount_id) {
+            try {
+              const discountResult = await this.supabase.client
+                .from('discounts')
+                .select('*')
+                .eq('id', shop.discount_id)
+                .eq('is_active', true)
+                .single();
+              
+              if (discountResult.data) {
+                shop.discounts = discountResult.data;
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not fetch discount for shop:', shop.name, error);
+            }
+          }
+          return shop;
+        })
+      );
+      
+      const shops: Shop[] = shopsWithDiscounts.map((shop: any) => ({
         id: shop.id,
         name: shop.name || 'Unnamed Shop',
         description: shop.description || '',
@@ -173,7 +286,7 @@ class ShopAPI {
         services: Array.isArray(shop.services) ? shop.services : [],
         business_hours: Array.isArray(shop.business_hours) ? shop.business_hours : [],
         special_days: Array.isArray(shop.special_days) ? shop.special_days : [],
-        discounts: Array.isArray(shop.discounts) ? shop.discounts : [],
+        discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
         rating: 4.5,
@@ -292,7 +405,30 @@ class ShopAPI {
 
       console.log('✅ Successfully searched shops:', result.data?.length || 0);
       
-      const shops: Shop[] = (result.data || []).map((shop: any) => ({
+      // Fetch discounts for each shop if they have discount_id
+      const shopsWithDiscounts = await Promise.all(
+        (result.data || []).map(async (shop: any) => {
+          if (shop.discount_id) {
+            try {
+              const discountResult = await this.supabase.client
+                .from('discounts')
+                .select('*')
+                .eq('id', shop.discount_id)
+                .eq('is_active', true)
+                .single();
+              
+              if (discountResult.data) {
+                shop.discounts = discountResult.data;
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not fetch discount for shop:', shop.name, error);
+            }
+          }
+          return shop;
+        })
+      );
+      
+      const shops: Shop[] = shopsWithDiscounts.map((shop: any) => ({
         id: shop.id,
         name: shop.name || 'Unnamed Shop',
         description: shop.description || '',
@@ -311,7 +447,7 @@ class ShopAPI {
         services: Array.isArray(shop.services) ? shop.services : [],
         business_hours: Array.isArray(shop.business_hours) ? shop.business_hours : [],
         special_days: Array.isArray(shop.special_days) ? shop.special_days : [],
-        discounts: Array.isArray(shop.discounts) ? shop.discounts : [],
+        discounts: shop.discounts || [],
         is_active: shop.is_active || false,
         is_verified: shop.is_verified || false,
         rating: 4.5,

@@ -69,6 +69,7 @@ interface Service {
   name: string;
   description: string;
   price: number;
+  originalPrice?: number;
   duration: number;
   rating: number;
   reviews_count: number;
@@ -77,6 +78,10 @@ interface Service {
   location: string;
   distance: string;
   image: string;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountCode?: string;
+  isSpecialOffer?: boolean;
 }
 
 interface Booking {
@@ -92,7 +97,10 @@ interface Booking {
 interface HomeData {
   categories: Category[];
   promotions: Promotion[];
+  specialOffers: Service[];
+  trendingServices: Service[];
   popularServices: Service[];
+  recommendedServices: Service[];
   upcomingBookings: Booking[];
   stats: {
     totalServices: number;
@@ -123,7 +131,10 @@ const HomeScreen = () => {
   const [homeData, setHomeData] = useState<HomeData>({
     categories: [],
     promotions: [],
+    specialOffers: [],
+    trendingServices: [],
     popularServices: [],
+    recommendedServices: [],
     upcomingBookings: [],
     stats: { totalServices: 0, totalCategories: 0, totalProviders: 0, avgRating: 0 }
   });
@@ -170,28 +181,168 @@ const HomeScreen = () => {
         throw new Error(categoriesResponse.error);
       }
 
-      // Fetch popular services from shop API
-      console.log('⭐ Fetching popular services from shopAPI...');
+      // Fetch services from shop API
+      console.log('⭐ Fetching services from shopAPI...');
+      let specialOffers = [];
+      let trendingServices = [];
       let popularServices = [];
+      let recommendedServices = [];
+      
       try {
+        // First get shops with discounts for special offers
+        const discountShopsResponse = await shopAPI.getShopsWithDiscounts();
+        // Then get all shops for other sections
         const shopsResponse = await shopAPI.getAllShops();
-        if (shopsResponse.data) {
-          // Transform shops to services format and limit to top 6
-          popularServices = shopsResponse.data.slice(0, 6).map(shop => ({
-            id: shop.id,
-            name: shop.name,
-            description: shop.description,
-            professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
-            salon_name: shop.name,
-            price: shop.services && shop.services.length > 0 ? shop.services[0].price : 500,
-            duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
-            rating: shop.rating || 4.5,
-            reviews_count: shop.reviews_count || 0,
-            location: `${shop.city}, ${shop.country}`,
-            distance: shop.distance || '1.5 km',
-            image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop'
-          }));
-        }
+        console.log('💰 Shops with discounts:', discountShopsResponse.data?.length || 0);
+        console.log('🏪 All shops:', shopsResponse.data?.length || 0);
+        
+        // Use discount shops for special offers
+        const shopsWithDiscounts = discountShopsResponse.data || [];
+        const shopsWithoutDiscounts = shopsResponse.data || [];
+          
+          // For demo: If no shops have discounts, add fake discount to first 3 shops
+          if (shopsWithDiscounts.length === 0 && shopsWithoutDiscounts.length >= 3) {
+            console.log('🧪 Adding demo discounts for testing...');
+            
+            // Add discount to first shop
+            const firstShop = shopsWithoutDiscounts[0];
+            firstShop.discounts = [{
+              id: 'demo-discount-1',
+              discount_percentage: 25,
+              code: 'SAVE25',
+              title: 'Flash Sale',
+              description: '25% off limited time',
+              valid_from: new Date().toISOString(),
+              valid_until: new Date(Date.now() + 7*24*60*60*1000).toISOString(),
+              is_active: true
+            }];
+            
+            // Add discount to second shop
+            const secondShop = shopsWithoutDiscounts[1];
+            secondShop.discounts = [{
+              id: 'demo-discount-2',
+              discount_percentage: 20,
+              code: 'SAVE20',
+              title: 'Summer Special',
+              description: '20% off all services',
+              valid_from: new Date().toISOString(),
+              valid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+              is_active: true
+            }];
+            
+            // Add discount to third shop
+            const thirdShop = shopsWithoutDiscounts[2];
+            thirdShop.discounts = [{
+              id: 'demo-discount-3',
+              discount_percentage: 15,
+              code: 'WEEKEND15',
+              title: 'Weekend Deal',
+              description: '15% off weekend bookings',
+              valid_from: new Date().toISOString(),
+              valid_until: new Date(Date.now() + 14*24*60*60*1000).toISOString(),
+              is_active: true
+            }];
+            
+            shopsWithDiscounts.push(firstShop, secondShop, thirdShop);
+            shopsWithoutDiscounts.splice(0, 3); // Remove first 3 from without discounts array
+          }
+          
+          // Transform shops to services format
+          const transformShopToService = (shop: any, isSpecialOffer = false) => {
+            // Handle both array format (mock data) and single object format (real DB)
+            let hasDiscount = false;
+            let discountInfo = null;
+            
+            if (shop.discounts) {
+              if (Array.isArray(shop.discounts) && shop.discounts.length > 0) {
+                // Array format - find biggest discount
+                const activeDiscounts = shop.discounts.filter((d: any) => d.is_active);
+                if (activeDiscounts.length > 0) {
+                  discountInfo = activeDiscounts.reduce((max: any, current: any) => 
+                    (current.discount_percentage > max.discount_percentage) ? current : max
+                  );
+                  hasDiscount = true;
+                }
+              } else if (!Array.isArray(shop.discounts) && shop.discounts.is_active) {
+                // Single object format - direct discount from getShopsWithDiscounts
+                discountInfo = shop.discounts;
+                hasDiscount = true;
+              }
+            }
+            
+            let originalPrice = shop.services && shop.services.length > 0 ? shop.services[0].price : 500;
+            let finalPrice = originalPrice;
+            
+            // Apply discount to price if available
+            if (discountInfo && discountInfo.discount_percentage) {
+              finalPrice = Math.round(originalPrice * (1 - discountInfo.discount_percentage / 100));
+            }
+            
+            const serviceData = {
+              id: shop.id,
+              name: shop.name,
+              description: shop.description,
+              professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : 'Shop Owner',
+              salon_name: shop.name,
+              price: finalPrice,
+              originalPrice: hasDiscount ? originalPrice : null,
+              duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
+              rating: shop.rating || 4.5,
+              reviews_count: shop.reviews_count || 0,
+              location: `${shop.city}, ${shop.country}`,
+              distance: shop.distance || '1.5 km',
+              image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+              hasDiscount: hasDiscount,
+              discountPercentage: discountInfo ? discountInfo.discount_percentage : null,
+              discountCode: discountInfo ? discountInfo.code : null,
+              isSpecialOffer: isSpecialOffer
+            };
+            
+            console.log('🏷️ Transformed service:', serviceData.name, {
+              hasDiscount: serviceData.hasDiscount,
+              isSpecialOffer: serviceData.isSpecialOffer,
+              discountPercentage: serviceData.discountPercentage,
+              originalPrice: serviceData.originalPrice,
+              finalPrice: serviceData.price
+            });
+            
+            return serviceData;
+          };
+          
+          // Distribute services across 4 sections
+          
+          // 1. Special Offers - Discounted services (with discount badges)
+          specialOffers = shopsWithDiscounts.slice(0, 4).map(shop => transformShopToService(shop, true));
+          
+          console.log('🔥 Created special offers:', {
+            count: specialOffers.length,
+            shopsWithDiscounts: shopsWithDiscounts.length,
+            offers: specialOffers.map(offer => ({
+              name: offer.name,
+              hasDiscount: offer.hasDiscount,
+              discountPercentage: offer.discountPercentage
+            }))
+          });
+          
+          // 2. Trending Services - High rated services (rating >= 4.5)
+          const highRatedShops = shopsWithoutDiscounts
+            .filter(shop => (shop.rating || 4.5) >= 4.5)
+            .sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5))
+            .slice(0, 6);
+          trendingServices = highRatedShops.map(shop => transformShopToService(shop, false));
+          
+          // 3. Popular Services - Most reviewed services
+          const mostReviewedShops = shopsWithoutDiscounts
+            .filter(shop => !highRatedShops.includes(shop)) // Exclude trending ones
+            .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
+            .slice(0, 6);
+          popularServices = mostReviewedShops.map(shop => transformShopToService(shop, false));
+          
+          // 4. Recommended Services - Remaining services (newest or random)
+          const remainingShops = shopsWithoutDiscounts
+            .filter(shop => !highRatedShops.includes(shop) && !mostReviewedShops.includes(shop))
+            .slice(0, 6);
+          recommendedServices = remainingShops.map(shop => transformShopToService(shop, false));
       } catch (shopError) {
         console.warn('⚠️ Could not fetch shops for popular services:', shopError);
       }
@@ -207,7 +358,10 @@ const HomeScreen = () => {
       const homeData = {
         categories: categoriesResponse.data || [],
         promotions: [], // No promotions for now
+        specialOffers: specialOffers,
+        trendingServices: trendingServices,
         popularServices: popularServices,
+        recommendedServices: recommendedServices,
         upcomingBookings: [],
         stats: {
           totalServices,
@@ -219,7 +373,10 @@ const HomeScreen = () => {
 
       console.log('✅ Home data loaded successfully:', {
         categories: homeData.categories.length,
-        services: homeData.popularServices.length,
+        specialOffers: homeData.specialOffers.length,
+        trending: homeData.trendingServices.length,
+        popular: homeData.popularServices.length,
+        recommended: homeData.recommendedServices.length,
         stats: homeData.stats
       });
 
@@ -233,7 +390,10 @@ const HomeScreen = () => {
       const fallbackData = {
         categories: [],
         promotions: [],
+        specialOffers: [],
+        trendingServices: [],
         popularServices: [],
+        recommendedServices: [],
         upcomingBookings: [],
         stats: {
           totalServices: 0,
@@ -641,7 +801,15 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderServiceCard = ({ item: service }: { item: Service }) => (
+  const renderServiceCard = ({ item: service }: { item: Service }) => {
+    // Debug: Log service data in the renderer
+    console.log('🎨 Rendering service card:', service.name, {
+      hasDiscount: service.hasDiscount,
+      isSpecialOffer: service.isSpecialOffer,
+      discountPercentage: service.discountPercentage
+    });
+    
+    return (
     <TouchableOpacity
       style={styles.serviceCard}
       onPress={() => handleServicePress(service)}
@@ -658,6 +826,21 @@ const HomeScreen = () => {
           <Ionicons name="cut-outline" size={32} color="#8E8E93" />
         </View>
       )}
+      
+      {/* Badges */}
+      <View style={styles.serviceBadgeContainer}>
+        {service.isSpecialOffer && (
+          <View style={styles.specialOfferBadge}>
+            <Text style={styles.specialOfferBadgeText}>SPECIAL OFFER</Text>
+          </View>
+        )}
+        {service.hasDiscount && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>{service.discountPercentage}% OFF</Text>
+          </View>
+        )}
+      </View>
+      
       <View style={styles.serviceContent}>
         <Text style={styles.serviceName} numberOfLines={1}>{service.name}</Text>
         <Text style={styles.serviceProfessional} numberOfLines={1}>
@@ -669,12 +852,22 @@ const HomeScreen = () => {
           <Text style={styles.reviewsText}>({service.reviews_count})</Text>
         </View>
         <View style={styles.serviceFooter}>
-          <Text style={styles.servicePrice}>{service.price} kr</Text>
+          <View style={styles.servicePriceContainer}>
+            {service.hasDiscount && service.originalPrice ? (
+              <>
+                <Text style={styles.serviceOriginalPrice}>{service.originalPrice} kr</Text>
+                <Text style={styles.servicePrice}>{service.price} kr</Text>
+              </>
+            ) : (
+              <Text style={styles.servicePrice}>{service.price} kr</Text>
+            )}
+          </View>
           <Text style={styles.serviceDuration}>{service.duration} min</Text>
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   const renderUpcomingBooking = ({ item: booking }: { item: Booking }) => (
     <TouchableOpacity style={styles.bookingCard} activeOpacity={0.8}>
@@ -912,6 +1105,26 @@ const HomeScreen = () => {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Special Offers - TOP PRIORITY */}
+        {homeData.specialOffers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, styles.specialOfferTitle]}>🔥 Special Offers</Text>
+              <TouchableOpacity onPress={() => console.log('View all special offers')}>
+                <Text style={styles.seeAllText}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={homeData.specialOffers}
+              renderItem={renderServiceCard}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.servicesList}
+            />
+          </View>
+        )}
+
         {/* Upcoming Bookings */}
         {user && homeData.upcomingBookings.length > 0 && (
           <View style={styles.section}>
@@ -945,6 +1158,26 @@ const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.promotionsList}
+            />
+          </View>
+        )}
+
+        {/* Trending Services */}
+        {homeData.trendingServices.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Trending</Text>
+              <TouchableOpacity onPress={() => console.log('View all trending services')}>
+                <Text style={styles.seeAllText}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={homeData.trendingServices}
+              renderItem={renderServiceCard}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.servicesList}
             />
           </View>
         )}
@@ -983,27 +1216,25 @@ const HomeScreen = () => {
           </View>
         )}
 
-        {/* Stats */}
-        <View style={styles.section}>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{homeData.stats.totalServices}</Text>
-              <Text style={styles.statLabel}>Services</Text>
+        {/* Recommended Services */}
+        {homeData.recommendedServices.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recommended</Text>
+              <TouchableOpacity onPress={() => console.log('View all recommended services')}>
+                <Text style={styles.seeAllText}>See all</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{homeData.stats.totalProviders}</Text>
-              <Text style={styles.statLabel}>Providers</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{homeData.stats.avgRating}</Text>
-              <Text style={styles.statLabel}>Avg Rating</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{homeData.stats.totalCategories}</Text>
-              <Text style={styles.statLabel}>Categories</Text>
-            </View>
+            <FlatList
+              data={homeData.recommendedServices}
+              renderItem={renderServiceCard}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.servicesList}
+            />
           </View>
-        </View>
+        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -1268,6 +1499,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937', // Dark accent charcoal black
   },
+  specialOfferTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#DC2626', // Bright red for emphasis
+  },
   seeAllText: {
     fontSize: 14,
     color: '#F59E0B', // Primary amber/honey
@@ -1530,6 +1766,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'hidden',
+    position: 'relative',
   },
   serviceImage: {
     width: '100%',
@@ -1577,10 +1814,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  serviceBadgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
+    flexDirection: 'column',
+    gap: 4,
+  },
+  specialOfferBadge: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-end',
+  },
+  specialOfferBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  discountBadge: {
+    backgroundColor: '#34C759',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-end',
+  },
+  discountBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  servicePriceContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
   servicePrice: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1A2533',
+  },
+  serviceOriginalPrice: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#8E8E93',
+    textDecorationLine: 'line-through',
   },
   serviceDuration: {
     fontSize: 12,
@@ -1659,47 +1938,6 @@ const styles = StyleSheet.create({
   },
   statusPendingText: {
     color: '#FF9800',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEF3C7', // Light accent cream honey
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    flex: 1,
-    marginHorizontal: 4,
-    minHeight: 80,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#F59E0B', // Primary amber/honey
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#1F2937', // Dark accent charcoal black
-    textAlign: 'center',
-    fontWeight: '600',
-    lineHeight: 16,
   },
   loadingText: {
     marginTop: 16,

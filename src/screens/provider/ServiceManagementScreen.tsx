@@ -205,6 +205,20 @@ const QuickBookingModal = ({
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingStaff, setLoadingStaff] = useState<boolean>(false);
 
+  // Calculate service totals (moved outside render to avoid hooks violation)
+  const serviceTotals = useMemo(() => {
+    if (!selectedService || selectedServiceOptions.length === 0) {
+      return null;
+    }
+
+    // Only show the selected options totals, not base service + options
+    const optionsPrice = selectedServiceOptions.reduce((sum, option) => sum + (option.price || 0), 0);
+    const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
+    
+    console.log('🧮 Service options totals:', { price: optionsPrice, duration: totalOptionsDuration });
+    return `${totalOptionsDuration} min • $${optionsPrice}`;
+  }, [selectedService, selectedServiceOptions]);
+
   // Memoized date range calculation
   const dateRange = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -810,22 +824,11 @@ const QuickBookingModal = ({
           {selectedService && (
             <View style={styles.serviceNameText}>
               <Text style={styles.serviceTitle}>{selectedService.name}</Text>
-              <Text style={styles.serviceSubtitle}>
-                {(() => {
-                  const basePrice = selectedService.price || selectedService.base_price || 0;
-                  const baseDuration = selectedService.duration_minutes || 60;
-                  
-                  if (selectedServiceOptions.length > 0) {
-                    const optionsPrice = selectedServiceOptions.reduce((sum, option) => sum + (option.price || 0), 0);
-                    const totalOptionsDuration = selectedServiceOptions.reduce((sum, option) => sum + (option.duration || 0), 0);
-                    const totalPrice = basePrice + optionsPrice;
-                    const totalDuration = baseDuration + totalOptionsDuration;
-                    return `${totalDuration} min • $${totalPrice}`;
-                  } else {
-                    return `${baseDuration} min • $${basePrice}`;
-                  }
-                })()}
-              </Text>
+              {serviceTotals && (
+                <Text style={styles.serviceSubtitle}>
+                  {serviceTotals}
+                </Text>
+              )}
             </View>
           )}
 
@@ -847,12 +850,21 @@ const QuickBookingModal = ({
                           isSelected && styles.serviceOptionButtonSelected
                         ]}
                         onPress={() => {
+                          console.log('🔄 Service option toggled:', option.option_name, 'Selected:', isSelected);
                           if (isSelected) {
                             // Remove option from selection
-                            setSelectedServiceOptions(prev => prev.filter(selected => selected.id !== option.id));
+                            setSelectedServiceOptions(prev => {
+                              const newSelection = prev.filter(selected => selected.id !== option.id);
+                              console.log('📝 Removed option. New selection:', newSelection.map(o => `${o.option_name} ($${o.price}, ${o.duration}min)`));
+                              return newSelection;
+                            });
                           } else {
                             // Add option to selection
-                            setSelectedServiceOptions(prev => [...prev, option]);
+                            setSelectedServiceOptions(prev => {
+                              const newSelection = [...prev, option];
+                              console.log('📝 Added option. New selection:', newSelection.map(o => `${o.option_name} ($${o.price}, ${o.duration}min)`));
+                              return newSelection;
+                            });
                           }
                         }}
                       >
