@@ -186,7 +186,7 @@ const DAYS_OF_WEEK = [
 // Special day types
 const SPECIAL_DAY_TYPES = [
   { id: 'holiday', name: 'Public Holiday', icon: 'calendar-outline', color: '#EF4444' },
-  { id: 'special_hours', name: 'Special Hours', icon: 'time-outline', color: '#F59E0B' },
+  { id: 'special_hours', name: 'Special Hours', icon: 'time-outline', color: '#00B4A6' },
   { id: 'closed', name: 'Closed', icon: 'close-circle-outline', color: '#6B7280' },
   { id: 'event', name: 'Special Event', icon: 'star-outline', color: '#8B5CF6' }
 ];
@@ -214,7 +214,7 @@ const ShopDetailsScreen: React.FC = () => {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       title: existingShop ? 'Edit Shop' : 'Create Shop',
-      headerStyle: { backgroundColor: '#FEFCE8' },
+      headerStyle: { backgroundColor: '#F0FFFE' },
       headerTintColor: '#1F2937',
       headerTitleStyle: { fontWeight: '600' },
       headerRight: () => (
@@ -3009,8 +3009,8 @@ const ShopDetailsScreen: React.FC = () => {
               <Switch
                 value={hours.isOpen}
                 onValueChange={(value) => updateBusinessHours(hours.day, 'isOpen', value)}
-                trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                thumbColor={hours.isOpen ? '#F59E0B' : '#9CA3AF'}
+                trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                thumbColor={hours.isOpen ? '#00B4A6' : '#9CA3AF'}
               />
             </View>
             
@@ -3085,7 +3085,7 @@ const ShopDetailsScreen: React.FC = () => {
                         style={styles.actionButton}
                         onPress={() => openSpecialDayModal(item)}
                       >
-                        <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                        <Ionicons name="create-outline" size={18} color="#00B4A6" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.actionButton}
@@ -3155,7 +3155,7 @@ const ShopDetailsScreen: React.FC = () => {
 
       {isRefreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
+          <ActivityIndicator size="small" color="#00B4A6" />
           <Text style={styles.loadingText}>Loading services...</Text>
         </View>
       ) : shop.services && shop.services.length > 0 ? (
@@ -3192,7 +3192,7 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.actionButton}
                     onPress={() => openServiceModal(item)}
                   >
-                    <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                    <Ionicons name="create-outline" size={18} color="#00B4A6" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -3227,7 +3227,7 @@ const ShopDetailsScreen: React.FC = () => {
               
               {item.discount && (
                 <View style={styles.discountBadge}>
-                  <Ionicons name="pricetag" size={14} color="#F59E0B" />
+                  <Ionicons name="pricetag" size={14} color="#00B4A6" />
                   <Text style={styles.discountText}>{item.discount.description}</Text>
                 </View>
               )}
@@ -3279,7 +3279,7 @@ const ShopDetailsScreen: React.FC = () => {
 
           {isRefreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#F59E0B" />
+              <ActivityIndicator size="small" color="#00B4A6" />
               <Text style={styles.loadingText}>Loading staff...</Text>
             </View>
           ) : shop.staff && shop.staff.length > 0 ? (
@@ -3322,7 +3322,7 @@ const ShopDetailsScreen: React.FC = () => {
                           style={styles.actionButton}
                           onPress={() => openStaffModal(item)}
                         >
-                          <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                          <Ionicons name="create-outline" size={18} color="#00B4A6" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.actionButton}
@@ -3354,7 +3354,7 @@ const ShopDetailsScreen: React.FC = () => {
                     <View style={styles.staffDetails}>
                       {item.experience_years && Number(item.experience_years) > 0 && (
                         <View style={styles.staffDetail}>
-                          <Ionicons name="star-outline" size={16} color="#F59E0B" />
+                          <Ionicons name="star-outline" size={16} color="#00B4A6" />
                           <Text style={styles.staffDetailText}>{Number(item.experience_years)} years exp.</Text>
                         </View>
                       )}
@@ -3480,7 +3480,7 @@ const ShopDetailsScreen: React.FC = () => {
 
       {isRefreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#F59E0B" />
+          <ActivityIndicator size="small" color="#00B4A6" />
           <Text style={styles.loadingText}>Loading discounts...</Text>
         </View>
       ) : shop.discounts && shop.discounts.length > 0 ? (
@@ -3494,7 +3494,7 @@ const ShopDetailsScreen: React.FC = () => {
                   <Ionicons 
                     name={DISCOUNT_TYPES.find(t => t.id === item.type)?.icon as any || 'pricetag'} 
                     size={20} 
-                    color="#F59E0B" 
+                    color="#00B4A6" 
                   />
                 </View>
                 <View style={styles.discountInfo}>
@@ -3508,7 +3508,7 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.actionButton}
                     onPress={() => openDiscountModal(item)}
                   >
-                    <Ionicons name="create-outline" size={18} color="#F59E0B" />
+                    <Ionicons name="create-outline" size={18} color="#00B4A6" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -3631,8 +3631,8 @@ const ShopDetailsScreen: React.FC = () => {
           <Switch
             value={shop.auto_approval}
             onValueChange={(value) => setShop(prev => ({ ...prev, auto_approval: value }))}
-            trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-            thumbColor={shop.auto_approval ? '#F59E0B' : '#9CA3AF'}
+            trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+            thumbColor={shop.auto_approval ? '#00B4A6' : '#9CA3AF'}
           />
         </View>
 
@@ -3646,8 +3646,8 @@ const ShopDetailsScreen: React.FC = () => {
           <Switch
             value={shop.is_active}
             onValueChange={(value) => setShop(prev => ({ ...prev, is_active: value }))}
-            trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-            thumbColor={shop.is_active ? '#F59E0B' : '#9CA3AF'}
+            trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+            thumbColor={shop.is_active ? '#00B4A6' : '#9CA3AF'}
           />
         </View>
       </View>
@@ -3780,8 +3780,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={specialDayForm.isOpen}
                   onValueChange={(value) => setSpecialDayForm(prev => ({ ...prev, isOpen: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                  thumbColor={specialDayForm.isOpen ? '#F59E0B' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                  thumbColor={specialDayForm.isOpen ? '#00B4A6' : '#9CA3AF'}
                 />
               </View>
 
@@ -3944,7 +3944,7 @@ const ShopDetailsScreen: React.FC = () => {
                                item.id === 'weekly' ? 'repeat-outline' :
                                item.id === 'monthly' ? 'calendar-clear-outline' : 'infinite-outline'} 
                           size={20} 
-                          color={specialDayForm.recurring === item.id ? '#F59E0B' : '#6B7280'} 
+                          color={specialDayForm.recurring === item.id ? '#00B4A6' : '#6B7280'} 
                         />
                       </View>
                       <Text style={[
@@ -4042,7 +4042,7 @@ const ShopDetailsScreen: React.FC = () => {
                   {item}
                 </Text>
                 {shop.category === item && (
-                  <Ionicons name="checkmark" size={20} color="#F59E0B" />
+                  <Ionicons name="checkmark" size={20} color="#00B4A6" />
                 )}
               </TouchableOpacity>
             )}
@@ -4089,7 +4089,7 @@ const ShopDetailsScreen: React.FC = () => {
                   {item}
                 </Text>
                 {shop.timezone === item && (
-                  <Ionicons name="checkmark" size={20} color="#F59E0B" />
+                  <Ionicons name="checkmark" size={20} color="#00B4A6" />
                 )}
               </TouchableOpacity>
             )}
@@ -4277,7 +4277,7 @@ const ShopDetailsScreen: React.FC = () => {
                           <Text style={styles.staffOptionRole}>{staff.role}</Text>
                         </View>
                         {serviceForm.assigned_staff?.includes(staff.id) && (
-                          <Ionicons name="checkmark-circle" size={20} color="#F59E0B" />
+                          <Ionicons name="checkmark-circle" size={20} color="#00B4A6" />
                         )}
                       </TouchableOpacity>
                     ))
@@ -4299,7 +4299,7 @@ const ShopDetailsScreen: React.FC = () => {
                       style={styles.addOptionButton}
                       onPress={addServiceOption}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#F59E0B" />
+                      <Ionicons name="add-circle-outline" size={18} color="#00B4A6" />
                       <Text style={styles.addOptionText}>Add</Text>
                     </TouchableOpacity>
                   </View>
@@ -4390,8 +4390,8 @@ const ShopDetailsScreen: React.FC = () => {
                             <Switch
                               value={option.is_active}
                               onValueChange={(value) => updateServiceOption(option.id, 'is_active', value)}
-                              trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                              thumbColor={option.is_active ? '#F59E0B' : '#9CA3AF'}
+                              trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                              thumbColor={option.is_active ? '#00B4A6' : '#9CA3AF'}
                             />
                           </View>
 
@@ -4425,8 +4425,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={serviceForm.is_active}
                   onValueChange={(value) => setServiceForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                  thumbColor={serviceForm.is_active ? '#F59E0B' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                  thumbColor={serviceForm.is_active ? '#00B4A6' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -4502,7 +4502,7 @@ const ShopDetailsScreen: React.FC = () => {
                       <Ionicons 
                         name={type.icon as any} 
                         size={20} 
-                        color={discountForm.type === type.id ? '#F59E0B' : '#6B7280'} 
+                        color={discountForm.type === type.id ? '#00B4A6' : '#6B7280'} 
                       />
                       <Text style={[
                         styles.discountTypeName,
@@ -4582,8 +4582,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={discountForm.is_active}
                   onValueChange={(value) => setDiscountForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                  thumbColor={discountForm.is_active ? '#F59E0B' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                  thumbColor={discountForm.is_active ? '#00B4A6' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -5040,7 +5040,7 @@ const ShopDetailsScreen: React.FC = () => {
               {/* Leave & Special Days - Always Expanded */}
               <View style={styles.inputGroup}>
                 <View style={styles.leaveHeaderFixed}>
-                  <Ionicons name="calendar-outline" size={20} color="#F59E0B" />
+                  <Ionicons name="calendar-outline" size={20} color="#00B4A6" />
                   <View style={styles.leaveHeaderTextContainer}>
                     <Text style={styles.label}>Leave & Special Days</Text>
                     <Text style={styles.inputHint}>Tap dates to select leave periods (drag between dates for ranges)</Text>
@@ -5224,7 +5224,7 @@ const ShopDetailsScreen: React.FC = () => {
                               <Ionicons 
                                 name={new Date(leave.endDate) < new Date() ? "checkmark-circle" : "time-outline"} 
                                 size={16} 
-                                color={new Date(leave.endDate) < new Date() ? "#10B981" : "#F59E0B"} 
+                                color={new Date(leave.endDate) < new Date() ? "#10B981" : "#00B4A6"} 
                               />
                             </View>
                             <View style={styles.leaveDayInfo}>
@@ -5264,8 +5264,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={staffForm.is_active}
                   onValueChange={(value) => setStaffForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FCD34D' }}
-                  thumbColor={staffForm.is_active ? '#F59E0B' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
+                  thumbColor={staffForm.is_active ? '#00B4A6' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -5390,7 +5390,7 @@ const ShopDetailsScreen: React.FC = () => {
           <View style={styles.leaveCalendarModal}>
               <View style={styles.leaveCalendarHeader}>
                 <View style={styles.leaveCalendarTitleContainer}>
-                  <Ionicons name="calendar" size={24} color="#F59E0B" />
+                  <Ionicons name="calendar" size={24} color="#00B4A6" />
                   <Text style={styles.leaveCalendarTitle}>Staff Leave Calendar</Text>
                 </View>
                 <TouchableOpacity 
@@ -5510,9 +5510,9 @@ const ShopDetailsScreen: React.FC = () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00B4A6" />
           <Text style={styles.loadingText}>Loading shop details...</Text>
         </View>
       </SafeAreaView>
@@ -5521,7 +5521,7 @@ const ShopDetailsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
       {renderTabBar()}
       
@@ -5798,19 +5798,19 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#00B4A6',
     borderRadius: 12,
     borderStyle: 'dashed',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   addButtonText: {
-    color: '#F59E0B',
+    color: '#00B4A6',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
   },
   exampleSection: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
@@ -5910,7 +5910,7 @@ const styles = StyleSheet.create({
   
   // Header Save Button
   headerSaveButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -5951,8 +5951,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 1,
   },
   activeTabItem: {
-    backgroundColor: '#F59E0B',
-    shadowColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -6358,8 +6358,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   selectedSpecialDayType: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
   },
   specialDayTypeName: {
     fontSize: 12,
@@ -6375,7 +6375,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   selectedRecurringOption: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   recurringOptionText: {
     fontSize: 13,
@@ -6391,11 +6391,11 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 16,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -6488,7 +6488,7 @@ const styles = StyleSheet.create({
   discountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -6525,7 +6525,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -6711,7 +6711,7 @@ const styles = StyleSheet.create({
   },
   saveModalButton: {
     flex: 1,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -6733,7 +6733,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   selectedCategoryOption: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   categoryOptionText: {
     fontSize: 16,
@@ -6762,8 +6762,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   selectedDiscountType: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
   },
   discountTypeName: {
     fontSize: 12,
@@ -6824,7 +6824,7 @@ const styles = StyleSheet.create({
   },
   staffRole: {
     fontSize: 13,
-    color: '#F59E0B',
+    color: '#00B4A6',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -6851,7 +6851,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   specialtyTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -6900,16 +6900,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00B4A6',
     borderRadius: 12,
     padding: 16,
   },
   manageOptionsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
     flex: 1,
     marginLeft: 12,
   },
@@ -6939,8 +6939,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   selectedStaffOption: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
   },
   staffOptionContent: {
     flex: 1,
@@ -6993,8 +6993,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   selectedTimeSlot: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
+    borderColor: '#00B4A6',
   },
   timeSlotText: {
     fontSize: 12,
@@ -7048,7 +7048,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addSpecialtyButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -7067,7 +7067,7 @@ const styles = StyleSheet.create({
   specialtyTagWithRemove: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
@@ -7136,12 +7136,12 @@ const styles = StyleSheet.create({
   addOptionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     gap: 4,
     minWidth: 70,
     justifyContent: 'center',
@@ -7149,7 +7149,7 @@ const styles = StyleSheet.create({
   addOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   noOptionsContainer: {
     alignItems: 'center',
@@ -7193,8 +7193,8 @@ const styles = StyleSheet.create({
   optionNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    color: '#00B4A6',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -7342,13 +7342,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
     alignItems: 'center',
     gap: 8,
   },
   selectedLocationType: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
   },
   locationTypeTitle: {
     fontSize: 14,
@@ -7479,7 +7479,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -7558,9 +7558,9 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   selectedSpecialDayTypeCard: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
-    shadowColor: '#F59E0B',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -7675,8 +7675,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   selectedRecurringCard: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00B4A6',
+    backgroundColor: '#FFE4E1',
   },
   recurringIconContainer: {
     width: 32,
@@ -7687,7 +7687,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedRecurringIcon: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   recurringOptionTitle: {
     fontSize: 14,
@@ -7744,14 +7744,14 @@ const styles = StyleSheet.create({
   },
   specialDaySaveButton: {
     flex: 2,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingVertical: 14,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -7834,11 +7834,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00B4A6',
     marginTop: 8,
   },
   addLeaveButtonText: {
@@ -7987,10 +7987,10 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   calendarDayInRange: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   calendarDaySelected: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
   },
   calendarDayOnLeave: {
     backgroundColor: '#FEE2E2',
@@ -8060,14 +8060,14 @@ const styles = StyleSheet.create({
   },
   leaveCalendarSaveButton: {
     flex: 2,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingVertical: 14,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -8154,10 +8154,10 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   inlineCalendarDayInRange: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   inlineCalendarDaySelected: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
   },
   inlineCalendarDayOnLeave: {
     backgroundColor: '#FEE2E2',

@@ -849,7 +849,7 @@ const PaymentMethodsScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9F8',
+    backgroundColor: '#F0FFFE',
   },
   loadingContainer: {
     flex: 1,
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F8F9F8',
+    backgroundColor: '#F0FFFE',
   },
   modalHeader: {
     flexDirection: 'row',

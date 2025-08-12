@@ -70,7 +70,7 @@ const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({ navigatio
           last_updated: '2025-01-15T00:00:00Z',
           version: '2.1',
           icon: 'document-text',
-          color: '#F59E0B',
+          color: '#00C9A7',
           description: 'Agreement between you and our platform',
           summary: 'Key rules and guidelines for using our service marketplace platform safely and effectively.',
           content: `# Terms of Service
@@ -843,11 +843,11 @@ We're committed to helping you build a thriving business on our platform. With t
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         <View style={styles.loadingContainer}>
           <View style={styles.loadingCard}>
             <Text style={styles.loadingEmoji}>📄</Text>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00C9A7" />
             <Text style={styles.loadingText}>Loading Documents</Text>
             <Text style={styles.loadingSubtext}>Getting everything ready for you...</Text>
           </View>
@@ -862,7 +862,7 @@ We're committed to helping you build a thriving business on our platform. With t
   if (viewMode === 'detail' && currentDocument) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         
         {/* Simple back bar for detail view */}
         <View style={styles.detailBackBar}>
@@ -880,7 +880,7 @@ We're committed to helping you build a thriving business on our platform. With t
               style={styles.detailExportButton}
               onPress={() => handleExportDocument(currentDocument)}
             >
-              <Ionicons name="download-outline" size={20} color="#F59E0B" />
+              <Ionicons name="download-outline" size={20} color="#00C9A7" />
             </TouchableOpacity>
           </View>
         </View>
@@ -917,7 +917,7 @@ We're committed to helping you build a thriving business on our platform. With t
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
       {/* Simple back navigation for main view */}
       <View style={styles.simpleHeader}>
@@ -962,7 +962,7 @@ We're committed to helping you build a thriving business on our platform. With t
             onPress={handleContactLegal}
           >
             <View style={styles.quickActionIcon}>
-              <Ionicons name="mail-outline" size={20} color="#F59E0B" />
+              <Ionicons name="mail-outline" size={20} color="#00C9A7" />
             </View>
             <View style={styles.quickActionContent}>
               <Text style={styles.quickActionTitle}>Contact Legal Team</Text>
@@ -1022,7 +1022,7 @@ We're committed to helping you build a thriving business on our platform. With t
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   
   // Loading Styles
@@ -1142,7 +1142,7 @@ const styles = StyleSheet.create({
   detailExportButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
   },
   headerContent: {
     flex: 1,
@@ -1161,7 +1161,7 @@ const styles = StyleSheet.create({
   headerIcon: {
     width: 60,
     height: 60,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1306,7 +1306,7 @@ const styles = StyleSheet.create({
   },
   listBullet: {
     fontSize: 16,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '700',
     marginRight: 12,
     marginTop: 2,
@@ -1449,11 +1449,11 @@ const styles = StyleSheet.create({
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

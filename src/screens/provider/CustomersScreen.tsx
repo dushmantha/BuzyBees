@@ -589,7 +589,7 @@ const CustomersScreen: React.FC = () => {
           
           <View style={styles.statBox}>
             <View style={styles.statHeader}>
-              <Ionicons name="time" size={14} color="#F59E0B" />
+              <Ionicons name="time" size={14} color="#00B4A6" />
               <Text style={styles.statLabel}>Last Booking</Text>
             </View>
             <Text style={styles.statValue}>{formatDate(item.lastBooking)}</Text>
@@ -691,7 +691,7 @@ const CustomersScreen: React.FC = () => {
         
         {isCreatingCustomer && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00B4A6" />
             <Text style={styles.loadingText}>Creating customer...</Text>
           </View>
         )}
@@ -823,7 +823,7 @@ const CustomersScreen: React.FC = () => {
         
         {isSendingPromotion && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00B4A6" />
             <Text style={styles.loadingText}>Sending promotion...</Text>
           </View>
         )}
@@ -835,9 +835,9 @@ const CustomersScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+          <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00B4A6" />
             <Text style={styles.loadingText}>Loading customers...</Text>
           </View>
         </SafeAreaView>
@@ -848,7 +848,7 @@ const CustomersScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         
         {/* Header */}
         <View style={styles.header}>
@@ -860,7 +860,7 @@ const CustomersScreen: React.FC = () => {
             style={styles.addButton}
             onPress={handleAddCustomer}
           >
-            <Ionicons name="add" size={24} color="#F59E0B" />
+            <Ionicons name="add" size={24} color="#00B4A6" />
           </TouchableOpacity>
         </View>
       
@@ -940,8 +940,8 @@ const CustomersScreen: React.FC = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#00B4A6']}
+            tintColor="#00B4A6"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -972,7 +972,7 @@ const CustomersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   safeArea: {
     flex: 1,
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   loadingText: {
     marginTop: 16,
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   headerTitle: {
     fontSize: 18,
@@ -1005,10 +1005,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1017,7 +1017,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   searchBar: {
     flexDirection: 'row',
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   selectionInfo: {
     flex: 1,
@@ -1137,11 +1137,11 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -1277,17 +1277,17 @@ const styles = StyleSheet.create({
   promotionButtonContainer: {
     padding: 20,
     paddingBottom: 30,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   promotionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00B4A6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1320,7 +1320,7 @@ const styles = StyleSheet.create({
   sendButton: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   disabledButton: {
     opacity: 0.5,
@@ -1353,7 +1353,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   activeTypeButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
   },
   typeButtonText: {
     marginLeft: 8,

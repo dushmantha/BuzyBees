@@ -165,7 +165,7 @@ const BookingCard = ({
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Confirmed': return '#3B82F6';
+      case 'Confirmed': return '#00C9A7';
       case 'Pending': return '#F59E0B';
       case 'Completed': return '#10B981';
       case 'Cancelled': return '#EF4444';
@@ -778,7 +778,7 @@ const BookingsScreen = () => {
           <Text style={styles.headerTitle}>My Bookings</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Checking authentication...</Text>
         </View>
       </View>
@@ -883,8 +883,8 @@ const BookingsScreen = () => {
           <RefreshControl 
             refreshing={isLoading && (upcomingBookings.length > 0 || pastBookings.length > 0)} 
             onRefresh={fetchBookings}
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#00C9A7']}
+            tintColor="#00C9A7"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -905,7 +905,7 @@ const BookingsScreen = () => {
           </View>
         ) : isLoading && upcomingBookings.length === 0 && pastBookings.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00C9A7" />
             <Text style={styles.loadingText}>Loading your bookings...</Text>
           </View>
         ) : activeTab === 'upcoming' ? (
@@ -971,7 +971,7 @@ const BookingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Consistent app background
+    backgroundColor: '#F0FFFE', // Consistent app background
   },
   modernHeader: {
     paddingHorizontal: 20,
@@ -998,13 +998,13 @@ const styles = StyleSheet.create({
   },
   modernTabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     marginHorizontal: 20,
     marginVertical: 16,
     borderRadius: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1018,8 +1018,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   modernActiveTab: {
-    backgroundColor: '#F59E0B',
-    shadowColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1037,7 +1037,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   modernActiveTabText: {
-    color: '#FFFFFF',
+    color: '#FAFAFA',
   },
   tabBadge: {
     backgroundColor: '#FFFFFF',
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBadgeText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#F8FFFE',
   },
   pastBookingCard: {
     opacity: 0.9,
@@ -1124,7 +1124,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   currency: {
     fontSize: 12,
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -1191,14 +1191,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FCD34D',
+    backgroundColor: '#EF4444',
     borderRadius: 8,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00C9A7',
   },
   reviewButtonText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1276,7 +1276,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   modalHeaderGradient: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingTop: 16,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -1337,7 +1337,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -1386,12 +1386,12 @@ const styles = StyleSheet.create({
 
   // Overall Rating Card
   overallRatingCard: {
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FEF08A',
+    borderColor: '#F8FFFE',
   },
   ratingDisplayContainer: {
     alignItems: 'center',
@@ -1550,14 +1550,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1591,14 +1591,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   exploreButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

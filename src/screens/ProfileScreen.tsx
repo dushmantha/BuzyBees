@@ -149,6 +149,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [providerCertifications, setProviderCertifications] = useState<any[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingCerts, setIsLoadingCerts] = useState(false);
+  const [profileImageError, setProfileImageError] = useState(false);
   
   // Form states for adding skills
   const [newSkill, setNewSkill] = useState({
@@ -236,6 +237,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             first_name: 'Demo',
             last_name: 'User', 
             full_name: 'Demo User',
+            avatar_url: null,
             account_type: accountType,
             is_premium: false,
             email_verified: false,
@@ -263,6 +265,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             } : undefined
           };
           setProfile(defaultProfile);
+          
+          // Reset image error state when profile is loaded
+          setProfileImageError(false);
           
           // Profile loaded successfully - no invoice loading needed
           console.log('✅ Fallback profile created successfully');
@@ -298,6 +303,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           };
           
           setProfile(safeProfileData);
+          
+          // Reset image error state when profile is loaded
+          setProfileImageError(false);
           
           // Update account type in context if different
           const profileAccountType = safeProfileData.account_type;
@@ -981,6 +989,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         // Also update the main profile to show the image immediately
         setProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
         
+        // Reset image error state when new image is selected
+        setProfileImageError(false);
+        
         return true;
       }
       return false;
@@ -1120,7 +1131,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 style={styles.verifyButton}
                 onPress={handleVerificationPress}
               >
-                <Ionicons name="shield-checkmark-outline" size={16} color="#F59E0B" />
+                <Ionicons name="shield-checkmark-outline" size={16} color="#00C9A7" />
                 <Text style={styles.verifyButtonText}>Verify to change</Text>
               </TouchableOpacity>
             )}
@@ -1227,7 +1238,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               style={styles.closeButton}
               onPress={() => setShowAccountSwitchModal(false)}
             >
-              <Ionicons name="close" size={24} color="#4B5563" />
+              <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
           </View>
           
@@ -1244,7 +1255,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 <Ionicons 
                   name="person-outline" 
                   size={24} 
-                  color={accountType === 'consumer' ? '#F59E0B' : '#4B5563'} 
+                  color={accountType === 'consumer' ? '#00C9A7' : '#1F2937'} 
                 />
               </View>
               <View style={styles.accountOptionContent}>
@@ -1259,7 +1270,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 </Text>
               </View>
               {accountType === 'consumer' && (
-                <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
               )}
             </TouchableOpacity>
 
@@ -1275,7 +1286,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 <Ionicons 
                   name="briefcase-outline" 
                   size={24} 
-                  color={accountType === 'provider' ? '#F59E0B' : '#4B5563'} 
+                  color={accountType === 'provider' ? '#00C9A7' : '#1F2937'} 
                 />
               </View>
               <View style={styles.accountOptionContent}>
@@ -1290,19 +1301,19 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 </Text>
               </View>
               {accountType === 'provider' && (
-                <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
               )}
             </TouchableOpacity>
 
             {accountSwitchLoading && (
               <View style={styles.switchingIndicator}>
-                <ActivityIndicator size="small" color="#1F2937" />
+                <ActivityIndicator size="small" color="#00C9A7" />
                 <Text style={styles.switchingText}>Switching account mode...</Text>
               </View>
             )}
 
             <View style={styles.switchNote}>
-              <Ionicons name="information-circle-outline" size={16} color="#4B5563" />
+              <Ionicons name="information-circle-outline" size={16} color="#1F2937" />
               <Text style={styles.switchNoteText}>
                 Switching account mode will update your entire app experience and navigation.
               </Text>
@@ -1346,7 +1357,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         >
           <View style={styles.upgradePromptContent}>
             <View style={styles.upgradePromptIcon}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Ionicons name="star" size={20} color="#00C9A7" />
             </View>
             <View style={styles.upgradePromptText}>
               <Text style={styles.upgradePromptTitle}>
@@ -1356,7 +1367,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 Unlock unlimited features and premium tools
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+            <Ionicons name="chevron-forward" size={20} color="#00C9A7" />
           </View>
         </TouchableOpacity>
       );
@@ -1369,7 +1380,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         <View style={styles.premiumStatusCard}>
           <View style={styles.premiumStatusHeader}>
             <View style={styles.premiumStatusIcon}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Ionicons name="star" size={20} color="#00C9A7" />
             </View>
             <View style={styles.premiumStatusText}>
               <Text style={styles.premiumStatusTitle}>Premium Active</Text>
@@ -1434,9 +1445,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             activeOpacity={0.8}
           >
             {isCancelingSubscription ? (
-              <ActivityIndicator size="small" color="#EF4444" />
+              <ActivityIndicator size="small" color="#845EC2" />
             ) : (
-              <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+              <Ionicons name="close-circle-outline" size={20} color="#845EC2" />
             )}
             <Text style={styles.cancelSubscriptionText}>
               {isCancelingSubscription ? 'Processing...' : 'Cancel Subscription'}
@@ -1472,9 +1483,9 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   if (accountSwitchLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Switching account mode...</Text>
         </View>
       </SafeAreaView>
@@ -1484,12 +1495,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Profile</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -1499,12 +1510,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Profile</Text>
         </View>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Ionicons name="alert-circle-outline" size={48} color="#845EC2" />
           <Text style={styles.errorText}>Failed to load profile</Text>
           <TouchableOpacity 
             style={styles.retryButton} 
@@ -1521,7 +1532,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
       <CancellationBanner />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
@@ -1536,7 +1547,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name="swap-horizontal-outline" 
             size={20} 
-            color="#F59E0B"
+            color="#00C9A7"
           />
           <Text style={[
             styles.switchAccountText,
@@ -1556,7 +1567,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={accountType === 'provider' ? 'briefcase' : 'person'} 
             size={16} 
-            color="#F59E0B"
+            color="#00C9A7"
           />
           <Text style={[
             styles.accountTypeText,
@@ -1566,7 +1577,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           </Text>
           {isPremium && (
             <View style={styles.premiumBadge}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Ionicons name="star" size={12} color="#00C9A7" />
               <Text style={styles.premiumText}>PRO</Text>
             </View>
           )}
@@ -1577,16 +1588,18 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       {/* Content */}
       <ScrollView style={styles.content}>
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: '#F59E0B', justifyContent: 'center', alignItems: 'center' }]}>
-              {currentProfile?.avatar_url ? (
+            <View style={[styles.avatar, { backgroundColor: '#00C9A7', justifyContent: 'center', alignItems: 'center' }]}>
+              {currentProfile?.avatar_url && !profileImageError ? (
                 <Image 
                   source={{ uri: currentProfile.avatar_url }} 
                   style={[styles.avatar, { position: 'absolute' }]}
-                  onError={() => {
-                    console.log('Error loading profile image');
-                    if (isEditing && tempProfile) {
-                      setTempProfile(prev => prev ? { ...prev, avatar_url: '' } : null);
-                    }
+                  onError={(error) => {
+                    console.log('Error loading profile image:', error.nativeEvent?.error || 'Unknown error');
+                    setProfileImageError(true);
+                  }}
+                  onLoad={() => {
+                    console.log('Profile image loaded successfully');
+                    setProfileImageError(false);
                   }}
                   resizeMode="cover"
                 />
@@ -1649,12 +1662,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     style={styles.addButton}
                     onPress={() => setShowSkillModal(true)}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+                    <Ionicons name="add-circle-outline" size={20} color="#00C9A7" />
                     <Text style={styles.addButtonText}>Add Skill</Text>
                   </TouchableOpacity>
                 </View>
                 {isLoadingSkills ? (
-                  <ActivityIndicator size="small" color="#F59E0B" />
+                  <ActivityIndicator size="small" color="#00C9A7" />
                 ) : providerSkills.length > 0 ? (
                   <View style={styles.skillsList}>
                     {providerSkills.map((skill, index) => (
@@ -1670,7 +1683,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                           style={styles.deleteButton}
                           onPress={() => handleDeleteSkill(skill.id)}
                         >
-                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          <Ionicons name="trash-outline" size={16} color="#845EC2" />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -1688,12 +1701,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     style={styles.addButton}
                     onPress={() => setShowCertModal(true)}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+                    <Ionicons name="add-circle-outline" size={20} color="#00C9A7" />
                     <Text style={styles.addButtonText}>Add Certification</Text>
                   </TouchableOpacity>
                 </View>
                 {isLoadingCerts ? (
-                  <ActivityIndicator size="small" color="#F59E0B" />
+                  <ActivityIndicator size="small" color="#00C9A7" />
                 ) : providerCertifications.length > 0 ? (
                   <View style={styles.certsList}>
                     {providerCertifications.map((cert, index) => (
@@ -1709,7 +1722,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                           style={styles.deleteButton}
                           onPress={() => handleDeleteCertification(cert.id)}
                         >
-                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          <Ionicons name="trash-outline" size={16} color="#845EC2" />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -1807,7 +1820,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Preferences</Text>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleNotificationsPress}>
-              <Ionicons name="notifications-outline" size={20} color="#4B5563" />
+              <Ionicons name="notifications-outline" size={20} color="#1F2937" />
               <Text style={styles.preferenceText}>Notifications</Text>
               {notificationCount > 0 && (
                 <View style={styles.preferenceNotificationBadge}>
@@ -1817,12 +1830,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handlePaymentMethodsPress}>
-              <Ionicons name="card-outline" size={20} color="#4B5563" />
+              <Ionicons name="card-outline" size={20} color="#1F2937" />
               <Text style={styles.preferenceText}>Payment Methods</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handlePrivacyPress}>
-              <Ionicons name="lock-closed-outline" size={20} color="#4B5563" />
+              <Ionicons name="lock-closed-outline" size={20} color="#1F2937" />
               <Text style={styles.preferenceText}>Privacy</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
@@ -1832,12 +1845,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Support</Text>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleHelpCenterPress}>
-              <Ionicons name="help-circle-outline" size={20} color="#4B5563" />
+              <Ionicons name="help-circle-outline" size={20} color="#1F2937" />
               <Text style={styles.preferenceText}>Help Center</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleTermsConditionsPress}>
-              <Ionicons name="document-text-outline" size={20} color="#4B5563" />
+              <Ionicons name="document-text-outline" size={20} color="#1F2937" />
               <Text style={styles.preferenceText}>Terms & Conditions</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
@@ -1904,7 +1917,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         features={[
           {
             icon: 'card-outline',
-            iconColor: '#F59E0B',
+            iconColor: '#00C9A7',
             title: 'Unlimited Payment History',
             description: 'View all your payments and earnings without any restrictions'
           },
@@ -1951,7 +1964,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 });
               }}
             >
-              <Ionicons name="close" size={24} color="#4B5563" />
+              <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
@@ -2084,7 +2097,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 });
               }}
             >
-              <Ionicons name="close" size={24} color="#4B5563" />
+              <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
@@ -2214,46 +2227,46 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Changed to match app background
+    backgroundColor: '#F0FFFE', // Changed to match app background
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FEFCE8', // Changed from white to app background
+    backgroundColor: '#F0FFFE', // Changed from white to app background
     // Removed borderBottomWidth to eliminate separator line
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   switchAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   providerSwitchButton: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
+    backgroundColor: '#F0FFFE',
+    borderColor: '#FFE4E1',
   },
   switchAccountText: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '600',
     marginLeft: 6,
   },
   providerSwitchText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   accountTypeIndicator: {
-    backgroundColor: '#FEFCE8', // Changed from white to app background
+    backgroundColor: '#F0FFFE', // Changed from white to app background
     paddingHorizontal: 16,
     paddingVertical: 12,
     // Removed borderBottomWidth
@@ -2262,30 +2275,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   providerBadge: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
+    backgroundColor: '#F0FFFE',
+    borderColor: '#FFE4E1',
   },
   accountTypeText: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '600',
     marginLeft: 8,
   },
   providerBadgeText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -2299,7 +2312,7 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FEFCE8', // Changed from white to app background
+    backgroundColor: '#F0FFFE', // Changed from white to app background
     // Removed borderBottomWidth
   },
   tab: {
@@ -2313,7 +2326,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#F59E0B',
+    borderBottomColor: '#00C9A7',
   },
   tabIconContainer: {
     position: 'relative',
@@ -2321,11 +2334,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 16,
-    color: '#4B5563',
+    color: '#1F2937',
     marginLeft: 8,
   },
   activeTabText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '600',
   },
   notificationBadge: {
@@ -2357,7 +2370,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#4B5563',
+    color: '#1F2937',
     textAlign: 'center',
   },
   errorContainer: {
@@ -2369,12 +2382,12 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#EF4444',
+    color: '#845EC2',
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -2394,14 +2407,14 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     backgroundColor: '#F3F4F6',
   },
   editPhotoButton: {
     position: 'absolute',
     bottom: 0,
     right: '35%',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -2415,24 +2428,24 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginBottom: 6,
   },
   value: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D',
+    borderBottomColor: '#FFE4E1',
   },
   input: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     ...Platform.select({
       ios: {
         paddingVertical: 12,
@@ -2457,18 +2470,18 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FFFBF7',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 16,
   },
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1F2937',
     marginTop: 20,
     marginBottom: 12,
   },
@@ -2477,17 +2490,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D',
+    borderBottomColor: '#FFE4E1',
   },
   ratingText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '600',
     marginLeft: 6,
   },
   ratingSubText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginLeft: 8,
   },
   preferenceItem: {
@@ -2495,12 +2508,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#FEF3C7',
+    borderBottomColor: '#FFFBF7',
   },
   preferenceText: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: '#00C9A7',
     marginLeft: 12,
   },
   preferenceNotificationBadge: {
@@ -2527,7 +2540,7 @@ const styles = StyleSheet.create({
     marginBottom: 100,
   },
   logoutText: {
-    color: '#EF4444',
+    color: '#845EC2',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2549,7 +2562,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2557,12 +2570,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D',
+    borderBottomColor: '#FFE4E1',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   closeButton: {
     padding: 4,
@@ -2576,18 +2589,18 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     marginBottom: 12,
   },
   selectedAccountOption: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    borderColor: '#00C9A7',
+    backgroundColor: '#F0FFFE',
   },
   accountOptionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -2598,18 +2611,18 @@ const styles = StyleSheet.create({
   accountOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 4,
   },
   selectedAccountOptionTitle: {
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   selectedProviderOptionTitle: {
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   accountOptionDescription: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     lineHeight: 20,
   },
   switchingIndicator: {
@@ -2617,26 +2630,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 8,
     marginBottom: 12,
   },
   switchingText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginLeft: 8,
   },
   switchNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
   },
   switchNoteText: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1F2937',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
@@ -2644,7 +2657,7 @@ const styles = StyleSheet.create({
   // Invoice Styles
   invoicesContainer: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Changed from #F8FAFC to app background
+    backgroundColor: '#F0FFFE', // Changed from #F8FAFC to app background
   },
   invoicesContent: {
     flex: 1,
@@ -2663,11 +2676,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FFFBF7',
   },
   newInvoiceItem: {
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
+    borderLeftColor: '#00C9A7',
   },
   invoiceHeader: {
     flexDirection: 'row',
@@ -2681,11 +2694,11 @@ const styles = StyleSheet.create({
   invoiceNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   invoiceDate: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginTop: 2,
   },
   invoiceActions: {
@@ -2696,7 +2709,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     marginRight: 8,
   },
   moreButton: {
@@ -2704,7 +2717,7 @@ const styles = StyleSheet.create({
   },
   invoiceDescription: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginBottom: 12,
   },
   invoiceFooter: {
@@ -2715,7 +2728,7 @@ const styles = StyleSheet.create({
   invoiceAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -2726,7 +2739,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
   },
   statusPending: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
   },
   statusOverdue: {
     backgroundColor: '#FEE2E2',
@@ -2751,8 +2764,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#F59E0B',
-    shadowColor: '#F59E0B',
+    borderColor: '#00C9A7',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -2765,7 +2778,7 @@ const styles = StyleSheet.create({
   upgradePromptIcon: {
     width: 40,
     height: 40,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2777,12 +2790,12 @@ const styles = StyleSheet.create({
   upgradePromptTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 2,
   },
   upgradePromptSubtitle: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
   },
   // Empty State Styles
   emptyContainer: {
@@ -2795,21 +2808,21 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 16,
-    color: '#4B5563',
+    color: '#1F2937',
     textAlign: 'center',
     lineHeight: 24,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Changed from #F8FAFC to app background
+    backgroundColor: '#F0FFFE', // Changed from #F8FAFC to app background
   },
   modalContent: {
     flex: 1,
@@ -2821,16 +2834,16 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FFFBF7',
   },
   detailLabel: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1F2937',
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '500',
   },
   modalActions: {
@@ -2845,27 +2858,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   paidButton: {
     backgroundColor: '#10B981',
     borderColor: '#10B981',
   },
   contactButton: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
+    backgroundColor: '#F0FFFE',
+    borderColor: '#FFE4E1',
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginLeft: 8,
   },
   paidButtonText: {
     color: '#FFFFFF',
   },
   contactButtonText: {
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   // Bottom Action Buttons
   editButton: {
@@ -2873,7 +2886,7 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 16,
     right: 16,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -2886,7 +2899,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   providerEditButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
   },
   editButtonText: {
     color: '#FFFFFF',
@@ -2911,17 +2924,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   cancelButton: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   saveButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     marginLeft: 8,
   },
   providerSaveButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
   },
   disabledButton: {
     opacity: 0.6,
@@ -2932,7 +2945,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cancelButtonText: {
-    color: '#4B5563',
+    color: '#1F2937',
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -2950,17 +2963,17 @@ const styles = StyleSheet.create({
   verifyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     marginLeft: 12,
   },
   verifyButtonText: {
     fontSize: 12,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -2982,12 +2995,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkboxChecked: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    borderColor: '#00C9A7',
   },
   checkboxLabel: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '500',
   },
   // Skills and Certifications Management Styles
@@ -3000,16 +3013,16 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   addButtonText: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -3033,7 +3046,7 @@ const styles = StyleSheet.create({
   skillName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   skillLevel: {
     fontSize: 14,
@@ -3063,7 +3076,7 @@ const styles = StyleSheet.create({
   certName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   certDetails: {
     fontSize: 14,
@@ -3077,7 +3090,7 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 8,
   },
   formInput: {
@@ -3088,7 +3101,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   pickerContainer: {
     flexDirection: 'row',
@@ -3104,8 +3117,8 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   pickerOptionSelected: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    backgroundColor: '#F0FFFE',
+    borderColor: '#00C9A7',
   },
   pickerText: {
     fontSize: 14,
@@ -3113,7 +3126,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   pickerTextSelected: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '600',
   },
   // Modal action buttons
@@ -3123,9 +3136,9 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   addActionButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00C9A7',
   },
   cancelActionText: {
     color: '#6B7280',
@@ -3163,7 +3176,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00C9A7',
   },
   premiumStatusHeader: {
     flexDirection: 'row',
@@ -3173,7 +3186,7 @@ const styles = StyleSheet.create({
   premiumStatusIcon: {
     width: 40,
     height: 40,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -3185,7 +3198,7 @@ const styles = StyleSheet.create({
   premiumStatusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 2,
   },
   premiumStatusSubtitle: {
@@ -3193,14 +3206,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   subscriptionDetails: {
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
     borderRadius: 8,
     padding: 12,
     gap: 4,
   },
   subscriptionDetailText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1F2937',
   },
   cancelSubscriptionButton: {
     flexDirection: 'row',
@@ -3208,7 +3221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: '#845EC2',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -3217,7 +3230,7 @@ const styles = StyleSheet.create({
   },
   cancelSubscriptionText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: '#845EC2',
     fontWeight: '500',
   },
   reactivateSubscriptionButton: {
@@ -3242,14 +3255,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginHorizontal: 16,
     marginBottom: 12,
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

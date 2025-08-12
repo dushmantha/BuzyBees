@@ -196,7 +196,7 @@ const BookingSummaryScreen = () => {
           onPress={handleBack}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color="#00C9A7" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Booking Summary</Text>
@@ -331,7 +331,7 @@ const BookingSummaryScreen = () => {
         <View style={styles.infoSection}>
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
-              <Ionicons name="information-circle" size={20} color="#F59E0B" />
+              <Ionicons name="information-circle" size={20} color="#00C9A7" />
               <Text style={styles.infoTitle}>What's Next?</Text>
             </View>
             <Text style={styles.infoText}>
@@ -341,15 +341,15 @@ const BookingSummaryScreen = () => {
             
             <View style={styles.infoItems}>
               <View style={styles.infoItem}>
-                <Ionicons name="calendar-outline" size={16} color="#F59E0B" />
+                <Ionicons name="calendar-outline" size={16} color="#00C9A7" />
                 <Text style={styles.infoItemText}>Choose date & time</Text>
               </View>
               <View style={styles.infoItem}>
-                <Ionicons name="card-outline" size={16} color="#F59E0B" />
+                <Ionicons name="card-outline" size={16} color="#00C9A7" />
                 <Text style={styles.infoItemText}>Secure payment</Text>
               </View>
               <View style={styles.infoItem}>
-                <Ionicons name="checkmark-circle-outline" size={16} color="#F59E0B" />
+                <Ionicons name="checkmark-circle-outline" size={16} color="#00C9A7" />
                 <Text style={styles.infoItemText}>Instant confirmation</Text>
               </View>
             </View>
@@ -401,7 +401,7 @@ const BookingSummaryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Consistent app background
+    backgroundColor: '#F0FFFE', // Consistent app background
   },
   header: {
     flexDirection: 'row',
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 2,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 16,
   },
   serviceCard: {
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 6,
   },
   serviceMetaRow: {
@@ -520,17 +520,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   priceTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   servicePrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   pricingSection: {
     paddingHorizontal: 16,
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   },
   pricingValue: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '600',
   },
   discountLabel: {
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   },
   pricingDivider: {
     height: 1,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     marginVertical: 12,
   },
   totalRow: {
@@ -587,17 +587,17 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     marginTop: 8,
     borderTopWidth: 2,
-    borderTopColor: '#FCD34D',
+    borderTopColor: '#F8FFFE',
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   totalAmount: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   infoSection: {
     paddingHorizontal: 16,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     borderWidth: 1,
     borderRadius: 16,
     padding: 16,
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginLeft: 8,
   },
   infoText: {
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
   },
   infoItemText: {
     fontSize: 13,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '500',
   },
   policySection: {
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   policyTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginLeft: 8,
   },
   policyItems: {
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D',
+    borderTopColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
   footerTotalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   footerDuration: {
     fontSize: 14,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   continueButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

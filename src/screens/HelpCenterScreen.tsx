@@ -441,7 +441,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       case 'open':
         return '#3B82F6'; // Info blue
       case 'pending':
-        return '#F59E0B'; // Primary amber/honey
+        return '#00C9A7'; // Primary Vibrant Teal
       case 'resolved':
         return '#10B981'; // Success emerald green
       case 'closed':
@@ -671,7 +671,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1A2533" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading help center...</Text>
         </View>
       </SafeAreaView>
@@ -690,7 +690,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={activeTab === 'faq' ? 'help-circle' : 'help-circle-outline'} 
             size={20} 
-            color={activeTab === 'faq' ? (accountType === 'provider' ? '#059669' : '#3B82F6') : '#6B7280'} 
+            color={activeTab === 'faq' ? '#00C9A7' : '#6B7280'} 
           />
           <Text style={[
             styles.tabText, 
@@ -707,7 +707,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={activeTab === 'contact' ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} 
             size={20} 
-            color={activeTab === 'contact' ? (accountType === 'provider' ? '#059669' : '#3B82F6') : '#6B7280'} 
+            color={activeTab === 'contact' ? '#00C9A7' : '#6B7280'} 
           />
           <Text style={[
             styles.tabText, 
@@ -725,7 +725,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
             <Ionicons 
               name={activeTab === 'tickets' ? 'ticket' : 'ticket-outline'} 
               size={20} 
-              color={activeTab === 'tickets' ? (accountType === 'provider' ? '#059669' : '#3B82F6') : '#6B7280'} 
+              color={activeTab === 'tickets' ? '#00C9A7' : '#6B7280'} 
             />
             {supportTickets.filter(t => t.status === 'open' || t.status === 'pending').length > 0 && (
               <View style={styles.notificationBadge}>
@@ -864,7 +864,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   loadingContainer: {
     flex: 1,
@@ -874,13 +874,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
   },
   tab: {
     flex: 1,
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#F59E0B', // Primary (amber/honey)
+    borderBottomColor: '#00C9A7', // Primary Vibrant Teal
   },
   tabIconContainer: {
     position: 'relative',
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   activeTabText: {
-    color: '#F59E0B', // Primary (amber/honey)
+    color: '#00C9A7', // Primary Vibrant Teal
     fontWeight: '600',
   },
   notificationBadge: {
@@ -937,12 +937,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D', // Secondary (lighter honey)
+    borderColor: '#F8FFFE', // Secondary
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     marginLeft: 8,
     paddingVertical: 4,
   },
@@ -956,20 +956,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryChip: {
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D', // Secondary (lighter honey)
+    borderColor: '#F8FFFE', // Secondary
     minWidth: 80,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedCategory: {
-    backgroundColor: '#F59E0B', // Primary (amber/honey)
-    borderColor: '#F59E0B', // Primary (amber/honey)
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    borderColor: '#00C9A7', // Primary Vibrant Teal
   },
   categoryText: {
     fontSize: 14,
@@ -988,13 +988,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#F59E0B', // Primary (amber/honey)
+    shadowColor: '#00C9A7', // Primary Vibrant Teal
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     borderLeftWidth: 3,
-    borderLeftColor: '#F59E0B', // Primary (amber/honey)
+    borderLeftColor: '#00C9A7', // Primary Vibrant Teal
   },
   faqHeader: {
     flexDirection: 'row',
@@ -1005,7 +1005,7 @@ const styles = StyleSheet.create({
   faqQuestion: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     flex: 1,
     marginRight: 12,
   },
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D', // Secondary (lighter honey)
+    borderTopColor: '#F8FFFE', // Secondary
   },
   faqAnswer: {
     fontSize: 14,
@@ -1036,12 +1036,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
     borderRadius: 16,
   },
   helpfulText: {
     fontSize: 12,
-    color: '#F59E0B', // Primary (amber/honey)
+    color: '#00C9A7', // Primary Vibrant Teal
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -1070,7 +1070,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
     backgroundColor: '#FFFFFF',
     marginHorizontal: 12,
     marginBottom: 8,
@@ -1086,7 +1086,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   contactContent: {
     flex: 1,
@@ -1189,7 +1189,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   createTicketButton: {
-    backgroundColor: '#F59E0B', // Primary (amber/honey)
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1219,7 +1219,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F8F9F8',
+    backgroundColor: '#F0FFFE',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1318,13 +1318,13 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   submitButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
   providerSubmitButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#00C9A7',
   },
   submitButtonText: {
     fontSize: 16,

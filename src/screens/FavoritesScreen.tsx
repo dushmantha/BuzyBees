@@ -237,7 +237,7 @@ const FavoritesScreen = () => {
           <Text style={styles.headerTitle}>My Favorites</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Checking authentication...</Text>
         </View>
       </SafeAreaView>
@@ -272,7 +272,7 @@ const FavoritesScreen = () => {
           <Text style={styles.headerTitle}>My Favorites</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading favorites...</Text>
         </View>
       </SafeAreaView>
@@ -298,8 +298,8 @@ const FavoritesScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#F59E0B"
-            colors={['#F59E0B']}
+            tintColor="#00C9A7"
+            colors={['#00C9A7']}
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -311,7 +311,7 @@ const FavoritesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   header: {
     flexDirection: 'row',
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   headerTitle: {
     fontSize: 24,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#F8FFFE',
   },
   imageContainer: {
     height: 200,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   browseButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   browseButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#FFFFFF',
   },
 });
 

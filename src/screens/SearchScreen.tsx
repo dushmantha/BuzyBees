@@ -261,7 +261,7 @@ const SearchScreen = () => {
       onPress={() => handleItemPress('category', item)}
       activeOpacity={0.8}
     >
-      <View style={[styles.categoryIcon, { backgroundColor: item.color || '#F59E0B' }]}>
+      <View style={[styles.categoryIcon, { backgroundColor: item.color || '#00C9A7' }]}>
         <Ionicons name="grid-outline" size={24} color="#FFFFFF" />
       </View>
       <View style={styles.resultContent}>
@@ -308,7 +308,7 @@ const SearchScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -383,15 +383,15 @@ const SearchScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#F59E0B"
-            colors={['#F59E0B']}
+            tintColor="#00C9A7"
+            colors={['#00C9A7']}
           />
         }
         showsVerticalScrollIndicator={false}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00C9A7" />
             <Text style={styles.loadingText}>Searching...</Text>
           </View>
         ) : (
@@ -466,7 +466,7 @@ const SearchScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   header: {
     flexDirection: 'row',
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingTop: 50,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   backButton: {
     padding: 8,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   searchBar: {
     backgroundColor: '#FFFFFF',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   filterContainer: {
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
     paddingBottom: 12,
   },
   filterTabs: {
@@ -548,8 +548,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   activeFilterTab: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    borderColor: '#00C9A7',
   },
   filterTabText: {
     fontSize: 14,
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   loadingContainer: {
     flex: 1,
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   stars: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontSize: 12,
     marginRight: 4,
   },
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   location: {
     fontSize: 12,

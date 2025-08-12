@@ -258,7 +258,7 @@ const ServiceOptionsScreen: React.FC = () => {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00B4A6" />
             <Text style={styles.loadingText}>Loading options...</Text>
           </View>
         ) : (
@@ -272,7 +272,7 @@ const ServiceOptionsScreen: React.FC = () => {
             {options.map((option, index) => renderOption(option, index))}
 
             <TouchableOpacity style={styles.addButton} onPress={handleAddOption}>
-              <Ionicons name="add-circle-outline" size={24} color="#F59E0B" />
+              <Ionicons name="add-circle-outline" size={24} color="#00B4A6" />
               <Text style={styles.addButtonText}>Add Another Option</Text>
             </TouchableOpacity>
 
@@ -466,19 +466,19 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#00B4A6',
     borderRadius: 12,
     borderStyle: 'dashed',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
   },
   addButtonText: {
-    color: '#F59E0B',
+    color: '#00B4A6',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
   },
   exampleSection: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     marginLeft: 8,
   },
   disabledButton: {

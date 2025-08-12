@@ -55,7 +55,7 @@ const StarRating = ({
           <Ionicons
             name={star <= rating ? "star" : "star-outline"}
             size={size}
-            color={star <= rating ? "#F59E0B" : "#D1D5DB"}
+            color={star <= rating ? "#00C9A7" : "#D1D5DB"}
           />
         </TouchableOpacity>
       ))}
@@ -295,7 +295,7 @@ const ReviewScreen = () => {
           {/* Service Info */}
           <View style={styles.serviceCard}>
             <View style={styles.serviceIcon}>
-              <Ionicons name="cut-outline" size={32} color="#F59E0B" />
+              <Ionicons name="cut-outline" size={32} color="#00C9A7" />
             </View>
             <View style={styles.serviceInfo}>
               <Text style={styles.serviceName}>{booking.service}</Text>
@@ -364,7 +364,7 @@ const ReviewScreen = () => {
 
             <View style={styles.aspectRating}>
               <View style={styles.aspectHeader}>
-                <Ionicons name="wallet" size={20} color="#F59E0B" />
+                <Ionicons name="wallet" size={20} color="#00C9A7" />
                 <Text style={styles.aspectLabel}>Value for Money</Text>
               </View>
               <StarRating 
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   serviceCard: {
     flexDirection: 'row',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F8FFFE',
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00C9A7',
     marginTop: 8,
   },
   aspectRating: {
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   submitButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#9CA3AF',
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: '#FAFAFA',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -599,13 +599,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#FAFAFA',
     fontWeight: '600',
   },
 });

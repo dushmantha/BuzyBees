@@ -799,7 +799,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1A2533" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading notifications...</Text>
         </View>
       </SafeAreaView>
@@ -855,8 +855,8 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[accountType === 'provider' ? '#059669' : '#1A2533']}
-            tintColor={accountType === 'provider' ? '#059669' : '#1A2533'}
+            colors={['#00C9A7']}
+            tintColor="#00C9A7"
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -883,7 +883,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   loadingContainer: {
     flex: 1,
@@ -901,13 +901,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Light accent cream
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Lighter honey for borders
+    borderBottomColor: '#F8FFFE', // Lighter for borders
   },
   filterContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FCD34D', // Lighter honey background
+    backgroundColor: '#F0FFFE', // Lighter background
     borderRadius: 8,
     padding: 2,
   },
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activeFilter: {
-    backgroundColor: '#F59E0B', // Primary amber/honey
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 14,
-    color: '#F59E0B', // Primary amber/honey
+    color: '#00C9A7', // Primary Vibrant Teal
     fontWeight: '600',
   },
   listContainer: {
@@ -960,11 +960,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FCD34D', // Lighter honey border
+    borderColor: '#F8FFFE', // Lighter border
   },
   unreadNotification: {
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B', // Primary amber/honey
+    borderLeftColor: '#00C9A7', // Primary Vibrant Teal
   },
   notificationContent: {
     flexDirection: 'row',
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionButton: {
-    backgroundColor: '#F59E0B', // Primary amber/honey
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1120,7 +1120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#FCD34D', // Lighter honey border
+    borderColor: '#F8FFFE', // Lighter border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -1134,7 +1134,7 @@ const styles = StyleSheet.create({
   upgradeIconContainer: {
     width: 48,
     height: 48,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F8FFFE',
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1166,7 +1166,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Lighter honey border
+    borderBottomColor: '#F8FFFE', // Lighter border
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Lighter honey border
+    borderBottomColor: '#F8FFFE', // Lighter border
   },
   modalIconContainer: {
     width: 56,
@@ -1242,7 +1242,7 @@ const styles = StyleSheet.create({
   },
   modalSection: {
     marginBottom: 24,
-    backgroundColor: '#FFF9E6', // Very light honey background
+    backgroundColor: '#F0FFFE', // Very light background
     borderRadius: 8,
     padding: 12,
   },
@@ -1253,7 +1253,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Lighter honey border
+    borderBottomColor: '#F8FFFE', // Lighter border
   },
   modalSectionContent: {
     fontSize: 14,
@@ -1277,13 +1277,13 @@ const styles = StyleSheet.create({
   modalFooter: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D', // Lighter honey border
+    borderTopColor: '#F8FFFE', // Lighter border
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
   },
   modalCloseButton: {
-    backgroundColor: '#FCD34D', // Lighter honey background
+    backgroundColor: '#F0FFFE', // Lighter background
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

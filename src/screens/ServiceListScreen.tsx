@@ -440,7 +440,7 @@ const ServiceListScreen = () => {
   if (loading && !refreshing) {
     return (
       <View style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         {/* Main Header - Only one navigation bar */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -461,7 +461,7 @@ const ServiceListScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
       
       {/* Main Header - Only one navigation bar */}
       <View style={styles.header}>
@@ -691,7 +691,7 @@ const ServiceListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Consistent app background
+    backgroundColor: '#F0FFFE', // Consistent app background
   },
   header: {
     flexDirection: 'row',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingTop: 50, // Add top padding to account for status bar
-    backgroundColor: '#FEFCE8', // Consistent with app background
+    backgroundColor: '#F0FFFE', // Consistent with app background
     // Removed borderBottomWidth for seamless design
   },
   backButton: {
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   loadingText: {
     marginTop: 16,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FEFCE8', // Consistent background
+    backgroundColor: '#F0FFFE', // Consistent background
   },
   searchBar: {
     backgroundColor: '#FFFFFF',

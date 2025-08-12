@@ -124,9 +124,9 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         marks[selectedDate] = {
           ...marks[selectedDate],
           selected: true,
-          selectedColor: '#F59E0B',
+          selectedColor: '#00C9A7',
           customStyles: {
-            container: { backgroundColor: '#F59E0B' },
+            container: { backgroundColor: '#00C9A7' },
             text: { color: 'white', fontWeight: 'bold' }
           }
         };
@@ -470,14 +470,14 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         {/* Calendar Section */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="calendar-outline" size={20} color="#1F2937" />
+            <Ionicons name="calendar-outline" size={20} color="#00C9A7" />
             {' '}Choose Date
           </Text>
           
           {/* Calendar Legend */}
           <View style={styles.calendarLegend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#00C9A7' }]} />
               <Text style={styles.legendText}>Available</Text>
             </View>
             <View style={styles.legendItem}>
@@ -501,19 +501,22 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               enableSwipeMonths={true}
               style={styles.calendar}
               theme={{
-                textSectionTitleColor: '#1F2937',
-                selectedDayBackgroundColor: '#F59E0B',
+                textSectionTitleColor: '#00C9A7',
+                selectedDayBackgroundColor: '#00C9A7',
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#F59E0B',
+                todayTextColor: '#00C9A7',
                 dayTextColor: '#2D2D2D',
                 textDisabledColor: '#D1D5DB',
-                dotColor: '#10B981',
+                dotColor: '#00C9A7',
                 selectedDotColor: '#FFFFFF',
-                arrowColor: '#F59E0B',
-                monthTextColor: '#1F2937',
+                arrowColor: '#00C9A7',
+                monthTextColor: '#00C9A7',
                 textDayFontSize: 14,
                 textMonthFontSize: 16,
                 textDayHeaderFontSize: 12,
+                calendarBackground: '#FFFFFF',
+                backgroundColor: '#FFFFFF',
+                agendaKnobColor: '#00C9A7',
               }}
             />
           </View>
@@ -523,13 +526,13 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         {selectedDate && (
           <View style={styles.timeSlotsSection}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="time-outline" size={20} color="#1F2937" />
+              <Ionicons name="time-outline" size={20} color="#00C9A7" />
               {' '}Available Times for {formatDisplayDate(selectedDate)}
             </Text>
             
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#F59E0B" />
+                <ActivityIndicator size="large" color="#00C9A7" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
             ) : availableSlots.length > 0 ? (
@@ -676,7 +679,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
             <Ionicons 
               name="warning" 
               size={64} 
-              color="#F59E0B" 
+              color="#00C9A7" 
               style={styles.warningIcon} 
             />
             <Text style={styles.warningTitle}>Staff Not Available</Text>
@@ -722,7 +725,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   header: {
     flexDirection: 'row',
@@ -740,16 +743,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(254, 243, 199, 0.9)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(252, 211, 77, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   headerTitleContainer: {
     flex: 1,
@@ -758,7 +761,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 2,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -782,7 +785,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -792,15 +795,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 12,
   },
   staffCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   staffHeader: {
     flexDirection: 'row',
@@ -811,7 +814,7 @@ const styles = StyleSheet.create({
   staffName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     flex: 1,
   },
   staffRating: {
@@ -835,11 +838,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 16,
-    backgroundColor: '#FEF3C7',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#E6F7F5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   legendItem: {
     flexDirection: 'row',
@@ -847,21 +855,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   legendText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '600',
   },
   calendarContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -888,32 +898,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#E6F7F5',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   selectedTimeSlot: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    borderColor: '#00C9A7',
+    shadowColor: '#00C9A7',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   unavailableTimeSlot: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
     borderColor: '#E5E7EB',
-    opacity: 0.6,
+    opacity: 0.7,
   },
   timeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   selectedTimeText: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
   unavailableTimeText: {
     color: '#9CA3AF',
+    fontWeight: '500',
   },
   bookedText: {
     fontSize: 10,
@@ -927,7 +944,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -946,7 +963,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -971,7 +988,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 12,
   },
   summaryCard: {
@@ -979,7 +996,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1002,23 +1019,23 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '600',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#FCD34D',
+    backgroundColor: '#F0FFFE',
     marginVertical: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   bottomSpacing: {
     height: 24,
@@ -1030,7 +1047,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D',
+    borderTopColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -1040,7 +1057,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   confirmButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1048,7 +1065,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1079,7 +1096,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   warningIcon: {
     marginBottom: 20,
@@ -1087,7 +1104,7 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -1099,7 +1116,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   warningButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1115,7 +1132,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -1139,7 +1156,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,

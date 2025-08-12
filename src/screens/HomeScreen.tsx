@@ -729,7 +729,6 @@ const HomeScreen = () => {
             </View>
           )}
           <Text style={styles.categoryName}>{category.name}</Text>
-          <Text style={styles.categoryCount}>{category.service_count}</Text>
         </TouchableOpacity>
 
       </View>
@@ -874,7 +873,7 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -947,7 +946,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('category', category)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="grid-outline" size={16} color="#F59E0B" />
+                          <Ionicons name="grid-outline" size={16} color="#00C9A7" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{category.name}</Text>
@@ -969,7 +968,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('service', service)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="cut-outline" size={16} color="#F59E0B" />
+                          <Ionicons name="cut-outline" size={16} color="#00C9A7" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{service.name}</Text>
@@ -993,7 +992,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('professional', professional)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="person-outline" size={16} color="#F59E0B" />
+                          <Ionicons name="person-outline" size={16} color="#00C9A7" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{professional.name}</Text>
@@ -1027,14 +1026,14 @@ const HomeScreen = () => {
                     <Text style={styles.showMoreButtonText}>
                       See all results for "{searchQuery}"
                     </Text>
-                    <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+                    <Ionicons name="arrow-forward" size={16} color="#00C9A7" />
                   </TouchableOpacity>
                 )}
 
                 {/* Loading indicator */}
                 {isSearching && (
                   <View style={styles.searchLoadingContainer}>
-                    <ActivityIndicator size="small" color="#F59E0B" />
+                    <ActivityIndicator size="small" color="#00C9A7" />
                     <Text style={styles.searchLoadingText}>Searching...</Text>
                   </View>
                 )}
@@ -1201,7 +1200,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Base: Soft Mint Cream
   },
   centerContent: {
     justifyContent: 'center',
@@ -1215,21 +1214,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Base: Soft Mint Cream
   },
   headerContent: {
     flex: 1,
   },
   headerGreeting: {
     fontSize: 16,
-    color: '#1F2937', // Dark accent charcoal black
+    color: '#00C9A7', // Primary: Vibrant Teal
     marginBottom: 4,
     opacity: 0.8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1F2937', // Dark accent charcoal black
+    color: '#00C9A7', // Primary: Vibrant Teal
     letterSpacing: -0.5,
   },
   debugText: {
@@ -1249,7 +1248,7 @@ const styles = StyleSheet.create({
   },
   // Search Section Styles
   searchSection: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     paddingBottom: 16,
     zIndex: 1000, // Ensure search section is above other content
     elevation: 10, // For Android
@@ -1269,8 +1268,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 8,
     borderWidth: 1.5,
-    borderColor: '#F59E0B', // Primary amber/honey
-    shadowColor: '#F59E0B',
+    borderColor: '#00C9A7', // Primary: Vibrant Teal
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1278,7 +1277,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginRight: 12,
-    color: '#F59E0B', // Primary amber/honey
+    color: '#00C9A7', // Primary: Vibrant Teal
   },
   searchInput: {
     flex: 1,
@@ -1301,7 +1300,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxHeight: 400,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -1321,7 +1320,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -1335,7 +1334,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1360,7 +1359,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginTop: 8,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
   },
   showMoreButtonText: {
     fontSize: 14,
@@ -1420,7 +1419,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: 'center',
     borderWidth: 1,
-    borderColor: '#FCD34D', // Lighter honey border
+    borderColor: '#F8FFFE', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1437,7 +1436,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent cream honey
+    backgroundColor: '#F0FFFE', // Base: Soft Mint Cream
     zIndex: 1, // Lower z-index than search
   },
   section: {
@@ -1453,7 +1452,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent charcoal black
+    color: '#00C9A7', // Primary: Vibrant Teal
   },
   specialOfferTitle: {
     fontSize: 22,
@@ -1462,7 +1461,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: '#F59E0B', // Primary amber/honey
+    color: '#00C9A7', // Primary: Vibrant Teal
     fontWeight: '600',
   },
   categoriesContainer: {
@@ -1486,7 +1485,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FCD34D', // Lighter honey border
+    borderColor: '#F8FFFE', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1515,15 +1514,10 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent charcoal black
+    color: '#00C9A7', // Primary: Vibrant Teal
     textAlign: 'center',
     paddingHorizontal: 4,
     marginBottom: 2,
-  },
-  categoryCount: {
-    fontSize: 11,
-    color: '#6B7280', // Darker gray for better readability
-    fontWeight: '500',
   },
   expandButton: {
     position: 'absolute',
@@ -1542,7 +1536,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1642,7 +1636,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 8,
     marginHorizontal: 12,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 8,
   },
   viewAllShopsText: {
@@ -1661,7 +1655,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginRight: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D', // Lighter honey border
+    borderColor: '#F8FFFE', // Lighter honey border
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1683,7 +1677,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   promotionBadge: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#845EC2', // Accent: Living Coral
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1779,7 +1773,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   specialOfferBadge: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#845EC2', // Accent: Living Coral
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1791,14 +1785,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   discountBadge: {
-    backgroundColor: '#34C759',
+    backgroundColor: '#EF4444', // Pop: Red
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-end',
   },
   discountBadgeText: {
-    color: '#FFFFFF',
+    color: '#00C9A7', // Primary: Vibrant Teal for better contrast
     fontSize: 10,
     fontWeight: '700',
   },

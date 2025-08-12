@@ -269,9 +269,9 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
         onValueChange={onToggle}
         trackColor={{ 
           false: '#F3F4F6', 
-          true: accountType === 'provider' ? '#BBF7D0' : '#BFDBFE' 
+          true: '#BBF7D0'
         }}
-        thumbColor={value ? (accountType === 'provider' ? '#059669' : '#3B82F6') : '#FFFFFF'}
+        thumbColor={value ? '#00C9A7' : '#FFFFFF'}
       />
     </View>
   );
@@ -301,7 +301,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
         <Ionicons 
           name="checkmark-circle" 
           size={24} 
-          color={accountType === 'provider' ? '#059669' : '#3B82F6'} 
+          color="#00C9A7" 
         />
       )}
     </TouchableOpacity>
@@ -311,7 +311,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1A2533" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading privacy settings...</Text>
         </View>
       </SafeAreaView>
@@ -591,7 +591,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   loadingContainer: {
     flex: 1,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
   },
   content: {
     flex: 1,
@@ -622,12 +622,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     marginBottom: 4,
   },
   sectionDescription: {
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
   },
   settingContent: {
     flexDirection: 'row',
@@ -654,19 +654,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D', // Secondary (lighter honey)
+    borderColor: '#F8FFFE', // Secondary
   },
   settingText: {
     flex: 1,
   },
   settingTitle: {
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -681,10 +681,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
   },
   selectedVisibilityOption: {
-    backgroundColor: '#FEF3C7', // Light accent (cream honey)
+    backgroundColor: '#F0FFFE', // Light accent cream
   },
   visibilityContent: {
     flex: 1,
@@ -692,13 +692,13 @@ const styles = StyleSheet.create({
   },
   visibilityLabel: {
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     fontWeight: '500',
     marginBottom: 4,
   },
   selectedVisibilityLabel: {
     fontWeight: '600',
-    color: '#F59E0B', // Primary (amber/honey)
+    color: '#00C9A7', // Primary Vibrant Teal
   },
   visibilityDescription: {
     fontSize: 13,
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#FCD34D', // Secondary (lighter honey)
+    borderBottomColor: '#F8FFFE', // Secondary
   },
   actionContent: {
     flexDirection: 'row',
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 16,
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#00C9A7', // Dark accent
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -749,14 +749,14 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D', // Secondary (lighter honey)
+    borderTopColor: '#F8FFFE', // Secondary
     paddingBottom: 24,
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F59E0B', // Primary (amber/honey)
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   providerSaveButton: {
-    backgroundColor: '#F59E0B', // Primary (amber/honey)
+    backgroundColor: '#00C9A7', // Primary Vibrant Teal
   },
   disabledButton: {
     opacity: 0.6,
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937', // Dark accent (charcoal black)
+    color: '#FFFFFF', // White text for button
     marginLeft: 8,
   },
 });

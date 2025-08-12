@@ -26,6 +26,7 @@ import BookingsScreen from '../screens/BookingsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ReviewScreen from '../screens/ReviewScreen';
+import SearchScreen from '../screens/SearchScreen';
 
 // Provider-specific screens
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
@@ -674,7 +675,7 @@ const NotificationBadge: React.FC<{ count: number }> = ({ count }) => {
       position: 'absolute',
       top: -6,
       right: -6,
-      backgroundColor: '#EF4444',
+      backgroundColor: '#845EC2',
       borderRadius: 10,
       minWidth: 20,
       height: 20,
@@ -724,7 +725,7 @@ const ConsumerTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#F59E0B',
+        tabBarActiveTintColor: '#00C9A7',
         tabBarInactiveTintColor: '#6B7280',
         headerShown: false,
         tabBarStyle: {
@@ -809,7 +810,7 @@ const ProviderTabs = () => {
                   position: 'absolute',
                   right: -6,
                   top: -3,
-                  backgroundColor: '#EF4444',
+                  backgroundColor: '#845EC2',
                   borderRadius: 6,
                   width: 12,
                   height: 12,
@@ -822,7 +823,7 @@ const ProviderTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#10B981',
+        tabBarActiveTintColor: '#00C9A7',
         tabBarInactiveTintColor: '#6B7280',
         headerShown: false,
         tabBarStyle: {
@@ -884,9 +885,9 @@ const AccountSwitchLoader = () => {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: '#FEFCE8',
+      backgroundColor: '#F0FFFE',
     }}>
-      <ActivityIndicator size="large" color="#F59E0B" />
+      <ActivityIndicator size="large" color="#00C9A7" />
       <Text style={{
         marginTop: 16,
         fontSize: 16,
@@ -924,7 +925,7 @@ const AuthNavigator = () => {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#FEFCE8' },
+        contentStyle: { backgroundColor: '#F0FFFE' },
       }}
     >
       <RootStack.Screen name="Login" component={LoginScreen} />
@@ -947,7 +948,7 @@ const AppNavigator = () => {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#FEFCE8' },
+        contentStyle: { backgroundColor: '#F0FFFE' },
         ...getHeaderStyle(),
       }}
     >
@@ -1010,6 +1011,15 @@ const AppNavigator = () => {
             options={{
               headerShown: false,
               presentation: 'card',
+            }}
+          />
+          <RootStack.Screen 
+            name="Search" 
+            component={SearchScreen}
+            options={{
+              title: 'Search',
+              headerShown: false,
+              ...getHeaderStyle(),
             }}
           />
         </>
@@ -1150,7 +1160,7 @@ const RootNavigator = () => {
     <AccountProvider>
       <NotificationProvider>
         <QueueBadgeProvider>
-          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+          <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" translucent={false} />
           {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
         </QueueBadgeProvider>
       </NotificationProvider>

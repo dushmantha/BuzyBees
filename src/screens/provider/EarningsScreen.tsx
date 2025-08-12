@@ -560,7 +560,7 @@ const EarningsScreen = ({ navigation }) => {
       },
       {
         icon: 'document-text-outline',
-        iconColor: '#F59E0B',
+        iconColor: '#00B4A6',
         title: 'Premium Invoices',
         description: 'Professional invoices with custom logo, digital signature, and branded templates'
       },
@@ -643,7 +643,7 @@ const EarningsScreen = ({ navigation }) => {
         </Text>
         {isBlurred && (
           <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={20} color="#F59E0B" />
+            <Ionicons name="lock-closed" size={20} color="#00B4A6" />
           </View>
         )}
       </View>
@@ -686,7 +686,7 @@ const EarningsScreen = ({ navigation }) => {
         </View>
         {isBlurred && (
           <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={16} color="#F59E0B" />
+            <Ionicons name="lock-closed" size={16} color="#00B4A6" />
           </View>
         )}
       </View>
@@ -709,11 +709,11 @@ const EarningsScreen = ({ navigation }) => {
         onPress={() => handleUpgradePress(type)}
       >
         <View style={styles.premiumPromptContent}>
-          <Ionicons name="lock-closed" size={20} color="#F59E0B" />
+          <Ionicons name="lock-closed" size={20} color="#00B4A6" />
           <Text style={styles.premiumPromptText}>
             {remainingCount} more {type} available with Premium
           </Text>
-          <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+          <Ionicons name="arrow-forward" size={16} color="#00B4A6" />
         </View>
       </TouchableOpacity>
     );
@@ -722,9 +722,9 @@ const EarningsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00B4A6" />
           <Text style={styles.loadingText}>Loading earnings data...</Text>
         </View>
       </SafeAreaView>
@@ -734,7 +734,7 @@ const EarningsScreen = ({ navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+        <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
@@ -756,7 +756,7 @@ const EarningsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#FEFCE8" barStyle="dark-content" />
+      <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
       
       <CancellationBanner />
       
@@ -802,13 +802,13 @@ const EarningsScreen = ({ navigation }) => {
           <Ionicons 
             name="download-outline" 
             size={24} 
-            color={isPremium ? "#10B981" : "#F59E0B"} 
+            color={isPremium ? "#10B981" : "#00B4A6"} 
           />
           {!isPremium && (
             <Ionicons 
               name="lock-closed" 
               size={12} 
-              color="#F59E0B" 
+              color="#00B4A6" 
               style={styles.lockIcon} 
             />
           )}
@@ -915,7 +915,7 @@ const EarningsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   loadingContainer: {
     flex: 1,
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FEFCE8', // Updated to match container background
+    backgroundColor: '#F0FFFE', // Updated to match container background
     // Removed border to create seamless look
   },
   headerLeft: {
@@ -971,16 +971,16 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   freeUserBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   freeUserText: {
     fontSize: 12,
-    color: '#F59E0B',
+    color: '#00B4A6',
     fontWeight: '600',
   },
   headerRight: {
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   
   // Earnings Styles
   earningsCard: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   earningsSubtext: {
     fontSize: 14,
-    color: '#FEF3C7',
+    color: '#FFE4E1',
   },
   
   // Stats Container
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activePeriodButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
   },
   periodButtonText: {
     fontSize: 14,
@@ -1246,9 +1246,9 @@ const styles = StyleSheet.create({
     borderColor: '#D1FAE5',
   },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   statusText: {
     fontSize: 10,
@@ -1258,7 +1258,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   pendingText: {
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   
   // Blurred/Locked Items
@@ -1280,12 +1280,12 @@ const styles = StyleSheet.create({
   
   // Premium Prompt
   premiumPrompt: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   premiumPromptContent: {
     flexDirection: 'row',
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   premiumPromptText: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#00B4A6',
     fontWeight: '600',
     marginHorizontal: 8,
   },
@@ -1335,12 +1335,12 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   activeFilterOption: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
+    borderColor: '#00B4A6',
   },
   lockedFilterOption: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
+    backgroundColor: '#FFE4E1',
+    borderColor: '#FFE4E1',
   },
   filterOptionContent: {
     flexDirection: 'row',
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   upgradeButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

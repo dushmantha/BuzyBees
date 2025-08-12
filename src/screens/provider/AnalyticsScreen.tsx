@@ -200,7 +200,7 @@ const AnalyticsScreen: React.FC = () => {
         { month: 'Dec', revenue: 5800, customers: 47, bookings: 75 },
       ],
       servicePerformance: [
-        { serviceName: 'Hair Cut & Style', bookings: 65, revenue: 3250, averageRating: 4.7, color: '#F59E0B' },
+        { serviceName: 'Hair Cut & Style', bookings: 65, revenue: 3250, averageRating: 4.7, color: '#00B4A6' },
         { serviceName: 'Nail Care', bookings: 48, revenue: 2400, averageRating: 4.5, color: '#EF4444' },
         { serviceName: 'Facial Treatment', bookings: 32, revenue: 2240, averageRating: 4.8, color: '#10B981' },
         { serviceName: 'Massage Therapy', bookings: 28, revenue: 1960, averageRating: 4.6, color: '#3B82F6' },
@@ -320,7 +320,7 @@ const AnalyticsScreen: React.FC = () => {
     propsForDots: {
       r: '5',
       strokeWidth: '2',
-      stroke: '#F59E0B',
+      stroke: '#00B4A6',
     },
     propsForBackgroundLines: {
       strokeDasharray: '',
@@ -516,7 +516,7 @@ please use the web dashboard or contact support.
         disabled={isExporting}
       >
         {isExporting ? (
-          <ActivityIndicator size="small" color="#F59E0B" />
+          <ActivityIndicator size="small" color="#00B4A6" />
         ) : (
           <Ionicons name="download-outline" size={24} color="#1F2937" />
         )}
@@ -582,7 +582,7 @@ please use the web dashboard or contact support.
         
         <View style={styles.overviewCard}>
           <View style={styles.cardIcon}>
-            <Ionicons name="star" size={20} color="#F59E0B" />
+            <Ionicons name="star" size={20} color="#00B4A6" />
           </View>
           <Text style={styles.cardValue}>{customerEngagement.customerSatisfaction.toFixed(1)}</Text>
           <Text style={styles.cardLabel}>Satisfaction</Text>
@@ -707,7 +707,7 @@ please use the web dashboard or contact support.
 
         <View style={styles.metricCard}>
           <View style={styles.metricHeader}>
-            <Ionicons name="cash" size={16} color="#F59E0B" />
+            <Ionicons name="cash" size={16} color="#00B4A6" />
             <Text style={styles.metricLabel}>Avg. Booking</Text>
           </View>
           <Text style={styles.metricValue}>{formatCurrency(customerEngagement.averageBookingValue)}</Text>
@@ -778,7 +778,7 @@ please use the web dashboard or contact support.
             </Text>
           </View>
           <View style={styles.serviceRating}>
-            <Ionicons name="star" size={14} color="#F59E0B" />
+            <Ionicons name="star" size={14} color="#00B4A6" />
             <Text style={styles.ratingText}>{service.averageRating.toFixed(1)}</Text>
           </View>
         </View>
@@ -864,7 +864,7 @@ please use the web dashboard or contact support.
 
           {isExporting && (
             <View style={styles.exportingIndicator}>
-              <ActivityIndicator size="small" color="#F59E0B" />
+              <ActivityIndicator size="small" color="#00B4A6" />
               <Text style={styles.exportingText}>Preparing export...</Text>
             </View>
           )}
@@ -876,10 +876,10 @@ please use the web dashboard or contact support.
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         {renderHeader()}
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00B4A6" />
           <Text style={styles.loadingText}>Loading Analytics...</Text>
           <Text style={styles.loadingSubtext}>Analyzing your business data</Text>
         </View>
@@ -889,7 +889,7 @@ please use the web dashboard or contact support.
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
       {renderHeader()}
       {renderPeriodSelector()}
@@ -897,7 +897,7 @@ please use the web dashboard or contact support.
       {/* Sample Data Banner */}
       {isShowingSampleData && (
         <View style={styles.sampleDataBanner}>
-          <Ionicons name="information-circle" size={16} color="#F59E0B" />
+          <Ionicons name="information-circle" size={16} color="#00B4A6" />
           <Text style={styles.sampleDataText}>
             Showing sample data - Start booking services to see real analytics
           </Text>
@@ -911,8 +911,8 @@ please use the web dashboard or contact support.
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#00B4A6']}
+            tintColor="#00B4A6"
           />
         }
       >
@@ -935,7 +935,7 @@ please use the web dashboard or contact support.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   header: {
     flexDirection: 'row',
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   headerTitle: {
     fontSize: 20,
@@ -970,7 +970,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activePeriodButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
   },
   periodButtonText: {
     fontSize: 14,
@@ -983,14 +983,14 @@ const styles = StyleSheet.create({
   sampleDataBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   sampleDataText: {
     fontSize: 14,
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   loadingText: {
     marginTop: 16,
@@ -1036,7 +1036,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryCard: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     marginBottom: 16,
   },
   cardHeader: {
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
   },
   sampleDataIndicator: {
     fontSize: 12,
-    color: '#FEF3C7',
+    color: '#FFE4E1',
     textAlign: 'center',
     fontStyle: 'italic',
     marginBottom: 4,
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1226,7 +1226,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   serviceInfo: {
     flex: 1,
@@ -1257,7 +1257,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   bottomSpacing: {
     height: 32,
@@ -1349,7 +1349,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 20,
     padding: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderRadius: 12,
   },
   exportingText: {

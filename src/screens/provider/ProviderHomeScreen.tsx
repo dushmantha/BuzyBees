@@ -773,8 +773,8 @@ const ProviderHomeScreen: React.FC = () => {
       title: 'Earnings',
       subtitle: 'Track income',
       icon: 'trending-up-outline',
-      color: '#F59E0B',
-      backgroundColor: '#FEF3C7',
+      color: '#00B4A6',
+      backgroundColor: '#FFE4E1',
       action: () => {
         navigation.navigate('ProviderTabs', { screen: 'EarningsTab' });
       },
@@ -1100,7 +1100,7 @@ const ProviderHomeScreen: React.FC = () => {
     },
     {
       icon: 'document-text-outline',
-      iconColor: '#F59E0B',
+      iconColor: '#00B4A6',
       title: 'Professional Reports & Invoices',
       description: 'Custom branded reports, invoices with digital signatures, and automated billing'
     },
@@ -1244,7 +1244,7 @@ const ProviderHomeScreen: React.FC = () => {
         <View style={styles.reviewStatsGrid}>
           <View style={[styles.reviewStatCard, styles.primaryReviewCard]}>
             <View style={styles.reviewStatHeader}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Ionicons name="star" size={20} color="#00B4A6" />
               <Text style={styles.reviewStatLabel}>Overall Rating</Text>
             </View>
             <Text style={styles.reviewStatValue}>
@@ -1288,7 +1288,7 @@ const ProviderHomeScreen: React.FC = () => {
                   <Text style={styles.businessReviewName}>{business.business_name}</Text>
                   <View style={styles.businessReviewStats}>
                     <View style={styles.businessReviewRating}>
-                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Ionicons name="star" size={12} color="#00B4A6" />
                       <Text style={styles.businessReviewRatingText}>
                         {business.average_rating.toFixed(1)}
                       </Text>
@@ -1398,7 +1398,7 @@ const ProviderHomeScreen: React.FC = () => {
         <TouchableOpacity style={styles.addShopCard} onPress={handleAddNewShop}>
           <View style={styles.addShopContent}>
             <View style={styles.addShopIcon}>
-              <Ionicons name="add-circle-outline" size={32} color="#F59E0B" />
+              <Ionicons name="add-circle-outline" size={32} color="#00B4A6" />
             </View>
             <Text style={styles.addShopText}>Add New Shop</Text>
             <Text style={styles.addShopSubtext}>Expand your business</Text>
@@ -1447,7 +1447,7 @@ const ProviderHomeScreen: React.FC = () => {
           
           <View style={styles.shopMetrics}>
             <View style={styles.shopMetric}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Ionicons name="star" size={12} color="#00B4A6" />
               <Text style={styles.shopMetricText}>{item.rating?.toFixed(1) || '0.0'}</Text>
             </View>
             <View style={styles.shopMetric}>
@@ -1501,7 +1501,7 @@ const ProviderHomeScreen: React.FC = () => {
               style={styles.proButton}
               onPress={() => setShowUpgradeModal(true)}
             >
-              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Ionicons name="star" size={12} color="#00B4A6" />
               <Text style={styles.proButtonText}>PRO</Text>
             </TouchableOpacity>
           )}
@@ -1540,7 +1540,7 @@ const ProviderHomeScreen: React.FC = () => {
                     )}
                     {activity.rating && (
                       <View style={styles.activityRating}>
-                        <Ionicons name="star" size={12} color="#F59E0B" />
+                        <Ionicons name="star" size={12} color="#00B4A6" />
                         <Text style={styles.activityRatingText}>{activity.rating}.0</Text>
                       </View>
                     )}
@@ -1560,7 +1560,7 @@ const ProviderHomeScreen: React.FC = () => {
           >
             <View style={styles.upgradePromptContent}>
               <View style={styles.upgradeIconContainer}>
-                <Ionicons name="star" size={20} color="#F59E0B" />
+                <Ionicons name="star" size={20} color="#00B4A6" />
               </View>
               <View style={styles.upgradeTextContainer}>
                 <Text style={styles.upgradeTitle}>
@@ -1570,7 +1570,7 @@ const ProviderHomeScreen: React.FC = () => {
                   Upgrade to Pro for complete business insights
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+              <Ionicons name="arrow-forward" size={16} color="#00B4A6" />
             </View>
           </TouchableOpacity>
         )}
@@ -1581,10 +1581,10 @@ const ProviderHomeScreen: React.FC = () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         <View style={styles.loadingContainer}>
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#00B4A6" />
             <Text style={styles.loadingText}>Loading your dashboard...</Text>
             <Text style={styles.loadingSubtext}>Preparing your business insights</Text>
           </View>
@@ -1595,7 +1595,7 @@ const ProviderHomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FEFCE8" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
       {renderHeader()}
       
@@ -1608,8 +1608,8 @@ const ProviderHomeScreen: React.FC = () => {
           <RefreshControl 
             refreshing={isRefreshing} 
             onRefresh={onRefresh} 
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#00B4A6']}
+            tintColor="#00B4A6"
           />
         }
       >
@@ -1649,7 +1649,7 @@ const ProviderHomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8',
+    backgroundColor: '#F0FFFE',
   },
   
   // Header Styles
@@ -1659,7 +1659,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FEFCE8', // Changed to match background color
+    backgroundColor: '#F0FFFE', // Changed to match background color
     // Removed border line
   },
   headerLeft: {
@@ -1670,7 +1670,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1703,7 +1703,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1738,7 +1738,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FEFCE8', // Changed to match background color
+    backgroundColor: '#F0FFFE', // Changed to match background color
   },
   loadingContent: {
     alignItems: 'center',
@@ -1772,7 +1772,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   primaryStatCard: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B4A6',
     marginBottom: 16,
   },
   secondaryStatCard: {
@@ -1816,7 +1816,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1856,7 +1856,7 @@ const styles = StyleSheet.create({
   proButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1865,7 +1865,7 @@ const styles = StyleSheet.create({
   proButtonText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
 
   // Quick Actions
@@ -2072,7 +2072,7 @@ const styles = StyleSheet.create({
   shopRevenueValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
 
   // Add Shop Card
@@ -2082,7 +2082,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2097,7 +2097,7 @@ const styles = StyleSheet.create({
   addShopText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
     marginBottom: 4,
   },
   addShopSubtext: {
@@ -2191,16 +2191,16 @@ const styles = StyleSheet.create({
   activityRatingText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
 
   // Upgrade Prompt
   upgradePrompt: {
     marginTop: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
     padding: 16,
   },
   upgradePromptContent: {
@@ -2279,9 +2279,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryReviewCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFE4E1',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#FFE4E1',
   },
   reviewStatHeader: {
     flexDirection: 'row',
@@ -2362,7 +2362,7 @@ const styles = StyleSheet.create({
   businessReviewRatingText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#00B4A6',
   },
   businessReviewCount: {
     fontSize: 12,

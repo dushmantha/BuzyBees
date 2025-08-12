@@ -398,7 +398,7 @@ const BookingDateTimeScreen: React.FC = () => {
                 dotColor: '#10B981',
                 customStyles: {
                   container: { backgroundColor: 'transparent' },
-                  text: { color: '#1F2937' }
+                  text: { color: '#00C9A7' }
                 }
               };
               break;
@@ -478,9 +478,9 @@ const BookingDateTimeScreen: React.FC = () => {
             marks[selectedDate] = {
               ...marks[selectedDate],
               selected: true,
-              selectedColor: '#F59E0B',
+              selectedColor: '#00C9A7',
               customStyles: {
-                container: { backgroundColor: '#F59E0B' },
+                container: { backgroundColor: '#00C9A7' },
                 text: { color: 'white', fontWeight: 'bold' }
               }
             };
@@ -640,7 +640,7 @@ const BookingDateTimeScreen: React.FC = () => {
           style={styles.backButton}
           onPress={handleBackPress}
         >
-          <Ionicons name="arrow-back" size={20} color="#1F2937" />
+          <Ionicons name="arrow-back" size={20} color="#00C9A7" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Book Appointment</Text>
@@ -712,7 +712,7 @@ const BookingDateTimeScreen: React.FC = () => {
         {/* Calendar Section */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="calendar-outline" size={20} color="#1F2937" />
+            <Ionicons name="calendar-outline" size={20} color="#00C9A7" />
             {' '}Choose Date
           </Text>
           
@@ -743,16 +743,16 @@ const BookingDateTimeScreen: React.FC = () => {
               enableSwipeMonths={true}
               style={styles.calendar}
               theme={{
-                textSectionTitleColor: '#1F2937',
-                selectedDayBackgroundColor: '#F59E0B',
+                textSectionTitleColor: '#00C9A7',
+                selectedDayBackgroundColor: '#00C9A7',
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#F59E0B',
+                todayTextColor: '#00C9A7',
                 dayTextColor: '#2D2D2D',
                 textDisabledColor: '#D1D5DB',
                 dotColor: '#10B981',
                 selectedDotColor: '#FFFFFF',
-                arrowColor: '#F59E0B',
-                monthTextColor: '#1F2937',
+                arrowColor: '#00C9A7',
+                monthTextColor: '#00C9A7',
                 textDayFontSize: 14,
                 textMonthFontSize: 16,
                 textDayHeaderFontSize: 12,
@@ -765,13 +765,13 @@ const BookingDateTimeScreen: React.FC = () => {
         {selectedDate && (
           <View style={styles.timeSlotsSection}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="time-outline" size={20} color="#1F2937" />
+              <Ionicons name="time-outline" size={20} color="#00C9A7" />
               {' '}Available Times for {formatDisplayDate(selectedDate)}
             </Text>
             
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#F59E0B" />
+                <ActivityIndicator size="large" color="#00C9A7" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
             ) : availableSlots.length > 0 ? (
@@ -896,7 +896,7 @@ const BookingDateTimeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FEFCE8', // Consistent app background
+    backgroundColor: '#F0FFFE', // Consistent app background
   },
   header: {
     flexDirection: 'row',
@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 2,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -969,26 +969,26 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 12,
   },
   serviceOptionButton: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
     minWidth: 140,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   selectedServiceOption: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    borderColor: '#00C9A7',
   },
   serviceOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     textAlign: 'center',
   },
   serviceOptionSubtext: {
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1015,11 +1015,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   serviceCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#00C9A7',
     flex: 1,
   },
   servicePrice: {
@@ -1064,11 +1064,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0FFFE',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   legendItem: {
     flexDirection: 'row',
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1125,7 +1125,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -1133,13 +1133,13 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   selectedTimeSlot: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
+    borderColor: '#00C9A7',
   },
   timeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   selectedTimeText: {
     color: '#FFFFFF',
@@ -1156,7 +1156,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1175,7 +1175,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#FAFAFA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1222,23 +1222,23 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#00C9A7',
     fontWeight: '600',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#FCD34D',
+    backgroundColor: '#F0FFFE',
     marginVertical: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#00C9A7',
   },
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#00C9A7',
   },
   bottomSpacing: {
     height: 24,
@@ -1250,7 +1250,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FCD34D',
+    borderTopColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   confirmButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1268,7 +1268,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1299,7 +1299,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#F8FFFE',
   },
   successIcon: {
     marginBottom: 20,
@@ -1307,7 +1307,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#00C9A7',
     marginBottom: 8,
     textAlign: 'center',
   },
