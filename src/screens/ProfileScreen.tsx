@@ -26,6 +26,7 @@ import { normalizedShopService } from '../lib/supabase/normalized';
 import { usePremium } from '../contexts/PremiumContext';
 import { stripeService } from '../lib/stripe/stripeService';
 import { CancellationBanner } from '../components/CancellationBanner';
+import { ImageUploadService } from '../services/api/imageUploadFix';
 
 interface ProfileData {
   id: string;
@@ -150,6 +151,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingCerts, setIsLoadingCerts] = useState(false);
   const [profileImageError, setProfileImageError] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    uploading: false,
+    message: '',
+    progress: 0
+  });
   
   // Form states for adding skills
   const [newSkill, setNewSkill] = useState({
@@ -980,27 +987,101 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const handleChoosePhoto = useCallback(async () => {
     try {
       const imageUri = await showImagePickerOptions();
-      if (imageUri) {
-        // Update tempProfile if it exists (editing mode)
-        if (tempProfile) {
-          setTempProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+      if (imageUri && userId) {
+        console.log('📷 Selected image URI:', imageUri);
+        
+        // Show upload progress
+        setIsUploadingImage(true);
+        setUploadProgress({
+          uploading: true,
+          message: 'Uploading profile image...',
+          progress: 0
+        });
+        
+        try {
+          // First try to upload to user-avatars bucket
+          console.log('📷 Starting profile image upload to user-avatars bucket:', imageUri);
+          let uploadResult = await ImageUploadService.uploadImage(imageUri, 'user-avatars', 'profiles');
+          
+          // If that fails, try avatars bucket as fallback
+          if (!uploadResult.success) {
+            console.log('📷 Retrying with avatars bucket as fallback:', imageUri);
+            uploadResult = await ImageUploadService.uploadImage(imageUri, 'avatars', 'profiles');
+          }
+          
+          if (uploadResult.success && uploadResult.data) {
+            console.log('✅ Profile image uploaded successfully:', uploadResult.data);
+            
+            const uploadedUrl = uploadResult.data;
+            
+            // Update tempProfile if it exists (editing mode)
+            if (tempProfile) {
+              setTempProfile(prev => prev ? { ...prev, avatar_url: uploadedUrl } : null);
+            }
+            
+            // Also update the main profile
+            setProfile(prev => prev ? { ...prev, avatar_url: uploadedUrl } : null);
+            
+            // Reset image error state
+            setProfileImageError(false);
+            
+            // Show success message
+            setUploadProgress({
+              uploading: false,
+              message: '✅ Profile image uploaded successfully!',
+              progress: 100
+            });
+            
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+              setUploadProgress(prev => ({ ...prev, message: '' }));
+            }, 3000);
+            
+            return true;
+          } else {
+            console.warn('⚠️ Profile image upload failed:', uploadResult.error);
+            
+            // Fall back to local URI for immediate display
+            if (tempProfile) {
+              setTempProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+            }
+            setProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+            
+            setUploadProgress({
+              uploading: false,
+              message: '⚠️ Upload failed, using local image: ' + (uploadResult.error || 'Unknown error'),
+              progress: 0
+            });
+            
+            return true;
+          }
+        } catch (uploadError: any) {
+          console.error('❌ Profile image upload error:', uploadError);
+          
+          // Fall back to local URI for immediate display
+          if (tempProfile) {
+            setTempProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+          }
+          setProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
+          
+          setUploadProgress({
+            uploading: false,
+            message: '⚠️ Upload error, using local image: ' + (uploadError.message || 'Network error'),
+            progress: 0
+          });
+          
+          return true;
         }
-        
-        // Also update the main profile to show the image immediately
-        setProfile(prev => prev ? { ...prev, avatar_url: imageUri } : null);
-        
-        // Reset image error state when new image is selected
-        setProfileImageError(false);
-        
-        return true;
       }
       return false;
     } catch (error) {
       console.error('Error in image picker:', error);
       Alert.alert('Error', 'Failed to pick an image. Please try again.');
       return false;
+    } finally {
+      setIsUploadingImage(false);
     }
-  }, [showImagePickerOptions, tempProfile]);
+  }, [showImagePickerOptions, tempProfile, userId]);
 
 
 
@@ -1611,16 +1692,32 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             </View>
             {isEditing && (
               <TouchableOpacity 
-                style={styles.editPhotoButton}
+                style={[
+                  styles.editPhotoButton,
+                  (isUploadingImage || uploadProgress.uploading) && styles.editPhotoButtonDisabled
+                ]}
                 onPress={handleChoosePhoto}
-                disabled={isSaving || isImageLoading}
+                disabled={isSaving || isImageLoading || isUploadingImage || uploadProgress.uploading}
               >
-                {isSaving || isImageLoading ? (
+                {isSaving || isImageLoading || isUploadingImage || uploadProgress.uploading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Ionicons name="camera" size={20} color="#FFFFFF" />
                 )}
               </TouchableOpacity>
+            )}
+            
+            {/* Upload Progress Message */}
+            {uploadProgress.message && (
+              <View style={styles.uploadProgressContainer}>
+                <Text style={[
+                  styles.uploadProgressText,
+                  { color: uploadProgress.message.includes('✅') ? '#00C9A7' : 
+                           uploadProgress.message.includes('⚠️') ? '#FFA500' : '#333' }
+                ]}>
+                  {uploadProgress.message}
+                </Text>
+              </View>
             )}
           </View>
 
@@ -2422,6 +2519,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  editPhotoButtonDisabled: {
+    backgroundColor: '#A0A0A0',
+    opacity: 0.7,
+  },
+  uploadProgressContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  uploadProgressText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   fieldContainer: {
     marginBottom: 20,
