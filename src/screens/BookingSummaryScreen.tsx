@@ -20,7 +20,6 @@ type RootStackParamList = {
       subtotal: number;
       discountAmount: number;
       discountedSubtotal: number;
-      gstAmount: number;
       finalTotal: number;
       hasDiscount: boolean;
     };
@@ -46,7 +45,6 @@ type RootStackParamList = {
       subtotal: number;
       discountAmount: number;
       discountedSubtotal: number;
-      gstAmount: number;
       finalTotal: number;
       hasDiscount: boolean;
     };
@@ -95,7 +93,7 @@ const BookingSummaryScreen = () => {
             isValid,
             fees: {
               serviceFee: 0,
-              tax: bookingData.totalPrice * 0.08, // 8% tax
+              tax: 0, // No tax
               discount: 0
             }
           },
@@ -293,11 +291,6 @@ const BookingSummaryScreen = () => {
                   </View>
                 )}
                 
-                {/* GST (15%) */}
-                <View style={styles.pricingRow}>
-                  <Text style={styles.pricingLabel}>GST (15%)</Text>
-                  <Text style={styles.pricingValue}>${priceBreakdown.gstAmount.toFixed(2)}</Text>
-                </View>
                 
                 {/* Total */}
                 <View style={styles.totalRow}>
@@ -313,14 +306,10 @@ const BookingSummaryScreen = () => {
                   <Text style={styles.pricingValue}>${totalPrice.toFixed(2)}</Text>
                 </View>
                 
-                <View style={styles.pricingRow}>
-                  <Text style={styles.pricingLabel}>GST (15%)</Text>
-                  <Text style={styles.pricingValue}>${(totalPrice * 0.15).toFixed(2)}</Text>
-                </View>
                 
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total Amount</Text>
-                  <Text style={styles.totalAmount}>${(totalPrice * 1.15).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount}>${totalPrice.toFixed(2)}</Text>
                 </View>
               </>
             )}
@@ -380,7 +369,7 @@ const BookingSummaryScreen = () => {
         <View style={styles.footerContent}>
           <View style={styles.footerSummary}>
             <Text style={styles.footerTotalLabel}>
-              Total: ${priceBreakdown ? priceBreakdown.finalTotal.toFixed(2) : (totalPrice * 1.15).toFixed(2)}
+              Total: ${priceBreakdown ? priceBreakdown.finalTotal.toFixed(2) : totalPrice.toFixed(2)}
             </Text>
             <Text style={styles.footerDuration}>{formatDuration(totalDuration)}</Text>
           </View>

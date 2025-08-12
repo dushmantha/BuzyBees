@@ -18,12 +18,12 @@ import { useAuth } from '../../context/AuthContext';
 
 type ForgotPasswordScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ForgotPassword'>;
 
-// Theme colors
+// Theme colors - Updated to Mint Green Theme
 const colors = {
-  primary: '#F59E0B',
-  secondary: '#FCD34D',
+  primary: '#00C9A7',
+  secondary: '#00C9A7',
   darkAccent: '#1F2937',
-  lightAccent: '#FEF3C7',
+  lightAccent: '#F0FFFE',
   success: '#10B981',
   warning: '#F97316',
   error: '#EF4444',
@@ -149,6 +149,7 @@ const ForgotPasswordScreen = () => {
                     loading && styles.inputDisabled
                   ]}
                   placeholder="Enter your email"
+                  placeholderTextColor={colors.gray500}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -243,7 +244,7 @@ const ForgotPasswordScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.lightAccent,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -274,22 +275,25 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: colors.gray700,
+    color: colors.darkAccent,
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray200,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: colors.gray900,
+    color: colors.darkAccent,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
   },
   inputDisabled: {
     opacity: 0.6,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.white,
   },
   button: {
     backgroundColor: colors.primary,
@@ -375,7 +379,7 @@ const styles = StyleSheet.create({
   },
   successMessage: {
     fontSize: 16,
-    color: colors.gray600,
+    color: colors.gray500,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,

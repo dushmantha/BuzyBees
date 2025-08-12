@@ -36,7 +36,6 @@ type RootStackParamList = {
       subtotal: number;
       discountAmount: number;
       discountedSubtotal: number;
-      gstAmount: number;
       finalTotal: number;
       hasDiscount: boolean;
     };
@@ -432,7 +431,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
           style={styles.backButton}
           onPress={handleBackPress}
         >
-          <Ionicons name="arrow-back" size={20} color="#1F2937" />
+          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Book with {selectedStaff?.name || 'Staff'}</Text>
@@ -621,10 +620,6 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
                     <Text style={styles.summaryLabel}>After Discount</Text>
                     <Text style={styles.summaryValue}>${priceBreakdown.discountedSubtotal}</Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>GST (15%)</Text>
-                    <Text style={styles.summaryValue}>${priceBreakdown.gstAmount}</Text>
-                  </View>
                 </>
               )}
               
@@ -634,17 +629,13 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
                     <Text style={styles.summaryLabel}>Subtotal</Text>
                     <Text style={styles.summaryValue}>${totalPrice}</Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>GST (15%)</Text>
-                    <Text style={styles.summaryValue}>${Math.round(totalPrice * 0.15)}</Text>
-                  </View>
                 </>
               )}
               
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total Amount</Text>
                 <Text style={styles.totalAmount}>
-                  ${priceBreakdown ? priceBreakdown.finalTotal : Math.round(totalPrice * 1.15)}
+                  ${priceBreakdown ? priceBreakdown.finalTotal : totalPrice}
                 </Text>
               </View>
             </View>
@@ -743,12 +734,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#00C9A7',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: 'rgba(0, 201, 167, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,

@@ -15,12 +15,12 @@ interface ValidationErrors {
   general?: string;
 }
 
-// Brand Theme Colors
+// Brand Theme Colors - Updated to Mint Green Theme
 const colors = {
-  primary: '#F59E0B',
-  secondary: '#FCD34D', 
+  primary: '#00C9A7',
+  secondary: '#00C9A7', 
   darkAccent: '#1F2937',
-  lightAccent: '#FEF3C7',
+  lightAccent: '#F0FFFE',
   success: '#10B981',
   warning: '#F97316',
   error: '#EF4444',
@@ -363,6 +363,7 @@ const LoginScreen = () => {
                     !errors.identifier && touched.identifier && identifier && styles.inputSuccess
                   ]}
                   placeholder="Enter your email or phone"
+                  placeholderTextColor={colors.gray500}
                   value={identifier}
                   onChangeText={(text) => handleInputChange('identifier', text)}
                   onBlur={() => handleBlur('identifier')}
@@ -398,6 +399,7 @@ const LoginScreen = () => {
                     !errors.password && touched.password && password && styles.inputSuccess
                   ]}
                   placeholder="Enter your password"
+                  placeholderTextColor={colors.gray500}
                   value={password}
                   onChangeText={(text) => handleInputChange('password', text)}
                   onBlur={() => handleBlur('password')}
@@ -483,7 +485,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.lightAccent,
   },
   keyboardView: {
     flex: 1,
@@ -651,7 +653,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: colors.gray700,
+    color: colors.darkAccent,
     marginBottom: 8,
     fontWeight: '600',
   },
@@ -659,13 +661,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray200,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: colors.gray900,
+    color: colors.darkAccent,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
   },
   inputWithIcon: {
     paddingRight: 50,
@@ -680,8 +685,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   inputSuccess: {
-    borderColor: colors.success,
-    backgroundColor: '#F0FDF4',
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
   },
   fieldError: {
     color: colors.error,
@@ -793,7 +798,7 @@ const styles = StyleSheet.create({
   socialButtonText: {
     marginLeft: 12,
     fontSize: 16,
-    color: colors.gray700,
+    color: colors.darkAccent,
     fontWeight: '600',
   },
   footer: {

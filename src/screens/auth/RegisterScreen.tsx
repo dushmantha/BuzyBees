@@ -134,12 +134,12 @@ const DUMMY_LOCATIONS: LocationSuggestion[] = [
   }
 ];
 
-// Brand Theme Colors
+// Brand Theme Colors - Updated to Mint Green Theme
 const colors = {
-  primary: '#F59E0B',
-  secondary: '#FCD34D',
+  primary: '#00C9A7',
+  secondary: '#00C9A7',
   darkAccent: '#1F2937',
-  lightAccent: '#FEF3C7',
+  lightAccent: '#F0FFFE',
   success: '#10B981',
   warning: '#F97316',
   error: '#EF4444',
@@ -975,6 +975,7 @@ const RegisterScreen = () => {
                     !errors.email && touched.email && formData.email && styles.inputSuccess
                   ]}
                   placeholder="john@example.com"
+                  placeholderTextColor={colors.gray500}
                   value={formData.email}
                   onChangeText={(text) => handleChange('email', text)}
                   onBlur={() => handleBlur('email')}
@@ -1239,6 +1240,7 @@ const RegisterScreen = () => {
                     !errors.password && touched.password && formData.password && styles.inputSuccess
                   ]}
                   placeholder="Create a strong password"
+                  placeholderTextColor={colors.gray500}
                   value={formData.password}
                   onChangeText={(text) => handleChange('password', text)}
                   onBlur={() => handleBlur('password')}
@@ -1290,6 +1292,7 @@ const RegisterScreen = () => {
                     !errors.confirmPassword && touched.confirmPassword && formData.confirmPassword && styles.inputSuccess
                   ]}
                   placeholder="Confirm your password"
+                  placeholderTextColor={colors.gray500}
                   value={formData.confirmPassword}
                   onChangeText={(text) => handleChange('confirmPassword', text)}
                   onBlur={() => handleBlur('confirmPassword')}
@@ -1452,7 +1455,7 @@ const RegisterScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.lightAccent,
   },
   keyboardView: {
     flex: 1,
@@ -1547,7 +1550,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: colors.gray700,
+    color: colors.darkAccent,
     marginBottom: 8,
     fontWeight: '600',
   },
@@ -1555,13 +1558,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray200,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: colors.gray900,
+    color: colors.darkAccent,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
   },
   inputWithIcon: {
     paddingRight: 50,
@@ -1576,8 +1582,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   inputSuccess: {
-    borderColor: colors.success,
-    backgroundColor: '#F0FDF4',
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
   },
   fieldError: {
     color: colors.error,
@@ -1593,7 +1599,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray200,
     borderRadius: 12,
@@ -1601,7 +1607,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    color: colors.gray900,
+    color: colors.darkAccent,
   },
   genderContainer: {
     flexDirection: 'row',
@@ -1618,7 +1624,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gray200,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.white,
   },
   genderButtonActive: {
     backgroundColor: colors.primary,
@@ -1728,7 +1734,7 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     fontSize: 14,
-    color: colors.gray700,
+    color: colors.darkAccent,
     marginLeft: 8,
     flex: 1,
   },
@@ -1961,7 +1967,7 @@ const styles = StyleSheet.create({
   },
   userDetailText: {
     fontSize: 14,
-    color: colors.gray700,
+    color: colors.darkAccent,
     marginLeft: 8,
     flex: 1,
   },

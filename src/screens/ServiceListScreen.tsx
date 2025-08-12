@@ -452,7 +452,7 @@ const ServiceListScreen = () => {
           </View>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#00C9A7" />
           <Text style={styles.loadingText}>Loading services...</Text>
         </View>
       </View>
@@ -505,8 +505,8 @@ const ServiceListScreen = () => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            tintColor="#F59E0B"
-            colors={['#F59E0B']}
+            tintColor="#00C9A7"
+            colors={['#00C9A7']}
           />
         }
       >
@@ -665,7 +665,7 @@ const ServiceListScreen = () => {
                   
                   <TouchableOpacity style={styles.viewButton}>
                     <Text style={styles.viewButtonText}>View Details</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+                    <Ionicons name="chevron-forward" size={16} color="#00C9A7" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     margin: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   clearSearchButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00C9A7',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#F8FFFE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
   },
   certificateText: {
     fontSize: 10,
-    color: '#10B981',
+    color: '#00C9A7',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#00C9A7',
   },
   serviceDetails: {
     flex: 1,
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   stars: {
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontSize: 14,
     marginRight: 4,
   },
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
   },
   availableTime: {
     fontSize: 13,
-    color: '#10B981',
+    color: '#00C9A7',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -985,14 +985,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   paymentTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F8FFFE',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginRight: 6,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
   },
   paymentText: {
     fontSize: 11,
@@ -1042,16 +1042,16 @@ const styles = StyleSheet.create({
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F8FFFE',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
   },
   viewButtonText: {
     fontSize: 13,
-    color: '#F59E0B',
+    color: '#00C9A7',
     fontWeight: '600',
     marginRight: 4,
   },
@@ -1064,7 +1064,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#00C9A7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
