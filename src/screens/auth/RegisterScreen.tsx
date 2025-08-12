@@ -58,81 +58,6 @@ interface LocationSuggestion {
   country: string;
 }
 
-// Dummy location data for testing
-const DUMMY_LOCATIONS: LocationSuggestion[] = [
-  {
-    id: 'auckland-nz',
-    description: 'Auckland, Auckland, New Zealand',
-    latitude: -36.8485,
-    longitude: 174.7633,
-    city: 'Auckland',
-    state: 'Auckland',
-    country: 'New Zealand'
-  },
-  {
-    id: 'wellington-nz',
-    description: 'Wellington, Wellington, New Zealand',
-    latitude: -41.2865,
-    longitude: 174.7762,
-    city: 'Wellington',
-    state: 'Wellington',
-    country: 'New Zealand'
-  },
-  {
-    id: 'christchurch-nz',
-    description: 'Christchurch, Canterbury, New Zealand',
-    latitude: -43.5321,
-    longitude: 172.6362,
-    city: 'Christchurch',
-    state: 'Canterbury',
-    country: 'New Zealand'
-  },
-  {
-    id: 'hamilton-nz',
-    description: 'Hamilton, Waikato, New Zealand',
-    latitude: -37.7870,
-    longitude: 175.2793,
-    city: 'Hamilton',
-    state: 'Waikato',
-    country: 'New Zealand'
-  },
-  {
-    id: 'sydney-au',
-    description: 'Sydney, New South Wales, Australia',
-    latitude: -33.8688,
-    longitude: 151.2093,
-    city: 'Sydney',
-    state: 'New South Wales',
-    country: 'Australia'
-  },
-  {
-    id: 'melbourne-au',
-    description: 'Melbourne, Victoria, Australia',
-    latitude: -37.8136,
-    longitude: 144.9631,
-    city: 'Melbourne',
-    state: 'Victoria',
-    country: 'Australia'
-  },
-  {
-    id: 'london-uk',
-    description: 'London, England, United Kingdom',
-    latitude: 51.5074,
-    longitude: -0.1278,
-    city: 'London',
-    state: 'England',
-    country: 'United Kingdom'
-  },
-  {
-    id: 'new-york-us',
-    description: 'New York, New York, United States',
-    latitude: 40.7128,
-    longitude: -74.0060,
-    city: 'New York',
-    state: 'New York',
-    country: 'United States'
-  }
-];
 
 // Brand Theme Colors - Updated to Mint Green Theme
 const colors = {
@@ -192,7 +117,6 @@ const RegisterScreen = () => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationSearchLoading, setLocationSearchLoading] = useState(false);
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied'>('unknown');
-  const [useDummyData, setUseDummyData] = useState(true); // Use dummy data by default
 
   const navigation = useNavigation<RegisterScreenNavigationProp>();
   
@@ -242,12 +166,6 @@ const RegisterScreen = () => {
   // Enhanced location permission check with error handling
   const checkLocationPermission = async () => {
     try {
-      // For dummy data mode, always return true
-      if (useDummyData) {
-        setLocationPermissionStatus('granted');
-        return true;
-      }
-
       const hasPermission = await locationService.requestLocationPermission();
       setLocationPermissionStatus(hasPermission ? 'granted' : 'denied');
       return hasPermission;
@@ -258,34 +176,12 @@ const RegisterScreen = () => {
     }
   };
 
-  // Enhanced getCurrentLocation with better error handling and dummy data fallback
+  // Enhanced getCurrentLocation with better error handling
   const getCurrentLocation = async () => {
     setIsGettingLocation(true);
     setErrors(prev => ({ ...prev, location: undefined }));
 
     try {
-      if (useDummyData) {
-        // Use dummy location (Auckland as default)
-        console.log('🔄 Using dummy location data...');
-        const dummyLocation = DUMMY_LOCATIONS[0]; // Auckland
-        const locationData: LocationData = {
-          latitude: dummyLocation.latitude!,
-          longitude: dummyLocation.longitude!,
-          address: dummyLocation.description,
-          city: dummyLocation.city,
-          state: dummyLocation.state,
-          country: dummyLocation.country,
-          postalCode: '1010',
-          fromCache: true
-        };
-        
-        setSelectedLocation(locationData);
-        setLocationQuery(dummyLocation.description);
-        setShowLocationSuggestions(false);
-        console.log('✅ Dummy location set successfully:', dummyLocation.city);
-        return;
-      }
-
       // Check permission first
       const hasPermission = await checkLocationPermission();
       if (!hasPermission) {
@@ -341,7 +237,7 @@ const RegisterScreen = () => {
     }
   };
 
-  // Enhanced search locations with dummy data support
+  // Enhanced search locations
   const searchLocations = async (query: string) => {
     if (!query || query.trim().length < 2) {
       setLocationSuggestions([]);
@@ -353,22 +249,6 @@ const RegisterScreen = () => {
     setLocationSearchLoading(true);
     
     try {
-      if (useDummyData) {
-        // Filter dummy locations based on query
-        console.log('🔍 Searching dummy locations for:', cleanQuery);
-        const filteredLocations = DUMMY_LOCATIONS.filter(location => 
-          location.description.toLowerCase().includes(cleanQuery) ||
-          location.city.toLowerCase().includes(cleanQuery) ||
-          location.state.toLowerCase().includes(cleanQuery) ||
-          location.country.toLowerCase().includes(cleanQuery)
-        );
-        
-        setLocationSuggestions(filteredLocations);
-        setShowLocationSuggestions(filteredLocations.length > 0);
-        console.log('✅ Found', filteredLocations.length, 'dummy location suggestions');
-        return;
-      }
-
       console.log('🔍 Searching for locations:', cleanQuery);
       const suggestions = await locationService.searchLocations(cleanQuery);
       
@@ -423,7 +303,7 @@ const RegisterScreen = () => {
     // Debounce search with longer delay for better performance
     searchTimeoutRef.current = setTimeout(() => {
       searchLocations(text);
-    }, 300); // Reduced delay for dummy data responsiveness
+    }, 300); // Debounce delay for better performance
   };
 
   // Enhanced select location with better error handling
@@ -438,20 +318,20 @@ const RegisterScreen = () => {
 
       let locationData: LocationData;
       
-      if (useDummyData || (suggestion.latitude && suggestion.longitude)) {
-        // Use suggestion data directly for dummy data or when coordinates are available
+      if (suggestion.latitude && suggestion.longitude) {
+        // Use suggestion data directly when coordinates are available
         locationData = {
-          latitude: suggestion.latitude || 0,
-          longitude: suggestion.longitude || 0,
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude,
           address: suggestion.description,
           city: suggestion.city,
           state: suggestion.state,
           country: suggestion.country,
-          postalCode: useDummyData ? '1010' : '' // Default postal code for dummy data
+          postalCode: ''
         };
         console.log('✅ Using suggestion data directly');
       } else {
-        // Get detailed location data using reverse geocoding for real data
+        // Get detailed location data using reverse geocoding
         try {
           locationData = await locationService.reverseGeocode(suggestion.latitude!, suggestion.longitude!);
           console.log('✅ Got location details from coordinates');
@@ -483,13 +363,6 @@ const RegisterScreen = () => {
     }
   };
 
-  // Show popular locations when input is focused and empty
-  const showPopularLocations = () => {
-    if (useDummyData && locationQuery.trim().length === 0) {
-      setLocationSuggestions(DUMMY_LOCATIONS.slice(0, 5)); // Show first 5 popular locations
-      setShowLocationSuggestions(true);
-    }
-  };
 
   // Dismiss location suggestions when tapping outside
   const dismissLocationSuggestions = () => {
@@ -669,7 +542,7 @@ const RegisterScreen = () => {
       case 'email':
         error = validateEmail(value);
         // ONLY check availability on blur and if basic validation passes
-        if (!error && value.length > 5 && !useDummyData) {
+        if (!error && value.length > 5) {
           try {
             console.log('Checking email availability for:', value);
             const availability = await authService.checkEmailAvailability(value);
@@ -690,7 +563,7 @@ const RegisterScreen = () => {
       case 'phone':
         error = validatePhone(value);
         // ONLY check availability on blur and if basic validation passes
-        if (!error && value.replace(/[\s\-\(\)]/g, '').length >= 8 && !useDummyData) {
+        if (!error && value.replace(/[\s\-\(\)]/g, '').length >= 8) {
           try {
             console.log('Checking phone availability for:', value);
             const cleanPhone = value.replace(/[\s\-\(\)]/g, '');
@@ -747,8 +620,8 @@ const RegisterScreen = () => {
       newErrors.general = ageError;
     }
 
-    // Check availability one final time for email and phone (skip for dummy data)
-    if (!useDummyData) {
+    // Check availability one final time for email and phone
+    {
       try {
         if (!newErrors.email) {
           const emailAvailability = await authService.checkEmailAvailability(formData.email);
@@ -902,24 +775,6 @@ const RegisterScreen = () => {
             </View>
           </View>
 
-          {/* Dummy Data Toggle (for development) */}
-          {__DEV__ && (
-            <View style={styles.debugContainer}>
-              <TouchableOpacity
-                style={[styles.debugButton, useDummyData && styles.debugButtonActive]}
-                onPress={() => setUseDummyData(!useDummyData)}
-              >
-                <Ionicons 
-                  name={useDummyData ? "checkbox" : "checkbox-outline"} 
-                  size={16} 
-                  color={useDummyData ? colors.white : colors.gray500} 
-                />
-                <Text style={[styles.debugText, useDummyData && styles.debugTextActive]}>
-                  Use Dummy Location Data
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
           {errors.general && (
             <View style={styles.errorContainer}>
@@ -1034,13 +889,11 @@ const RegisterScreen = () => {
                       errors.location && styles.inputError,
                       !errors.location && selectedLocation && styles.inputSuccess
                     ]}
-                    placeholder={useDummyData ? "Search from popular locations or type your own" : "Search for your city or location"}
+                    placeholder="Search for your city or location"
                     value={locationQuery}
                     onChangeText={handleLocationQueryChange}
                     onFocus={() => {
-                      if (useDummyData) {
-                        showPopularLocations();
-                      } else if (locationSuggestions.length > 0) {
+                      if (locationSuggestions.length > 0) {
                         setShowLocationSuggestions(true);
                       }
                     }}
@@ -1061,12 +914,6 @@ const RegisterScreen = () => {
                 
                 {showLocationSuggestions && locationSuggestions.length > 0 && (
                   <View style={styles.suggestionsList}>
-                    {useDummyData && locationQuery.trim().length === 0 && (
-                      <View style={styles.popularHeader}>
-                        <Ionicons name="star" size={14} color={colors.primary} />
-                        <Text style={styles.popularHeaderText}>Popular Locations</Text>
-                      </View>
-                    )}
                     {locationSuggestions.slice(0, 6).map((suggestion) => (
                       <TouchableOpacity
                         key={suggestion.id}
@@ -1078,11 +925,6 @@ const RegisterScreen = () => {
                         <Text style={styles.suggestionText} numberOfLines={1}>
                           {suggestion.description}
                         </Text>
-                        {useDummyData && (
-                          <View style={styles.dummyBadge}>
-                            <Text style={styles.dummyBadgeText}>Demo</Text>
-                          </View>
-                        )}
                       </TouchableOpacity>
                     ))}
                     <TouchableOpacity
@@ -1115,16 +957,11 @@ const RegisterScreen = () => {
                         ±{Math.round(selectedLocation.accuracy)}m accuracy
                       </Text>
                     )}
-                    {useDummyData && (
-                      <View style={styles.dummyIndicator}>
-                        <Text style={styles.dummyIndicatorText}>Demo Data</Text>
-                      </View>
-                    )}
                   </View>
                 )}
 
                 {/* Location permission status indicator */}
-                {!useDummyData && locationPermissionStatus === 'denied' && (
+                {locationPermissionStatus === 'denied' && (
                   <View style={styles.permissionWarning}>
                     <Ionicons name="warning-outline" size={16} color={colors.warning} />
                     <Text style={styles.permissionWarningText}>
@@ -1135,10 +972,7 @@ const RegisterScreen = () => {
               </View>
               {errors.location && <Text style={styles.fieldError}>{errors.location}</Text>}
               <Text style={styles.hintText}>
-                {useDummyData 
-                  ? "Using sample locations for demo purposes" 
-                  : "This helps us provide location-based services"
-                }
+                This helps us provide location-based services
               </Text>
             </View>
 
@@ -1495,33 +1329,6 @@ const styles = StyleSheet.create({
     color: colors.gray500,
     lineHeight: 24,
   },
-  // Debug styles for development
-  debugContainer: {
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  debugButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: colors.gray100,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  debugButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  debugText: {
-    fontSize: 12,
-    color: colors.gray500,
-    marginLeft: 6,
-    fontWeight: '500',
-  },
-  debugTextActive: {
-    color: colors.white,
-  },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1709,22 +1516,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 1000,
   },
-  popularHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    backgroundColor: colors.lightAccent,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
-  },
-  popularHeaderText: {
-    fontSize: 12,
-    color: colors.primary,
-    marginLeft: 6,
-    fontWeight: '600',
-  },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1737,18 +1528,6 @@ const styles = StyleSheet.create({
     color: colors.darkAccent,
     marginLeft: 8,
     flex: 1,
-  },
-  dummyBadge: {
-    backgroundColor: colors.info,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  dummyBadgeText: {
-    fontSize: 10,
-    color: colors.white,
-    fontWeight: '600',
   },
   dismissButton: {
     padding: 12,
@@ -1794,18 +1573,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.gray400,
     marginLeft: 6,
-  },
-  dummyIndicator: {
-    backgroundColor: colors.info,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  dummyIndicatorText: {
-    fontSize: 9,
-    color: colors.white,
-    fontWeight: '600',
   },
   permissionWarning: {
     flexDirection: 'row',

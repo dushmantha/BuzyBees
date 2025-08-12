@@ -38,10 +38,6 @@ const colors = {
   gray900: '#111827',
 };
 
-// Configuration for testing
-const TESTING_CONFIG = {
-  SHOW_DEMO_SECTION: true, // Show demo login section
-};
 
 const LoginScreen = () => {
   const [identifier, setIdentifier] = useState('');
@@ -52,13 +48,6 @@ const LoginScreen = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
-  // Demo credentials for testing - these should be actual accounts in your Supabase
-  const demoCredentials = [
-    { email: 'demo.admin@buzybees.com', password: 'Demo123!@#', role: 'Admin User' },
-    { email: 'demo.consumer@buzybees.com', password: 'Demo123!@#', role: 'Consumer' },
-    { email: 'demo.provider@buzybees.com', password: 'Demo123!@#', role: 'Provider' },
-    { email: 'test.user@buzybees.com', password: 'Test123!@#', role: 'Test User' }
-  ];
 
   // Validation functions
   const validateIdentifier = (value: string): string | null => {
@@ -141,30 +130,6 @@ const LoginScreen = () => {
     return !Object.values(newErrors).some(error => error !== null);
   };
 
-  const handleDemoLogin = async (email: string, password: string, role: string) => {
-    setLoading(true);
-    
-    try {
-      const response = await authService.signIn(email, password);
-      
-      if (response.success) {
-        console.log(`✅ Demo login successful for ${role}: ${email}`);
-        // Navigation will be handled by auth state change
-      } else {
-        setErrors({
-          general: response.error || 'Failed to sign in with demo account. Please try again.'
-        });
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Demo login failed:', error);
-      setErrors({
-        general: error.message || 'Failed to sign in with demo account. Please try again.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     setErrors({});
@@ -179,7 +144,7 @@ const LoginScreen = () => {
       const response = await authService.signIn(identifier, password);
       
       if (response.success) {
-        console.log('✅ Manual login successful');
+        console.log('✅ Login successful');
         // Navigation is handled by AuthContext state change in AppNavigator
       } else {
         setErrors({ 
@@ -188,7 +153,7 @@ const LoginScreen = () => {
       }
       
     } catch (error: any) {
-      console.error('❌ Manual login failed:', error);
+      console.error('❌ Login failed:', error);
       setErrors({ 
         general: error.message || 'Network error. Please check your connection and try again.' 
       });
@@ -216,26 +181,6 @@ const LoginScreen = () => {
     }
   };
 
-  const showDemoCredentials = () => {
-    const buttons = [
-      ...demoCredentials.map(cred => ({
-        text: `${cred.role}: ${cred.email}`,
-        onPress: () => handleDemoLogin(cred.email, cred.password, cred.role),
-        style: 'default' as const
-      })),
-      {
-        text: 'Cancel',
-        style: 'cancel' as const,
-        onPress: () => {}
-      }
-    ];
-
-    Alert.alert(
-      'Demo Accounts',
-      'Choose a demo account to sign in with:',
-      buttons
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -259,90 +204,6 @@ const LoginScreen = () => {
             </View>
           </View>
 
-          {/* Demo Login Section */}
-          {TESTING_CONFIG.SHOW_DEMO_SECTION && (
-            <View style={styles.demoContainer}>
-              <View style={styles.demoBadge}>
-                <Ionicons name="flask-outline" size={16} color={colors.info} />
-                <Text style={styles.demoText}>Demo Mode</Text>
-              </View>
-              
-              <Text style={styles.demoDescription}>
-                Quick access to demo accounts for testing{'\n'}
-                <Text style={styles.demoNote}>
-                  Note: Demo accounts must be created in Supabase first
-                </Text>
-              </Text>
-              
-              <View style={styles.demoButtonContainer}>
-                <TouchableOpacity 
-                  style={styles.demoButton}
-                  onPress={showDemoCredentials}
-                  disabled={loading}
-                >
-                  <Ionicons name="people-outline" size={16} color={colors.white} />
-                  <Text style={styles.demoButtonText}>Try Demo Accounts</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.actionButtonsContainer}>
-                
-                <TouchableOpacity 
-                  style={styles.createUsersButton}
-                  onPress={async () => {
-                    setLoading(true);
-                    try {
-                      await authService.createTestUsers();
-                      Alert.alert('Success', 'Test users created! Check console for details.');
-                    } catch (error) {
-                      Alert.alert('Error', 'Failed to create test users. Check console.');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <Ionicons name="person-add-outline" size={16} color={colors.primary} />
-                  <Text style={styles.createUsersButtonText}>Create Test Users</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.createSampleDataButton}
-                  onPress={async () => {
-                    setLoading(true);
-                    try {
-                      // Insert sample data for demo provider
-                      const demoProviderId = await authService.checkUserExists('demo.provider@buzybees.com');
-                      if (demoProviderId) {
-                        const response = await authService.insertSampleProviderData();
-                        if (response.success) {
-                          Alert.alert('Success', 'Sample provider data created! You can now test the provider dashboard.');
-                        } else {
-                          Alert.alert('Error', response.error || 'Failed to create sample data.');
-                        }
-                      } else {
-                        Alert.alert('Info', 'Please create test users first, then try again.');
-                      }
-                    } catch (error) {
-                      Alert.alert('Error', 'Failed to create sample data. Check console.');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <Ionicons name="business-outline" size={16} color={colors.info} />
-                  <Text style={styles.createSampleDataButtonText}>Create Sample Data</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.dividerContainer}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>OR LOGIN MANUALLY</Text>
-                <View style={styles.divider} />
-              </View>
-            </View>
-          )}
 
           {errors.general && (
             <View style={styles.errorContainer}>
@@ -525,109 +386,6 @@ const styles = StyleSheet.create({
     color: colors.gray500,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  demoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-    padding: 20,
-    backgroundColor: colors.gray50,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  demoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EBF8FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#93C5FD',
-    marginBottom: 12,
-  },
-  demoText: {
-    color: colors.info,
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  demoDescription: {
-    color: colors.gray600,
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  demoNote: {
-    color: colors.gray400,
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  demoButtonContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  demoButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.info,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: colors.info,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  demoButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  createUsersButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  createUsersButtonText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  createSampleDataButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderWidth: 2,
-    borderColor: colors.info,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  createSampleDataButtonText: {
-    color: colors.info,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
   },
   errorContainer: {
     flexDirection: 'row',
