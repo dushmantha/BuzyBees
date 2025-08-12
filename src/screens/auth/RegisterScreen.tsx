@@ -11,7 +11,8 @@ import {
   Alert, 
   StatusBar,
   Modal,
-  Animated
+  Animated,
+  ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -21,6 +22,8 @@ import { RootStackParamList } from '../../navigation/AppNavigator';
 
 // FIXED IMPORT - Use individual imports instead of destructuring
 import { authService, locationService } from '../../lib/supabase/index';
+import { googleSignInService } from '../../services/auth/googleSignIn';
+import { appleSignInService } from '../../services/auth/appleSignIn';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -98,6 +101,8 @@ const RegisterScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [emailChecked, setEmailChecked] = useState(false);
@@ -746,6 +751,126 @@ const RegisterScreen = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setErrors({});
+    setGoogleLoading(true);
+    
+    try {
+      console.log('🔄 Starting Google Sign-In for registration...');
+      const result = await googleSignInService.signIn();
+      
+      if (result.success) {
+        console.log('✅ Google Sign-In successful for registration');
+        
+        // Show success message for new users during registration
+        if (result.isNewUser) {
+          Alert.alert(
+            'Welcome!',
+            'Your account has been created successfully with Google. Welcome to BuzyBees!',
+            [{ text: 'Get Started', style: 'default' }]
+          );
+        } else {
+          // Existing user signing in through registration screen
+          Alert.alert(
+            'Welcome Back!',
+            'You already have an account. You have been signed in successfully.',
+            [{ text: 'Continue', style: 'default' }]
+          );
+        }
+        
+        // Clear form data
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: '',
+          address: '',
+        });
+        setSelectedLocation(null);
+        setLocationQuery('');
+        setErrors({});
+        setTouched({});
+        
+        // Navigation is handled by AuthContext state change in AppNavigator
+      } else {
+        console.error('❌ Google Sign-In failed:', result.error);
+        setErrors({ 
+          general: result.error || 'Google sign-in failed. Please try again.' 
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Google Sign-In error:', error);
+      setErrors({ 
+        general: error.message || 'An error occurred during Google sign-in. Please try again.' 
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setErrors({});
+    setAppleLoading(true);
+    
+    try {
+      console.log('🔄 Starting Apple Sign-In for registration...');
+      const result = await appleSignInService.signIn();
+      
+      if (result.success) {
+        console.log('✅ Apple Sign-In successful for registration');
+        
+        // Show success message for new users during registration
+        if (result.isNewUser) {
+          Alert.alert(
+            'Welcome!',
+            'Your account has been created successfully with Apple. Welcome to BuzyBees!',
+            [{ text: 'Get Started', style: 'default' }]
+          );
+        } else {
+          // Existing user signing in through registration screen
+          Alert.alert(
+            'Welcome Back!',
+            'You already have an account. You have been signed in successfully.',
+            [{ text: 'Continue', style: 'default' }]
+          );
+        }
+        
+        // Clear form data
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: '',
+          address: '',
+        });
+        setSelectedLocation(null);
+        setLocationQuery('');
+        setErrors({});
+        setTouched({});
+        
+        // Navigation is handled by AuthContext state change in AppNavigator
+      } else {
+        console.error('❌ Apple Sign-In failed:', result.error);
+        setErrors({ 
+          general: result.error || 'Apple sign-in failed. Please try again.' 
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Apple Sign-In error:', error);
+      setErrors({ 
+        general: error.message || 'An error occurred during Apple sign-in. Please try again.' 
+      });
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   const showDatepicker = () => {
     setShowDatePicker(true);
   };
@@ -797,7 +922,7 @@ const RegisterScreen = () => {
                   value={formData.firstName}
                   onChangeText={(text) => handleChange('firstName', text)}
                   onBlur={() => handleBlur('firstName')}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 {errors.firstName && <Text style={styles.fieldError}>{errors.firstName}</Text>}
               </View>
@@ -813,7 +938,7 @@ const RegisterScreen = () => {
                   value={formData.lastName}
                   onChangeText={(text) => handleChange('lastName', text)}
                   onBlur={() => handleBlur('lastName')}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 {errors.lastName && <Text style={styles.fieldError}>{errors.lastName}</Text>}
               </View>
@@ -837,7 +962,7 @@ const RegisterScreen = () => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <View style={styles.inputIcon}>
                   {emailChecked && !errors.email ? (
@@ -865,7 +990,7 @@ const RegisterScreen = () => {
                   onChangeText={(text) => handleChange('phone', text)}
                   onBlur={() => handleBlur('phone')}
                   keyboardType="phone-pad"
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <View style={styles.inputIcon}>
                   {phoneChecked && !errors.phone ? (
@@ -897,12 +1022,12 @@ const RegisterScreen = () => {
                         setShowLocationSuggestions(true);
                       }
                     }}
-                    editable={!loading && !isGettingLocation}
+                    editable={!loading && !googleLoading && !appleLoading && !isGettingLocation}
                   />
                   <TouchableOpacity
                     style={styles.locationButton}
                     onPress={getCurrentLocation}
-                    disabled={loading || isGettingLocation || locationSearchLoading}
+                    disabled={loading || googleLoading || appleLoading || isGettingLocation || locationSearchLoading}
                   >
                     {isGettingLocation ? (
                       <Ionicons name="hourglass-outline" size={20} color={colors.primary} />
@@ -992,7 +1117,7 @@ const RegisterScreen = () => {
                 onFocus={dismissLocationSuggestions}
                 multiline
                 numberOfLines={3}
-                editable={!loading}
+                editable={!loading && !googleLoading}
               />
               {errors.address && <Text style={styles.fieldError}>{errors.address}</Text>}
             </View>
@@ -1002,7 +1127,7 @@ const RegisterScreen = () => {
               <TouchableOpacity 
                 style={styles.dateInput}
                 onPress={showDatepicker}
-                disabled={loading}
+                disabled={loading || googleLoading || appleLoading}
               >
                 <Text style={styles.dateText}>
                   {birthDate.toLocaleDateString('en-NZ', { 
@@ -1045,7 +1170,7 @@ const RegisterScreen = () => {
                       gender === item.key && styles.genderButtonActive
                     ]}
                     onPress={() => setGender(item.key as any)}
-                    disabled={loading}
+                    disabled={loading || googleLoading || appleLoading}
                   >
                     <Ionicons 
                       name={item.icon as any} 
@@ -1080,12 +1205,12 @@ const RegisterScreen = () => {
                   onBlur={() => handleBlur('password')}
                   onFocus={dismissLocationSuggestions}
                   secureTextEntry={!showPassword}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
-                  disabled={loading}
+                  disabled={loading || googleLoading || appleLoading}
                 >
                   <Ionicons 
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
@@ -1132,12 +1257,12 @@ const RegisterScreen = () => {
                   onBlur={() => handleBlur('confirmPassword')}
                   onFocus={dismissLocationSuggestions}
                   secureTextEntry={!showConfirmPassword}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={loading}
+                  disabled={loading || googleLoading || appleLoading}
                 >
                   <Ionicons 
                     name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
@@ -1150,9 +1275,9 @@ const RegisterScreen = () => {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || googleLoading || appleLoading) && styles.buttonDisabled]}
               onPress={handleRegister}
-              disabled={loading}
+              disabled={loading || googleLoading || appleLoading}
             >
               {loading ? (
                 <View style={styles.buttonContent}>
@@ -1163,6 +1288,48 @@ const RegisterScreen = () => {
                 <View style={styles.buttonContent}>
                   <Text style={styles.buttonText}>Create Account</Text>
                   <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.googleButton, (loading || googleLoading) && styles.socialButtonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+            >
+              {googleLoading ? (
+                <View style={styles.googleButtonContent}>
+                  <ActivityIndicator size="small" color="#4285F4" style={{ marginRight: 12 }} />
+                  <Text style={styles.googleButtonText}>Creating account...</Text>
+                </View>
+              ) : (
+                <View style={styles.googleButtonContent}>
+                  <Ionicons name="logo-google" size={20} color="#4285F4" />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
+              onPress={handleAppleSignIn}
+              disabled={loading || googleLoading || appleLoading}
+            >
+              {appleLoading ? (
+                <View style={styles.socialButtonContent}>
+                  <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
+                  <Text style={styles.socialButtonText}>Creating account...</Text>
+                </View>
+              ) : (
+                <View style={styles.socialButtonContent}>
+                  <Ionicons name="logo-apple" size={20} color={colors.gray900} />
+                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -1646,6 +1813,79 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.gray200,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: colors.gray400,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#3C4043',
+    fontWeight: '500',
+  },
+  socialButtonSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  socialButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: colors.darkAccent,
+    fontWeight: '600',
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
   },
   // Success Modal Styles
   modalOverlay: {

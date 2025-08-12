@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../navigation/AppNavigator';
 import { authService } from '../../lib/supabase/index';
 import { RootStackParamList } from '../../navigation/AppNavigator';
+import { googleSignInService } from '../../services/auth/googleSignIn';
+import { appleSignInService } from '../../services/auth/appleSignIn';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -44,6 +46,8 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -162,22 +166,77 @@ const LoginScreen = () => {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+  const handleGoogleSignIn = async () => {
+    setErrors({});
+    setGoogleLoading(true);
+    
     try {
-      setLoading(true);
+      console.log('🔄 Starting Google Sign-In process...');
+      const result = await googleSignInService.signIn();
       
-      Alert.alert(
-        'Coming Soon',
-        `${provider === 'google' ? 'Google' : 'Apple'} sign-in will be available in the next update!`,
-        [{ text: 'OK' }]
-      );
+      if (result.success) {
+        console.log('✅ Google Sign-In successful');
+        // Navigation is handled by AuthContext state change in AppNavigator
+        
+        // Show welcome message for new users
+        if (result.isNewUser) {
+          Alert.alert(
+            'Welcome!',
+            'Your account has been created successfully. Welcome to BuzyBees!',
+            [{ text: 'Get Started', style: 'default' }]
+          );
+        }
+      } else {
+        console.error('❌ Google Sign-In failed:', result.error);
+        setErrors({ 
+          general: result.error || 'Google sign-in failed. Please try again.' 
+        });
+      }
       
     } catch (error: any) {
-      setErrors({
-        general: `${provider} sign-in failed. Please try again.`
+      console.error('❌ Google Sign-In error:', error);
+      setErrors({ 
+        general: error.message || 'An error occurred during Google sign-in. Please try again.' 
       });
     } finally {
-      setLoading(false);
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setErrors({});
+    setAppleLoading(true);
+    
+    try {
+      console.log('🔄 Starting Apple Sign-In process...');
+      const result = await appleSignInService.signIn();
+      
+      if (result.success) {
+        console.log('✅ Apple Sign-In successful');
+        // Navigation is handled by AuthContext state change in AppNavigator
+        
+        // Show welcome message for new users
+        if (result.isNewUser) {
+          Alert.alert(
+            'Welcome!',
+            'Your account has been created successfully. Welcome to BuzyBees!',
+            [{ text: 'Get Started', style: 'default' }]
+          );
+        }
+      } else {
+        console.error('❌ Apple Sign-In failed:', result.error);
+        setErrors({ 
+          general: result.error || 'Apple sign-in failed. Please try again.' 
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Apple Sign-In error:', error);
+      setErrors({ 
+        general: error.message || 'An error occurred during Apple sign-in. Please try again.' 
+      });
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -231,7 +290,7 @@ const LoginScreen = () => {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <View style={styles.inputIcon}>
                   <Ionicons 
@@ -265,12 +324,12 @@ const LoginScreen = () => {
                   onChangeText={(text) => handleInputChange('password', text)}
                   onBlur={() => handleBlur('password')}
                   secureTextEntry={!showPassword}
-                  editable={!loading}
+                  editable={!loading && !googleLoading && !appleLoading}
                 />
                 <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
-                  disabled={loading}
+                  disabled={loading || googleLoading || appleLoading}
                 >
                   <Ionicons 
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
@@ -283,9 +342,9 @@ const LoginScreen = () => {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || googleLoading || appleLoading) && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || googleLoading || appleLoading}
             >
               {loading ? (
                 <View style={styles.buttonContent}>
@@ -306,21 +365,39 @@ const LoginScreen = () => {
             </View>
 
             <TouchableOpacity 
-              style={[styles.socialButton, loading && styles.socialButtonDisabled]}
-              onPress={() => handleSocialLogin('google')}
-              disabled={loading}
+              style={[styles.googleButton, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={loading || googleLoading || appleLoading}
             >
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
+              {googleLoading ? (
+                <View style={styles.googleButtonContent}>
+                  <ActivityIndicator size="small" color="#4285F4" style={{ marginRight: 12 }} />
+                  <Text style={styles.googleButtonText}>Signing in...</Text>
+                </View>
+              ) : (
+                <View style={styles.googleButtonContent}>
+                  <Ionicons name="logo-google" size={20} color="#4285F4" />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.socialButtonSecondary, loading && styles.socialButtonDisabled]}
-              onPress={() => handleSocialLogin('apple')}
-              disabled={loading}
+              style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
+              onPress={handleAppleSignIn}
+              disabled={loading || googleLoading || appleLoading}
             >
-              <Ionicons name="logo-apple" size={20} color={colors.gray900} />
-              <Text style={styles.socialButtonText}>Continue with Apple</Text>
+              {appleLoading ? (
+                <View style={styles.socialButtonContent}>
+                  <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
+                  <Text style={styles.socialButtonText}>Signing in...</Text>
+                </View>
+              ) : (
+                <View style={styles.socialButtonContent}>
+                  <Ionicons name="logo-apple" size={20} color={colors.gray900} />
+                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <View style={styles.footer}>
@@ -518,6 +595,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#3C4043',
+    fontWeight: '500',
+  },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -552,6 +656,11 @@ const styles = StyleSheet.create({
   },
   socialButtonDisabled: {
     opacity: 0.6,
+  },
+  socialButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   socialButtonText: {
     marginLeft: 12,
