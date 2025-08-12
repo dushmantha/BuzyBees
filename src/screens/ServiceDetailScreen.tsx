@@ -24,7 +24,9 @@ const transformShopToService = (shop: CompleteShopData): Service => ({
   duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 0,
   category_id: (shop.category || 'general').toLowerCase().replace(/\s+/g, '-'),
   category: shop.category || 'General', // Add category field for header display
-  image: shop.images && shop.images.length > 0 ? shop.images[0] : '',
+  image: shop.images && shop.images.length > 0 ? shop.images[0] : 
+         shop.image_url || shop.logo_url || 
+         'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&auto=format',
   rating: shop.rating || 0,
   reviews_count: shop.reviews_count || 0,
   professional_name: shop.staff && shop.staff.length > 0 ? shop.staff[0].name : '',
@@ -87,6 +89,7 @@ type ServiceDetailScreenRouteProp = RouteProp<RootStackParamList, 'ServiceDetail
 // Define service type for tab components
 type ServiceTabProps = {
   service: Service;
+  reviewStats?: {total_reviews: number; average_rating: number} | null;
 };
 
 // Image Carousel Component
@@ -101,10 +104,17 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Use provided images array
-  const imageList = images.length > 0 ? images : (service.image ? [service.image] : []);
+  // Use images directly - no complex state management
+  const imageList = images;
   
-  console.log('📷 ImageCarousel received:', imageList.length, 'images');
+  // Debug logging to track when ImageCarousel renders
+  console.log('🖼️ ImageCarousel render:', {
+    imagesCount: images.length,
+    serviceId: service?.id,
+    serviceName: service?.name,
+    firstImage: imageList[0],
+    allImages: imageList
+  });
 
   // Get image type label with proper categorization
   const getImageTypeLabel = (imageUrl: string, index: number, images: any) => {
@@ -145,32 +155,41 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
 
   return (
     <View style={styles.imageContainer}>
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        style={styles.imageScrollView}
-      >
-        {imageList.length > 0 ? (
-          imageList.map((image, index) => (
+      {/* Multiple shop images from provider_businesses table */}
+      {imageList.length > 1 ? (
+        <ScrollView 
+          ref={scrollViewRef}
+          horizontal 
+          pagingEnabled 
+          showsHorizontalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            const slideIndex = Math.round(nativeEvent.contentOffset.x / nativeEvent.layoutMeasurement.width);
+            setCurrentIndex(slideIndex);
+          }}
+          scrollEventThrottle={16}
+        >
+          {imageList.map((imageUrl, index) => (
             <Image
               key={index}
-              source={{ uri: image }}
+              source={{ uri: imageUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&auto=format' }}
               style={styles.serviceImage}
               resizeMode="cover"
+              onError={(error) => {
+                console.log('Service image failed to load:', error.nativeEvent?.error || 'Unknown error');
+              }}
             />
-          ))
-        ) : (
-          <View style={[styles.serviceImage, styles.noImageContainer]}>
-            <Ionicons name="image-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.noImageText}>No images available</Text>
-          </View>
-        )}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      ) : (
+        <Image
+          source={{ uri: imageList[0] || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&auto=format' }}
+          style={styles.serviceImage}
+          resizeMode="cover"
+          onError={(error) => {
+            console.log('Single service image failed to load:', error.nativeEvent?.error || 'Unknown error');
+          }}
+        />
+      )}
 
       {/* Back Button */}
       <TouchableOpacity 
@@ -226,7 +245,14 @@ const StaffSelectionSection: React.FC<{
   staffMembers: any[];
   selectedStaff: string | null;
   onSelectStaff: (staffId: string) => void;
-}> = ({ staffMembers, selectedStaff, onSelectStaff }) => (
+}> = ({ staffMembers, selectedStaff, onSelectStaff }) => {
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+  const handleImageError = (staffId: string) => {
+    setFailedImages(prev => new Set(prev).add(staffId));
+  };
+
+  return (
   <View style={styles.staffSection}>
     <View style={styles.sectionHeader}>
       <Ionicons name="people-outline" size={20} color="#666" />
@@ -243,8 +269,12 @@ const StaffSelectionSection: React.FC<{
           onPress={() => onSelectStaff(staff.id)}
         >
           <View style={styles.staffAvatar}>
-            {staff.avatar_url ? (
-              <Image source={{ uri: staff.avatar_url }} style={styles.staffImage} />
+            {staff.avatar_url && !failedImages.has(staff.id) ? (
+              <Image 
+                source={{ uri: staff.avatar_url }} 
+                style={styles.staffImage}
+                onError={() => handleImageError(staff.id)}
+              />
             ) : (
               <View style={styles.staffPlaceholder}>
                 <Ionicons name="person" size={30} color="#9CA3AF" />
@@ -277,7 +307,8 @@ const StaffSelectionSection: React.FC<{
       ))}
     </ScrollView>
   </View>
-);
+  );
+};
 
 // Tab components with real shop data
 const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
@@ -591,23 +622,149 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
   );
 };
 
-const ReviewsTab: React.FC<ServiceTabProps> = ({ service }) => (
-  <View style={styles.tabContent}>
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="star-outline" size={20} color="#666" />
-        <Text style={styles.sectionTitle}>Reviews</Text>
-      </View>
-      <Text style={styles.descriptionText}>
-        {service.reviews_count || 0} reviews • {service.rating || 0} ⭐
-      </Text>
-      <View style={styles.reviewsPlaceholder}>
-        <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
-        <Text style={styles.reviewsPlaceholderText}>Reviews feature coming soon</Text>
+const ReviewsTab: React.FC<ServiceTabProps> = ({ service, reviewStats }) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        setLoadingReviews(true);
+        const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
+        const response = await reviewsAPI.getProviderBusinessReviews(service.id, 10, 0);
+        
+        if (response.success && response.data) {
+          setReviews(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    if (service?.id) {
+      fetchReviews();
+    }
+  }, [service?.id]);
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Ionicons key={`star-${i}`} name="star" size={16} color="#F59E0B" />);
+    }
+    
+    if (hasHalfStar && fullStars < 5) {
+      stars.push(<Ionicons key="star-half" name="star-half" size={16} color="#F59E0B" />);
+    }
+    
+    const emptyStars = 5 - Math.ceil(rating);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<Ionicons key={`star-empty-${i}`} name="star-outline" size={16} color="#D1D5DB" />);
+    }
+    
+    return stars;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  };
+
+  return (
+    <View style={styles.tabContent}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="star-outline" size={20} color="#666" />
+          <Text style={styles.sectionTitle}>Reviews</Text>
+        </View>
+        <Text style={styles.descriptionText}>
+          {reviewStats?.total_reviews || service.reviews_count || 0} reviews • {reviewStats?.average_rating?.toFixed(1) || service.rating || 0} ⭐
+        </Text>
+        
+        {loadingReviews ? (
+          <View style={styles.reviewsPlaceholder}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.reviewsPlaceholderText}>Loading reviews...</Text>
+          </View>
+        ) : reviews.length > 0 ? (
+          <View style={styles.reviewsList}>
+            {reviews.map((review, index) => (
+              <View key={review.id || index} style={styles.reviewItem}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewerInfo}>
+                    <View style={styles.reviewerAvatar}>
+                      <Ionicons name="person-circle" size={40} color="#D1D5DB" />
+                    </View>
+                    <View style={styles.reviewerDetails}>
+                      <Text style={styles.reviewerName}>Customer</Text>
+                      <View style={styles.reviewRating}>
+                        {renderStars(review.overall_rating || 5)}
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.reviewDate}>{formatDate(review.created_at)}</Text>
+                </View>
+                
+                {review.comment && (
+                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                )}
+                
+                {(review.service_quality_rating || review.punctuality_rating || 
+                  review.cleanliness_rating || review.value_rating) && (
+                  <View style={styles.reviewDetailsGrid}>
+                    {review.service_quality_rating && (
+                      <View style={styles.reviewDetailItem}>
+                        <Text style={styles.reviewDetailLabel}>Service</Text>
+                        <Text style={styles.reviewDetailValue}>{review.service_quality_rating}/5</Text>
+                      </View>
+                    )}
+                    {review.punctuality_rating && (
+                      <View style={styles.reviewDetailItem}>
+                        <Text style={styles.reviewDetailLabel}>Punctuality</Text>
+                        <Text style={styles.reviewDetailValue}>{review.punctuality_rating}/5</Text>
+                      </View>
+                    )}
+                    {review.cleanliness_rating && (
+                      <View style={styles.reviewDetailItem}>
+                        <Text style={styles.reviewDetailLabel}>Cleanliness</Text>
+                        <Text style={styles.reviewDetailValue}>{review.cleanliness_rating}/5</Text>
+                      </View>
+                    )}
+                    {review.value_rating && (
+                      <View style={styles.reviewDetailItem}>
+                        <Text style={styles.reviewDetailLabel}>Value</Text>
+                        <Text style={styles.reviewDetailValue}>{review.value_rating}/5</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.reviewsPlaceholder}>
+            <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.reviewsPlaceholderText}>No reviews yet</Text>
+            <Text style={styles.reviewsSubtext}>Be the first to review this service!</Text>
+          </View>
+        )}
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 const ServiceDetailScreen: React.FC = () => {
   const navigation = useNavigation<ServiceDetailNavigationProp>();
@@ -649,6 +806,71 @@ const ServiceDetailScreen: React.FC = () => {
   const [shopData, setShopData] = useState<CompleteShopData | null>(null);
   const [businessHoursForHeader, setBusinessHoursForHeader] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState<{total_reviews: number; average_rating: number} | null>(null);
+  const [realReviews, setRealReviews] = useState<any[]>([]);
+  
+  // Get images from shopData (provider_businesses table)
+  const allServiceImages = React.useMemo(() => {
+    console.log('🔄 Computing allServiceImages from shopData:', {
+      hasShopData: !!shopData,
+      hasImages: !!shopData?.images,
+      imagesType: typeof shopData?.images,
+      isArray: Array.isArray(shopData?.images),
+      imageCount: Array.isArray(shopData?.images) ? shopData.images.length : 0,
+      images: shopData?.images,
+      image_url: shopData?.image_url,
+      logo_url: shopData?.logo_url
+    });
+
+    if (shopData?.images && Array.isArray(shopData.images) && shopData.images.length > 0) {
+      // Use images from provider_businesses.images column
+      const validImages = shopData.images.filter(img => img && typeof img === 'string');
+      console.log('✅ Using images array:', validImages);
+      return validImages;
+    } else if (shopData?.image_url) {
+      // Fallback to single image_url if available
+      console.log('📷 Using single image_url fallback:', shopData.image_url);
+      return [shopData.image_url];
+    } else if (shopData?.logo_url) {
+      // Last fallback to logo_url
+      console.log('🏢 Using logo_url fallback:', shopData.logo_url);
+      return [shopData.logo_url];
+    } else {
+      // Default fallback images only if no database images
+      console.log('⚠️ Using fallback images - no database images found');
+      return [
+        'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&auto=format',
+        'https://images.unsplash.com/photo-1519659528534-7fd733a832a0?w=400&h=300&fit=crop&auto=format',
+        'https://images.unsplash.com/photo-1552693673-1bf958298935?w=400&h=300&fit=crop&auto=format'
+      ];
+    }
+  }, [shopData?.images, shopData?.image_url, shopData?.logo_url]);
+
+  // Debug loading state changes
+  console.log('🔄 ServiceDetailScreen render:', {
+    loading,
+    hasService: !!service,
+    serviceId: service?.id,
+    imagesCount: allServiceImages.length,
+    shopDataImages: shopData?.images,
+    shopDataImageUrl: shopData?.image_url,
+    shopDataLogoUrl: shopData?.logo_url,
+    finalImages: allServiceImages,
+    shopDataLoaded: !!shopData
+  });
+
+  // Helper function to get closing time
+  const getClosingTime = () => {
+    if (!businessHoursForHeader || businessHoursForHeader.length === 0) {
+      return '8:00 pm';
+    }
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const todayHours = businessHoursForHeader.find(bh => 
+      bh && bh.day && typeof bh.day === 'string' && 
+      bh.day.toLowerCase() === currentDay
+    );
+    return todayHours?.close_time || '8:00 pm';
+  };
 
   // Helper function to check if business is currently open
   const isBusinessOpen = () => {
@@ -705,16 +927,42 @@ const ServiceDetailScreen: React.FC = () => {
       console.log('🔍 Route service ID:', routeServiceId, 'Type:', typeof routeServiceId);
 
       try {
-        setLoading(true);
+        // Don't set loading true if we already have a service (prevent flicker)
+        if (!service) {
+          setLoading(true);
+        }
         setError(null);
         
         console.log('🔍 Fetching service details for ID:', routeServiceId);
+        console.log('🔍 normalizedShopService available:', !!normalizedShopService);
+        
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+        );
         
         // Fetch shop using normalized service (same as ShopDetailsScreen uses)
-        const shopResponse = await normalizedShopService.getShopById(routeServiceId);
+        const shopResponse = await Promise.race([
+          normalizedShopService.getShopById(routeServiceId),
+          timeoutPromise
+        ]) as any;
         
         if (!shopResponse.success || !shopResponse.data) {
-          throw new Error(shopResponse.error || 'Failed to fetch shop details');
+          console.log('❌ Normalized service failed, trying direct Supabase query...');
+          
+          // Fallback: Direct query to provider_businesses table
+          const { data: directShopData, error: directError } = await supabase
+            .from('provider_businesses')
+            .select('*')
+            .eq('id', routeServiceId)
+            .single();
+            
+          if (directError || !directShopData) {
+            throw new Error(directError?.message || shopResponse.error || 'Failed to fetch shop details');
+          }
+          
+          console.log('✅ Direct query successful:', directShopData.name);
+          shopResponse.data = directShopData;
         }
         
         const shop = shopResponse.data;
@@ -729,11 +977,19 @@ const ServiceDetailScreen: React.FC = () => {
           name: shop.name,
           category: shop.category,
           city: shop.city,
-          country: shop.country
+          country: shop.country,
+          images: shop.images,
+          image_url: shop.image_url,
+          logo_url: shop.logo_url
         });
         
         // Transform shop to service format
         const serviceData = transformShopToService(shop);
+        console.log('🎨 Service after transformation:', {
+          image: serviceData.image,
+          certificate_images: serviceData.certificate_images,
+          before_after_images: serviceData.before_after_images
+        });
         setService(serviceData);
         
         console.log('✅ Successfully loaded service details:', serviceData.name);
@@ -747,23 +1003,10 @@ const ServiceDetailScreen: React.FC = () => {
           setService(serviceData);
         }
 
-        // Load review statistics
-        try {
-          const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
-          const reviewStatsResponse = await reviewsAPI.getProviderReviewStats(routeServiceId);
-          if (reviewStatsResponse.success && reviewStatsResponse.data) {
-            setReviewStats({
-              total_reviews: reviewStatsResponse.data.total_reviews,
-              average_rating: reviewStatsResponse.data.average_rating
-            });
-          } else {
-            // Set default stats if no reviews found
-            setReviewStats({ total_reviews: 0, average_rating: 0 });
-          }
-        } catch (reviewError) {
-          console.error('❌ Error loading review stats:', reviewError);
-          setReviewStats({ total_reviews: 0, average_rating: 0 });
-        }
+        // Set default review stats (will be loaded separately)
+        setReviewStats({ total_reviews: 0, average_rating: 0 });
+        
+        console.log('✅ Basic service loading completed, will load reviews separately');
       } catch (err) {
         console.error('❌ Error loading service:', err);
         setError(err instanceof Error ? err.message : 'Failed to load service');
@@ -774,6 +1017,34 @@ const ServiceDetailScreen: React.FC = () => {
 
     loadService();
   }, [routeServiceId, routeService]);
+
+  // Load review stats separately to avoid blocking main loading
+  useEffect(() => {
+    const loadReviewStats = async () => {
+      if (!routeServiceId) return;
+      
+      try {
+        console.log('📊 Loading review stats for:', routeServiceId);
+        const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
+        const reviewStatsResponse = await reviewsAPI.getProviderReviewStats(routeServiceId);
+        
+        if (reviewStatsResponse.success && reviewStatsResponse.data) {
+          setReviewStats({
+            total_reviews: reviewStatsResponse.data.total_reviews,
+            average_rating: reviewStatsResponse.data.average_rating
+          });
+          console.log('✅ Review stats loaded:', reviewStatsResponse.data);
+        }
+      } catch (reviewError) {
+        console.error('❌ Error loading review stats:', reviewError);
+      }
+    };
+    
+    // Load review stats after a short delay to let main content render first
+    if (service) {
+      setTimeout(loadReviewStats, 500);
+    }
+  }, [routeServiceId, service]);
 
   // Load services from shop_services table
   useEffect(() => {
@@ -1113,40 +1384,7 @@ const ServiceDetailScreen: React.FC = () => {
   const selectedCount = Array.from(selectedServicesWithOptions.values())
     .reduce((sum, options) => sum + options.size, 0);
 
-  // Load shop data directly from provider_businesses for images
-  useEffect(() => {
-    if (!service?.id) return;
-    
-    const loadShopData = async () => {
-      try {
-        console.log('📷 Loading shop images from provider_businesses table...');
-        
-        // Get images directly from provider_businesses table
-        const { data: shopData, error: shopError } = await supabase
-          .from('provider_businesses')
-          .select('images, image_url, logo_url, name')
-          .eq('id', service.id)
-          .single();
-          
-        if (!shopError && shopData) {
-          console.log('📷 Shop images data loaded:', {
-            hasImages: !!shopData.images,
-            imagesType: typeof shopData.images,
-            imagesLength: Array.isArray(shopData.images) ? shopData.images.length : 'not array',
-            imageUrls: shopData.images,
-            image_url: shopData.image_url,
-            logo_url: shopData.logo_url
-          });
-          setShopData(shopData);
-        } else {
-          console.error('❌ Failed to load shop images:', shopError?.message);
-        }
-      } catch (error) {
-        console.error('❌ Error loading shop images:', error);
-      }
-    };
-    loadShopData();
-  }, [service?.id]);
+  // Images are loaded through the main loadHeaderData function using normalizedShopService
 
   // Load business hours and shop data for header
   useEffect(() => {
@@ -1187,8 +1425,36 @@ const ServiceDetailScreen: React.FC = () => {
         // Fetch complete shop data for discounts and other header info
         const shopResponse = await normalizedShopService.getShopById(service.id);
         if (shopResponse.success && shopResponse.data) {
-          console.log('🔍 Header - Shop data loaded:', shopResponse.data);
+          console.log('🔍 Header - Shop data loaded:', {
+            id: shopResponse.data.id,
+            name: shopResponse.data.name,
+            hasImages: !!shopResponse.data.images,
+            imagesType: typeof shopResponse.data.images,
+            imagesLength: Array.isArray(shopResponse.data.images) ? shopResponse.data.images.length : 'not array',
+            imageUrls: shopResponse.data.images,
+            image_url: shopResponse.data.image_url,
+            logo_url: shopResponse.data.logo_url
+          });
           setShopData(shopResponse.data);
+        }
+
+        // Fetch real reviews from database
+        try {
+          const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
+          const reviewsResponse = await reviewsAPI.getProviderBusinessReviews(service.id, 5);
+          if (reviewsResponse.success && reviewsResponse.data) {
+            console.log('📝 Real reviews loaded:', reviewsResponse.data.length);
+            setRealReviews(reviewsResponse.data);
+            
+            // Calculate real review stats
+            const totalReviews = reviewsResponse.data.length;
+            const averageRating = totalReviews > 0 
+              ? reviewsResponse.data.reduce((sum, review) => sum + review.overall_rating, 0) / totalReviews
+              : 0;
+            setReviewStats({ total_reviews: totalReviews, average_rating: averageRating });
+          }
+        } catch (reviewError) {
+          console.error('❌ Error loading reviews:', reviewError);
         }
 
         // Fetch real discounts from shop_discounts table
@@ -1246,22 +1512,22 @@ const ServiceDetailScreen: React.FC = () => {
     loadHeaderData();
   }, [service?.id]);
 
-  // Show loading state
-  if (loading) {
+  // Only show loading screen on initial load, not on subsequent updates
+  if (loading && !service) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading service details...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  // Show error state
+  // Render error state (don't use early return)  
   if (error || !service) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
           <Text style={styles.errorText}>
@@ -1274,55 +1540,9 @@ const ServiceDetailScreen: React.FC = () => {
             <Text style={styles.retryButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
-  
-  // Get images from provider_businesses.images JSONB column
-  const getAllImages = () => {
-    const allImages = [];
-    
-    console.log('📷 Getting images from provider_businesses...');
-    console.log('ShopData:', shopData);
-    
-    // Get images from provider_businesses.images (JSONB array)
-    if (shopData?.images && Array.isArray(shopData.images)) {
-      const validImages = shopData.images.filter(img => img && img.trim() !== '');
-      allImages.push(...validImages);
-      console.log('📷 Added provider_businesses.images:', validImages.length, validImages);
-    }
-    
-    // Add image_url if it exists and is not already included
-    if (shopData?.image_url && shopData.image_url.trim() !== '' && !allImages.includes(shopData.image_url)) {
-      allImages.push(shopData.image_url);
-      console.log('📷 Added provider_businesses.image_url');
-    }
-    
-    // Fallback to service image if no images found
-    if (allImages.length === 0 && service.image && service.image.trim() !== '') {
-      allImages.push(service.image);
-      console.log('📷 Added fallback service.image');
-    }
-    
-    // Add certificate images if available
-    if (service.certificate_images && Array.isArray(service.certificate_images)) {
-      const validCerts = service.certificate_images.filter(img => img && img.trim() !== '');
-      allImages.push(...validCerts);
-      console.log('🏆 Added certificate images:', validCerts.length);
-    }
-    
-    // Add before/after images if available
-    if (service.before_after_images && Array.isArray(service.before_after_images)) {
-      const validBeforeAfter = service.before_after_images.filter(img => img && img.trim() !== '');
-      allImages.push(...validBeforeAfter);
-      console.log('🔄 Added before/after images:', validBeforeAfter.length);
-    }
-    
-    console.log('📷 Final images array:', allImages.length, allImages);
-    return allImages;
-  };
-  
-  const allServiceImages = getAllImages();
 
   const handleBookNow = () => {
     if (selectedServicesWithOptions.size === 0) {
@@ -1698,16 +1918,24 @@ const ServiceDetailScreen: React.FC = () => {
       useNativeDriver: false,
       listener: (event: any) => {
         const offsetY = event.nativeEvent.contentOffset.y;
-        const headerHeight = 350; // Approximate height of image + service info
-        setIsTabsSticky(offsetY > headerHeight);
+        const headerHeight = 400; // Updated header height
+        setIsTabsSticky(offsetY > headerHeight - 100);
         
         // Auto tab switching based on scroll position
-        const sections = Object.entries(sectionRefs.current);
+        const sections = [
+          ['services', sectionRefs.current.services?.y || 0],
+          ['team', sectionRefs.current.team?.y || 0],
+          ['reviews', sectionRefs.current.reviews?.y || 0],
+          ['offers', sectionRefs.current.offers?.y || 0],
+          ['about', sectionRefs.current.about?.y || 0]
+        ];
+        
         let currentSection = 'services';
         
+        // Find the section that is currently in view
         for (let i = sections.length - 1; i >= 0; i--) {
-          const [sectionName, sectionRef] = sections[i];
-          if (offsetY >= sectionRef.y - 100) { // 100px offset for better UX
+          const [sectionName, sectionY] = sections[i];
+          if (sectionY > 0 && offsetY >= sectionY - 150) {
             currentSection = sectionName;
             break;
           }
@@ -1723,8 +1951,11 @@ const ServiceDetailScreen: React.FC = () => {
   // Function to scroll to specific section
   const scrollToSection = (sectionName: string) => {
     const sectionY = sectionRefs.current[sectionName as keyof typeof sectionRefs.current]?.y;
-    if (sectionY !== undefined && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: sectionY - 50, animated: true });
+    if (sectionY !== undefined && sectionY > 0 && scrollViewRef.current) {
+      // Account for sticky tabs height and some padding
+      const offsetY = sectionY - 120;
+      scrollViewRef.current.scrollTo({ y: Math.max(0, offsetY), animated: true });
+      setActiveTab(sectionName);
     }
   };
 
@@ -1736,7 +1967,7 @@ const ServiceDetailScreen: React.FC = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {/* Image Carousel with Overlapping Discount */}
+        {/* Image Carousel */}
         <View style={styles.imageContainer}>
           <ImageCarousel
             images={allServiceImages}
@@ -1744,10 +1975,35 @@ const ServiceDetailScreen: React.FC = () => {
             onBackPress={() => navigation.goBack()}
             onFavoritePress={handleFavoritePress}
           />
-          
-          {/* Overlapping Discount Tag - Right Side */}
+        </View>
+
+        {/* Overlapping Shop Info Section */}
+        <View style={styles.overlappingInfoContainer}>
+          {/* Shop Logo - Half overlapping with image */}
+          <View style={styles.overlappingLogo}>
+            <Image
+              source={{ 
+                uri: shopData?.logo_url || shopData?.image_url || allServiceImages[0] || 
+                'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&auto=format' 
+              }}
+              style={styles.shopLogoImage}
+              resizeMode="cover"
+              onError={(error) => {
+                console.log('Shop logo image failed to load:', error.nativeEvent?.error || 'Unknown error');
+              }}
+            />
+            {/* Open Status Badge on Logo */}
+            {isBusinessOpen() && (
+              <View style={styles.onlineStatusBadge}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.onlineText}>Open</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Discount Badge - Half overlapping with image */}
           {(service.discounts && service.discounts !== null && typeof service.discounts === 'object') && (
-            <View style={styles.overlappingDiscountTag}>
+            <View style={styles.overlappingDiscountBadge}>
               <View style={styles.discountTagTop}>
                 <Ionicons name="flash" size={16} color="#FFFFFF" />
                 <Text style={styles.discountTagText}>FLASH SALE</Text>
@@ -1762,105 +2018,50 @@ const ServiceDetailScreen: React.FC = () => {
               </View>
             </View>
           )}
-        </View>
 
-        {/* Service Info */}
-        <View style={styles.contentContainer}>
-          {/* Enhanced Header Section */}
-          <View style={styles.serviceHeaderSection}>
-            {/* Shop Info and Business Hours Row */}
-            <View style={styles.shopInfoRow}>
-              <View style={styles.shopInfoLeft}>
-                {shopData?.logo_url ? (
-                  <Image 
-                    source={{ uri: shopData.logo_url }} 
-                    style={styles.shopLogoLarge}
-                    onError={() => console.log('❌ Logo failed to load:', shopData.logo_url)}
-                    onLoad={() => console.log('✅ Logo loaded successfully')}
-                  />
-                ) : (
-                  <View style={styles.shopLogoPlaceholderLarge}>
-                    <Ionicons name="storefront" size={40} color="#F59E0B" />
-                  </View>
-                )}
-                <View style={styles.shopNameSection}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  {(service.description || shopData?.description) && (
-                    <Text style={styles.serviceDescription}>
-                      {service.description || shopData?.description}
-                    </Text>
-                  )}
+          {/* Shop Details Card */}
+          <View style={styles.shopDetailsCard}>
+            <View style={styles.shopHeader}>
+              <Text style={styles.shopTitle}>{service.salon_name || service.name}</Text>
+              <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+            </View>
+            <View style = {{paddingTop: 2, paddingBottom: 8}}>
+             <Text style={styles.shopDescription} numberOfLines={2} ellipsizeMode="tail">
+              {service.description || shopData?.description || 'Professional beauty and wellness services with experienced staff. We provide high-quality treatments in a comfortable and relaxing environment.'}
+            </Text>
+            </View>
+            <View style={styles.ratingRow}>
+              <View style={styles.ratingSection}>
+                <Text style={styles.ratingNumber}>
+                  {reviewStats?.average_rating ? reviewStats.average_rating.toFixed(1) : (service.rating || '5.0')}
+                </Text>
+                <View style={styles.starsContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons key={star} name="star" size={16} color="#F59E0B" />
+                  ))}
                 </View>
-              </View>
-
-              {/* Business Hours Badge */}
-              <View style={styles.businessHoursContainer}>
-                <View style={[styles.statusBadge, isBusinessOpen() ? styles.openBadge : styles.closedBadge]}>
-                  <View style={[styles.statusIndicator, isBusinessOpen() ? styles.openIndicator : styles.closedIndicator]} />
-                  <Text style={styles.statusText}>
-                    {isBusinessOpen() ? 'Open' : 'Closed'}
-                  </Text>
-                </View>
-                <Text style={styles.businessHoursText}>
-                  {isBusinessOpen() ? 'Closes at 6:00 PM' : 'Opens at 9:00 AM'}
+                <Text style={styles.reviewCount}>
+                  ({reviewStats?.total_reviews || service.reviews_count || realReviews.length || '0'})
                 </Text>
               </View>
             </View>
 
-            {/* Category Badge */}
-            <View style={styles.categoryRow}>
-              <View style={styles.categoryBadge}>
-                <Text style={styles.categoryText}>
-                  {service.category || shopData?.category || 'Beauty & Wellness'}
-                </Text>
-              </View>
-            </View>
+            <Text style={styles.shopLocation}>
+              {shopData?.city || 'Christchurch Central'}, {shopData?.country || 'Christchurch'}
+            </Text>
 
-            {/* Clean Rating and Price Section */}
-            <View style={styles.statsSection}>
-              {/* Rating */}
-              <View style={styles.statItem}>
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={20} color="#F59E0B" />
-                  <Text style={styles.ratingValue}>
-                    {reviewStats?.average_rating?.toFixed(1) || service.rating || 4.5}
-                  </Text>
-                </View>
-                <Text style={styles.statLabel}>
-                  {reviewStats?.total_reviews || service.reviews_count || 0} reviews
-                </Text>
-              </View>
+            <Text style={styles.shopHours}>
+              {isBusinessOpen() ? `Open until ${getClosingTime()}` : 'Closed'}
+            </Text>
 
-              {/* Price */}
-              <View style={styles.statItem}>
-                <Text style={styles.priceValue}>From {service.price || 32} SEK</Text>
-                <Text style={styles.statLabel}>{service.duration || 60} minutes</Text>
-              </View>
-
-              {/* Status */}
-              <View style={styles.statItem}>
-                <View style={[styles.statusDot, isBusinessOpen() ? styles.openDot : styles.closedDot]} />
-                <Text style={styles.statLabel}>
-                  {isBusinessOpen() ? 'Open now' : 'Closed'}
-                </Text>
-              </View>
-            </View>
           </View>
         </View>
 
+      
+
         {/* Sticky Tabs */}
-        <View style={[
-          styles.stickyTabsContainer, 
-          isTabsSticky && { 
-            paddingTop: insets.top,
-            backgroundColor: 'white',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
-          }
-        ]}>
+        {!isTabsSticky && (
+        <View style={styles.stickyTabsContainer}>
           <ScrollView 
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1906,93 +2107,58 @@ const ServiceDetailScreen: React.FC = () => {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        )}
 
         {/* All Sections Content */}
-        <View style={styles.allSectionsContainer}>
+        <View style={[styles.allSectionsContainer, { paddingBottom: 120 }]}>
           
           {/* Services Section */}
           <View 
             style={styles.sectionContainer}
             onLayout={(event) => {
-              sectionRefs.current.services.y = event.nativeEvent.layout.y + 350; // Add header height
+              sectionRefs.current.services.y = event.nativeEvent.layout.y;
             }}
           >
-            <Text style={styles.sectionHeader}>Services</Text>
-            <View style={styles.stepContainer}>
-              <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>1</Text>
-                </View>
-                <Text style={styles.stepTitle}>Select Services</Text>
-                {selectedServicesWithOptions.size > 0 && (
-                  <Text style={styles.stepCount}>{selectedServicesWithOptions.size} selected</Text>
-                )}
-              </View>
-              {renderServicesContent()}
-            </View>
+            {renderServicesContent()}
           </View>
 
           {/* Team Section */}
           <View 
             style={styles.sectionContainer}
             onLayout={(event) => {
-              sectionRefs.current.team.y = event.nativeEvent.layout.y + 350;
+              sectionRefs.current.team.y = event.nativeEvent.layout.y;
             }}
           >
-            <Text style={styles.sectionHeader}>Team</Text>
-            <View style={styles.stepContainer}>
-              <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>2</Text>
-                </View>
-                <View style={styles.stepTitleContainer}>
-                  <Text style={styles.stepTitle}>
-                    Select Staff Member
-                  </Text>
-                  {selectedServicesWithOptions.size === 0 && (
-                    <Text style={styles.stepSubtitle}>
-                      Select services first for filtering
-                    </Text>
-                  )}
-                </View>
-                {selectedStaff && (
-                  <Text style={styles.stepCount}>
-                    {staffMembers.find(s => s.id === selectedStaff)?.name || 'Selected'}
-                  </Text>
-                )}
+            {staffMembers.length > 0 ? (
+              <StaffSelectionSection 
+                staffMembers={staffMembers}
+                selectedStaff={selectedStaff}
+                onSelectStaff={setSelectedStaff}
+              />
+            ) : (
+              <View style={styles.noStaffContainer}>
+                <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.noStaffText}>No staff members available</Text>
+                <Text style={styles.noStaffSubtext}>Please contact the shop to add staff members</Text>
               </View>
-              {staffMembers.length > 0 ? (
-                <StaffSelectionSection 
-                  staffMembers={staffMembers}
-                  selectedStaff={selectedStaff}
-                  onSelectStaff={setSelectedStaff}
-                />
-              ) : (
-                <View style={styles.noStaffContainer}>
-                  <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-                  <Text style={styles.noStaffText}>No staff members available</Text>
-                  <Text style={styles.noStaffSubtext}>Please contact the shop to add staff members</Text>
-                </View>
-              )}
-            </View>
+            )}
           </View>
 
           {/* Reviews Section */}
           <View 
             style={styles.sectionContainer}
             onLayout={(event) => {
-              sectionRefs.current.reviews.y = event.nativeEvent.layout.y + 350;
+              sectionRefs.current.reviews.y = event.nativeEvent.layout.y;
             }}
           >
-            <Text style={styles.sectionHeader}>Reviews</Text>
-            <ReviewsTab service={service} />
+            <ReviewsTab service={service} reviewStats={reviewStats} />
           </View>
 
           {/* Offers Section */}
           <View 
             style={styles.sectionContainer}
             onLayout={(event) => {
-              sectionRefs.current.offers.y = event.nativeEvent.layout.y + 350;
+              sectionRefs.current.offers.y = event.nativeEvent.layout.y;
             }}
           >
             <Text style={styles.sectionHeader}>Special Offers</Text>
@@ -2053,7 +2219,7 @@ const ServiceDetailScreen: React.FC = () => {
           <View 
             style={styles.sectionContainer}
             onLayout={(event) => {
-              sectionRefs.current.about.y = event.nativeEvent.layout.y + 350;
+              sectionRefs.current.about.y = event.nativeEvent.layout.y;
             }}
           >
             <Text style={styles.sectionHeader}>About & Hours</Text>
@@ -2062,34 +2228,6 @@ const ServiceDetailScreen: React.FC = () => {
 
         </View>
 
-        {/* Fixed Book Button */}
-        <View style={styles.fixedBookButtonContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.bookButton, 
-              (selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading) && styles.bookButtonDisabled
-            ]}
-            onPress={handleBookNow}
-            disabled={selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading}
-          >
-            <View style={styles.bookButtonContent}>
-              <Text style={styles.bookButtonText}>
-                {servicesLoading 
-                  ? 'Loading...' 
-                  : (selectedServicesWithOptions.size === 0
-                    ? 'Select Services to Continue'
-                    : !selectedStaff 
-                      ? 'Select Staff to Continue'
-                      : `Book Now • ${calculatePriceBreakdown().finalTotal} SEK`
-                  )
-                }
-              </Text>
-              {selectedServicesWithOptions.size > 0 && selectedStaff && !servicesLoading && (
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
       
       {/* Fixed Sticky Tabs Overlay */}
@@ -2141,6 +2279,35 @@ const ServiceDetailScreen: React.FC = () => {
           </ScrollView>
         </View>
       )}
+      
+      {/* Fixed Book Button */}
+      <View style={[styles.fixedBookButtonContainer, { paddingBottom: insets.bottom }]}>
+        <TouchableOpacity 
+          style={[
+            styles.bookButton, 
+            (selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading) && styles.bookButtonDisabled
+          ]}
+          onPress={handleBookNow}
+          disabled={selectedServicesWithOptions.size === 0 || !selectedStaff || servicesLoading}
+        >
+          <View style={styles.bookButtonContent}>
+            <Text style={styles.bookButtonText}>
+              {servicesLoading 
+                ? 'Loading...' 
+                : (selectedServicesWithOptions.size === 0
+                  ? 'Select Services to Continue'
+                  : !selectedStaff 
+                    ? 'Select Staff to Continue'
+                    : `Book Now • ${calculatePriceBreakdown().finalTotal} SEK`
+                )
+              }
+            </Text>
+            {selectedServicesWithOptions.size > 0 && selectedStaff && !servicesLoading && (
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -2439,6 +2606,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(254, 243, 199, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
@@ -2494,6 +2672,142 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
   },
+  // Overlapping Shop Info Styles
+  overlappingInfoContainer: {
+    position: 'relative',
+    marginTop: 0, // No margin - let the logo create the overlap
+    paddingTop: 60, // Add padding to account for overlapping logo
+    paddingHorizontal: 16,
+    backgroundColor: 'transparent',
+    alignItems: 'flex-start', // Force left alignment
+    width: '100%',
+  },
+  overlappingLogo: {
+    position: 'absolute',
+    top: -40, // Position logo 40px above container (half of 80px logo height)
+    left: 16,
+    zIndex: 10,
+  },
+  shopLogoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  onlineStatusBadge: {
+    position: 'absolute',
+    bottom: -5,
+    left: -5,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+    marginRight: 4,
+  },
+  onlineText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  overlappingDiscountBadge: {
+    position: 'absolute',
+    top: -30, // Position discount badge 30px above container (half of ~60px badge height)
+    right: 16,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 10,
+  },
+  shopDetailsCard: {
+    borderRadius: 0,
+    padding: 20,
+  
+    alignItems: 'flex-start', // Align content to left
+    width: '100%',
+   
+  },
+  shopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start', // Align to left
+    marginBottom: 8,
+    width: '100%',
+  },
+  shopTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  ratingRow: {
+    marginBottom: 8,
+    width: '100%',
+    alignItems: 'flex-start',
+  },
+  ratingSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
+  ratingNumber: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginRight: 8,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 8,
+  },
+  reviewCount: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: '500',
+  },
+  shopLocation: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  shopHours: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  shopDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    width: '100%',
+  },
   imageScrollView: {
     flex: 1,
   },
@@ -2501,9 +2815,90 @@ const styles = StyleSheet.create({
     width: screenWidth,
     height: 300,
   },
+  imageWrapper: {
+    position: 'relative',
+  },
+  imageBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#E5E7EB',
+    zIndex: 1,
+  },
+  imageLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(249, 250, 251, 0.9)',
+    zIndex: 3,
+  },
+  imageErrorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    zIndex: 3,
+  },
+  debugOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderRadius: 4,
+    zIndex: 2,
+  },
+  debugText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  imageLoadingIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 15,
+    padding: 8,
+    zIndex: 1,
+  },
+  imageErrorText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  imageUrlText: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
   backButton: {
     position: 'absolute',
-    top: 44, // Adjusted for status bar height
+    top: 50, // Increased padding for better spacing from status bar
     left: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
@@ -2521,7 +2916,7 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 44, // Adjusted for status bar height
+    top: 50, // Increased padding for better spacing from status bar
     right: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
@@ -2585,7 +2980,7 @@ const styles = StyleSheet.create({
   },
   overlappingDiscountTag: {
     position: 'absolute',
-    top: 20,
+    bottom: 20,
     right: 16,
     backgroundColor: '#EF4444',
     borderRadius: 8,
@@ -2821,12 +3216,6 @@ const styles = StyleSheet.create({
   closedIndicator: {
     backgroundColor: '#EF4444',
   },
-  businessHoursText: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 4,
-    textAlign: 'right',
-  },
   categoryRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
@@ -2889,15 +3278,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionHeader: {
-    flexDirection: 'row',
+    flexDirection: 'raw',
     alignItems: 'center',
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1A2533',
-    marginLeft: 8,
   },
   optionsSectionTitle: {
     fontSize: 16,
@@ -2948,7 +3337,7 @@ const styles = StyleSheet.create({
   // Staff Selection Styles
   staffSection: {
     marginTop: 16,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   staffScroll: {
     marginTop: 12,
@@ -3469,6 +3858,77 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 12,
   },
+  reviewsSubtext: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginTop: 4,
+  },
+  reviewsList: {
+    marginTop: 16,
+  },
+  reviewItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  reviewerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewerAvatar: {
+    marginRight: 12,
+  },
+  reviewerDetails: {
+    justifyContent: 'center',
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  reviewDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  reviewDetailItem: {
+    flex: 1,
+    minWidth: '40%',
+  },
+  reviewDetailLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+  reviewDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
   // Shop logo and name styles
   shopInfoSection: {
     flex: 1,
@@ -3502,6 +3962,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   fixedBookButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
@@ -3511,6 +3975,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+    zIndex: 1000,
   },
   allSectionsContainer: {
     backgroundColor: '#FEF3C7', // Match main background
