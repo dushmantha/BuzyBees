@@ -50,6 +50,8 @@ import TermsConditionsScreen from '../screens/TermsConditionsScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
 // Import Service type with fallback
 let Service;
@@ -531,6 +533,8 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  OTPVerification: { email: string; fromScreen?: string };
+  ResetPassword: { email: string; userId?: string };
   
   // Main App Screens
   ConsumerTabs: {
@@ -931,6 +935,8 @@ const AuthNavigator = () => {
       <RootStack.Screen name="Login" component={LoginScreen} />
       <RootStack.Screen name="Register" component={RegisterScreen} />
       <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <RootStack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+      <RootStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </RootStack.Navigator>
   );
 };

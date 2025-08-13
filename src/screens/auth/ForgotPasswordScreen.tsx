@@ -70,24 +70,12 @@ const ForgotPasswordScreen = () => {
     try {
       await sendPasswordResetEmail(trimmedEmail);
       
-      // Set email sent state
-      setEmailSent(true);
+      // Navigate to OTP verification screen
+      navigation.navigate('OTPVerification', { 
+        email: trimmedEmail,
+        fromScreen: 'ForgotPassword'
+      });
       
-      Alert.alert(
-        'Reset Email Sent',
-        `We've sent a password reset link to ${trimmedEmail}. Please check your email (including spam folder) and follow the instructions to reset your password.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Optional: Navigate back to login after a delay
-              setTimeout(() => {
-                navigation.navigate('Login');
-              }, 1000);
-            }
-          }
-        ]
-      );
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 
@@ -178,7 +166,7 @@ const ForgotPasswordScreen = () => {
                   </View>
                 ) : (
                   <Text style={styles.buttonText}>
-                    Send Reset Link
+                    Send Verification Code
                   </Text>
                 )}
               </TouchableOpacity>

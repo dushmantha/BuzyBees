@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api/auth';
+import { supabase } from '../lib/supabase';
+import { authService } from '../lib/supabase/index';
 
 export interface User {
   id: string;
@@ -67,6 +69,7 @@ interface AuthContextData {
   // Testing methods
   clearAllData: () => Promise<void>;
   getCurrentUser: () => User | null;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -168,6 +171,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Update user profile using the same method as ProfileScreen
+  const updateUserProfile = useCallback(async (updates: Partial<User>): Promise<void> => {
+    if (!data.user) return;
+
+    try {
+      console.log('🔄 Updating user profile using authService...');
+      
+      // Update in Supabase Auth metadata if needed
+      if (updates.full_name || updates.avatar_url) {
+        const { error: authError } = await supabase.auth.updateUser({
+          data: {
+            full_name: updates.full_name || data.user.full_name,
+            avatar_url: updates.avatar_url || data.user.avatar_url,
+          }
+        });
+        
+        if (authError) {
+          console.error('❌ Failed to update auth profile:', authError);
+        } else {
+          console.log('✅ Auth metadata updated successfully');
+        }
+      }
+
+      // Update local state immediately for better UX
+      const updatedUser = { ...data.user, ...updates };
+      await saveAuthData(data.token!, updatedUser);
+      
+      setData(prev => ({
+        ...prev,
+        user: updatedUser,
+      }));
+      
+      console.log('✅ User profile updated successfully:', updatedUser.full_name);
+    } catch (error) {
+      console.error('❌ Failed to update user profile:', error);
+      throw error;
+    }
+  }, [data.user, data.token]);
+
   // Get current user
   const getCurrentUser = useCallback((): User | null => {
     return data.user;
@@ -221,36 +263,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       await clearAuthData();
       
-      // Auto-login with demo consumer for testing
-      console.log('🎭 Auto-logging in with demo consumer for testing...');
-      console.log('🔍 Available demo users:', Object.keys(DEMO_USERS));
-      console.log('🔍 Demo consumer user:', DEMO_USERS['consumer@example.com']);
-      
+      // Try to get current authenticated user using the same method as ProfileScreen
+      console.log('🔄 Checking for authenticated user using authService...');
       try {
-        const demoUser = transformUser(DEMO_USERS['consumer@example.com']);
-        console.log('🔍 Transformed demo user:', demoUser);
+        const currentUser = await authService.getCurrentUser();
         
-        const demoToken = `demo-token-${Date.now()}-${demoUser.id}`;
-        console.log('🔍 Generated demo token:', demoToken);
-        
-        const saveResult = await saveAuthData(demoToken, demoUser);
-        console.log('🔍 Save auth data result:', saveResult);
-        
-        setData({
-          user: demoUser,
-          token: demoToken,
-          isLoading: false,
-          isAuthenticated: true,
-          isInitializing: false,
-        });
-        
-        console.log('✅ Auto-login successful with demo user:', demoUser.email);
-        console.log('✅ Final user ID set:', demoUser.id);
-        return;
-      } catch (autoLoginError) {
-        console.error('❌ Auto-login failed:', autoLoginError);
+        if (currentUser) {
+          console.log('✅ Found authenticated Supabase user:', currentUser.email);
+          
+          // Get comprehensive user profile using the same method as ProfileScreen
+          const profileResponse = await authService.getUserProfile();
+          
+          if (profileResponse.success && profileResponse.data) {
+            const profileData = profileResponse.data;
+            console.log('✅ Found user profile:', profileData);
+            
+            // Create user data from profile
+            const userData = {
+              id: profileData.id,
+              email: profileData.email,
+              full_name: profileData.full_name || 
+                        (profileData.first_name && profileData.last_name ? `${profileData.first_name} ${profileData.last_name}` : '') ||
+                        profileData.first_name ||
+                        profileData.last_name ||
+                        currentUser.email?.split('@')[0] || 
+                        'User',
+              first_name: profileData.first_name || '',
+              last_name: profileData.last_name || '',
+              phone: profileData.phone || currentUser.phone || '',
+              avatar_url: profileData.avatar_url || currentUser.user_metadata?.avatar_url || '',
+              role: profileData.role || 'Consumer',
+              account_type: (profileData.account_type || 'consumer') as 'consumer' | 'provider',
+              created_at: profileData.created_at || currentUser.created_at,
+            };
+            
+            const transformedUser = transformUser(userData);
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            
+            if (token) {
+              await saveAuthData(token, transformedUser);
+              setData({
+                user: transformedUser,
+                token: token,
+                isAuthenticated: true,
+                isLoading: false,
+                isInitializing: false,
+              });
+              
+              console.log('✅ Loaded real user profile:', transformedUser.email, transformedUser.full_name);
+              return;
+            }
+          } else {
+            console.log('⚠️ Profile not found, using basic user data');
+            
+            // Fallback to basic Supabase user data
+            const userData = {
+              id: currentUser.id,
+              email: currentUser.email || '',
+              full_name: currentUser.user_metadata?.full_name || 
+                        currentUser.email?.split('@')[0] || 'User',
+              first_name: currentUser.user_metadata?.first_name || '',
+              last_name: currentUser.user_metadata?.last_name || '',
+              phone: currentUser.phone || '',
+              avatar_url: currentUser.user_metadata?.avatar_url || '',
+              role: 'Consumer',
+              account_type: 'consumer' as const,
+              created_at: currentUser.created_at,
+            };
+            
+            const transformedUser = transformUser(userData);
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            
+            if (token) {
+              await saveAuthData(token, transformedUser);
+              setData({
+                user: transformedUser,
+                token: token,
+                isAuthenticated: true,
+                isLoading: false,
+                isInitializing: false,
+              });
+              
+              console.log('✅ Loaded basic user data:', transformedUser.email, transformedUser.full_name);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ No authenticated user found:', error);
       }
       
+      // No auto-login with demo user - user must sign in
       setData({
         user: null,
         token: null,
@@ -588,6 +693,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         resetPassword,
         clearAllData,
         getCurrentUser,
+        updateUserProfile,
       }}
     >
       {children}
