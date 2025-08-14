@@ -2,7 +2,115 @@
 
 import { supabase } from '../../../lib/supabase';
 
+// Track the current auth token
+let authToken: string | null = null;
+
 const authAPI = {
+  // Token management
+  setAuthToken: (token: string | null) => {
+    authToken = token;
+    if (token) {
+      console.log('Auth token set');
+    }
+  },
+
+  clearAuthToken: () => {
+    authToken = null;
+    console.log('Auth token cleared');
+  },
+
+  getAuthToken: () => authToken,
+
+  isAuthenticated: () => !!authToken,
+
+  // Auth methods
+  async login(email: string, password: string) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (data?.session?.access_token) {
+        authToken = data.session.access_token;
+      }
+      return { data, error };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { data: null, error };
+    }
+  },
+
+  async register(email: string, password: string, userData: any) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+        },
+      });
+      if (data?.session?.access_token) {
+        authToken = data.session.access_token;
+      }
+      return { data, error };
+    } catch (error) {
+      console.error('Register error:', error);
+      return { data: null, error };
+    }
+  },
+
+  async signOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      authAPI.clearAuthToken();
+      return { error };
+    } catch (error) {
+      console.error('Sign out error:', error);
+      authAPI.clearAuthToken();
+      return { error };
+    }
+  },
+
+  async refreshToken() {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error('Failed to refresh token:', error);
+        return false;
+      }
+      if (data.session?.access_token) {
+        authToken = data.session.access_token;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return false;
+    }
+  },
+
+  async updatePassword(newPassword: string, accessToken?: string) {
+    try {
+      if (!newPassword || newPassword.length < 6) {
+        return { 
+          error: { 
+            message: 'Password must be at least 6 characters long' 
+          } 
+        };
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return { error };
+    } catch (error) {
+      console.error('Update password error:', error);
+      return { 
+        error: { 
+          message: 'Failed to update password. Please try again.' 
+        } 
+      };
+    }
+  },
+
   async sendPasswordResetEmail(email: string) {
     try {
       console.log('📧 Sending password reset email to:', email);
