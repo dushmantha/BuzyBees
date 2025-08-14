@@ -1816,14 +1816,14 @@ const ServiceDetailScreen: React.FC = () => {
                     <Ionicons name="cash-outline" size={16} color="#6B7280" />
                     {selectedDiscount && selectedDiscount.percentage ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.serviceDetailTextOriginal}>From {service.price || 0} SEK</Text>
-                        <Text style={styles.serviceDetailTextDiscounted}> {Math.round((service.price || 0) * (1 - selectedDiscount.percentage / 100))} SEK</Text>
+                        <Text style={styles.serviceDetailTextOriginal}>From ${service.price || 0} NZD</Text>
+                        <Text style={styles.serviceDetailTextDiscounted}> ${Math.round((service.price || 0) * (1 - selectedDiscount.percentage / 100))} NZD</Text>
                         <View style={styles.discountBadgeSmall}>
                           <Text style={styles.discountBadgeTextSmall}>{selectedDiscount.percentage}% OFF</Text>
                         </View>
                       </View>
                     ) : (
-                      <Text style={styles.serviceDetailText}>From {service.price || 0} SEK</Text>
+                      <Text style={styles.serviceDetailText}>From ${service.price || 0} NZD</Text>
                     )}
                   </View>
                 </View>
@@ -1854,13 +1854,13 @@ const ServiceDetailScreen: React.FC = () => {
                         <View style={{ flex: 1, marginLeft: 8 }}>
                           <Text style={styles.selectBaseServiceText}>Select base service</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                            <Text style={[styles.selectBaseServiceText, { textDecorationLine: 'line-through', color: '#9CA3AF', fontSize: 12 }]}>({service.price} SEK)</Text>
-                            <Text style={[styles.selectBaseServiceText, { color: '#EF4444', fontWeight: '700', marginLeft: 6 }]}>({Math.round(service.price * (1 - selectedDiscount.percentage / 100))} SEK)</Text>
-                            <Text style={[styles.selectBaseServiceText, { color: '#059669', fontSize: 10, marginLeft: 6 }]}>Save {Math.round(service.price * selectedDiscount.percentage / 100)} SEK</Text>
+                            <Text style={[styles.selectBaseServiceText, { textDecorationLine: 'line-through', color: '#9CA3AF', fontSize: 12 }]}>(${service.price} NZD)</Text>
+                            <Text style={[styles.selectBaseServiceText, { color: '#EF4444', fontWeight: '700', marginLeft: 6 }]}>(${Math.round(service.price * (1 - selectedDiscount.percentage / 100))} NZD)</Text>
+                            <Text style={[styles.selectBaseServiceText, { color: '#059669', fontSize: 10, marginLeft: 6 }]}>Save ${Math.round(service.price * selectedDiscount.percentage / 100)} NZD</Text>
                           </View>
                         </View>
                       ) : (
-                        <Text style={styles.selectBaseServiceText}>Select base service ({service.price} SEK)</Text>
+                        <Text style={styles.selectBaseServiceText}>Select base service (${service.price} NZD)</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1886,12 +1886,12 @@ const ServiceDetailScreen: React.FC = () => {
                       </View>
                       {selectedDiscount && selectedDiscount.percentage ? (
                         <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={[styles.optionPrice, { fontSize: 14, textDecorationLine: 'line-through', color: '#9CA3AF' }]}>{option.price} SEK</Text>
-                          <Text style={styles.optionPrice}>{Math.round(option.price * (1 - selectedDiscount.percentage / 100))} SEK</Text>
-                          <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '600' }}>Save {Math.round(option.price * selectedDiscount.percentage / 100)} SEK</Text>
+                          <Text style={[styles.optionPrice, { fontSize: 14, textDecorationLine: 'line-through', color: '#9CA3AF' }]}>${option.price} NZD</Text>
+                          <Text style={styles.optionPrice}>${Math.round(option.price * (1 - selectedDiscount.percentage / 100))} NZD</Text>
+                          <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '600' }}>Save ${Math.round(option.price * selectedDiscount.percentage / 100)} NZD</Text>
                         </View>
                       ) : (
-                        <Text style={styles.optionPrice}>{option.price} SEK</Text>
+                        <Text style={styles.optionPrice}>${option.price} NZD</Text>
                       )}
                     </TouchableOpacity>
                   ))
@@ -1912,13 +1912,13 @@ const ServiceDetailScreen: React.FC = () => {
                     <>
                       <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Subtotal</Text>
-                        <Text style={styles.summaryValue}>{breakdown.subtotal} SEK</Text>
+                        <Text style={styles.summaryValue}>${breakdown.subtotal} NZD</Text>
                       </View>
                       <View style={styles.summaryRow}>
                         <Text style={[styles.summaryLabel, styles.discountLabel]}>
                           Discount ({selectedDiscount.percentage}%)
                         </Text>
-                        <Text style={[styles.summaryValue, styles.discountValue]}>-{breakdown.discountAmount} SEK</Text>
+                        <Text style={[styles.summaryValue, styles.discountValue]}>-${breakdown.discountAmount} NZD</Text>
                       </View>
                     </>
                   )}
@@ -1926,15 +1926,15 @@ const ServiceDetailScreen: React.FC = () => {
                     <Text style={styles.summaryLabel}>
                       {breakdown.hasDiscount ? 'After Discount' : 'Total Price'}
                     </Text>
-                    <Text style={styles.summaryValue}>{breakdown.discountedSubtotal} SEK</Text>
+                    <Text style={styles.summaryValue}>${breakdown.discountedSubtotal} NZD</Text>
                   </View>
                   <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>GST (15%)</Text>
-                    <Text style={styles.summaryValue}>{breakdown.gstAmount} SEK</Text>
+                    <Text style={styles.summaryValue}>${breakdown.gstAmount} NZD</Text>
                   </View>
                   <View style={[styles.summaryRow, styles.finalTotalRow]}>
                     <Text style={[styles.summaryLabel, styles.finalTotalLabel]}>Final Total</Text>
-                    <Text style={[styles.summaryValue, styles.finalTotalValue]}>{breakdown.finalTotal} SEK</Text>
+                    <Text style={[styles.summaryValue, styles.finalTotalValue]}>${breakdown.finalTotal} NZD</Text>
                   </View>
                 </>
               );
@@ -2333,7 +2333,7 @@ const ServiceDetailScreen: React.FC = () => {
                   ? 'Select Services to Continue'
                   : !selectedStaff 
                     ? 'Select Staff to Continue'
-                    : `Book Now • ${calculatePriceBreakdown().finalTotal} SEK`
+                    : `Book Now • $${calculatePriceBreakdown().finalTotal} NZD`
                 )
               }
             </Text>

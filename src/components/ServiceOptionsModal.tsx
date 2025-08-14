@@ -185,7 +185,7 @@ export const ServiceOptionsModal: React.FC<ServiceOptionsModalProps> = ({
 
         <View style={styles.row}>
           <View style={[styles.optionField, styles.halfField]}>
-            <Text style={styles.fieldLabel}>Price (SEK)</Text>
+            <Text style={styles.fieldLabel}>Price (NZD)</Text>
             <TextInput
               style={styles.input}
               value={item.price.toString()}
