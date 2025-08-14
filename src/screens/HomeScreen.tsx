@@ -13,11 +13,14 @@ import {
   Dimensions,
   TextInput,
   FlatList,
-  Alert
+  Alert,
+  PermissionsAndroid,
+  Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import Geolocation from '@react-native-community/geolocation';
 import api from '../services/api/home/providerHomeAPI';
 import { shopAPI } from '../services/api/shops/shopAPI';
 import { categoryAPI } from '../services/api/categories/categoryAPI';
@@ -148,10 +151,116 @@ const HomeScreen = () => {
     professionals: []
   });
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    city?: string;
+    address?: string;
+  } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categoryShops, setCategoryShops] = useState<{[key: string]: Shop[]}>({});
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+
+  // Request location permission
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'ios') {
+      // iOS handles permissions automatically when calling getCurrentPosition
+      // No need to explicitly request permission
+      return true;
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'BuzyBees Location Permission',
+            message: 'BuzyBees needs access to your location to show nearby services.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Location permission error:', err);
+        return false;
+      }
+    }
+    return false;
+  };
+
+  // Get current location
+  const getCurrentLocation = useCallback(async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+
+    try {
+      const hasPermission = await requestLocationPermission();
+      
+      if (!hasPermission) {
+        setLocationError('Location permission denied');
+        setLocationLoading(false);
+        return;
+      }
+
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Get city name using reverse geocoding (simplified for now)
+          // In production, you'd use a proper geocoding service
+          const location = {
+            latitude,
+            longitude,
+            city: 'Current Location', // This would be fetched from geocoding API
+            address: `Within 40 km radius`
+          };
+          
+          setCurrentLocation(location);
+          setLocationLoading(false);
+          
+          console.log('📍 Location obtained:', location);
+        },
+        (error) => {
+          console.error('Location error:', error);
+          
+          // Check for specific error codes
+          let errorMessage = 'Unable to get current location';
+          if (error.code === 1) {
+            errorMessage = 'Location permission denied';
+          } else if (error.code === 2) {
+            errorMessage = 'Location unavailable';
+          } else if (error.code === 3) {
+            errorMessage = 'Location request timeout';
+          }
+          
+          setLocationError(errorMessage);
+          setLocationLoading(false);
+          
+          // Set default location as fallback
+          setCurrentLocation({
+            latitude: 59.3293, // Stockholm coordinates as default
+            longitude: 18.0686,
+            city: 'Stockholm',
+            address: 'Within 40 km radius'
+          });
+        },
+        { 
+          enableHighAccuracy: false, // Changed to false for faster response
+          timeout: 10000, // Reduced timeout
+          maximumAge: 10000 
+        }
+      );
+    } catch (error) {
+      console.error('Location service error:', error);
+      setLocationError('Location service unavailable');
+      setLocationLoading(false);
+    }
+  }, []);
 
   // Fetch home data
   const fetchHomeData = useCallback(async () => {
@@ -161,6 +270,7 @@ const HomeScreen = () => {
         authLoading, 
         premiumLoading
       });
+      // Don't set loading to false here, let auth complete first
       return;
     }
 
@@ -189,10 +299,17 @@ const HomeScreen = () => {
       let recommendedServices = [];
       
       try {
+        // Prepare location parameters if available
+        const locationParams = currentLocation ? {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          radius: 40 // 40 km radius
+        } : undefined;
+
         // First get shops with discounts for special offers
-        const discountShopsResponse = await shopAPI.getShopsWithDiscounts();
+        const discountShopsResponse = await shopAPI.getShopsWithDiscounts(locationParams);
         // Then get all shops for other sections
-        const shopsResponse = await shopAPI.getAllShops();
+        const shopsResponse = await shopAPI.getAllShops(locationParams);
         console.log('💰 Shops with discounts:', discountShopsResponse.data?.length || 0);
         console.log('🏪 All shops:', shopsResponse.data?.length || 0);
         
@@ -375,7 +492,7 @@ const HomeScreen = () => {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [authLoading, premiumLoading, user?.id, isPremium, subscription]);
+  }, [authLoading, premiumLoading, user?.id, isPremium, subscription, currentLocation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -387,15 +504,31 @@ const HomeScreen = () => {
   }, [fetchHomeData, reloadUserData]);
 
   useEffect(() => {
-    // Load fresh user data on mount
-    if (reloadUserData && !authLoading) {
-      reloadUserData().then(() => {
-        fetchHomeData();
-      });
-    } else {
+    // Load fresh user data on mount, but only after auth is ready
+    if (authLoading || premiumLoading) {
+      console.log('⏳ Waiting for auth/premium to complete...');
+      setIsLoading(true); // Ensure loading state is shown while waiting
+      return;
+    }
+
+    // Get current location when component mounts
+    getCurrentLocation();
+
+    // Simple data fetch without reloadUserData to prevent circular calls
+    console.log('📦 Fetching home data on mount...');
+    fetchHomeData().catch((error) => {
+      console.error('❌ Error in fetchHomeData:', error);
+      setIsLoading(false); // Ensure loading stops even if there's an error
+    });
+  }, [authLoading, premiumLoading, user?.id]);
+
+  // Refetch data when location changes
+  useEffect(() => {
+    if (currentLocation && !authLoading && !premiumLoading) {
+      console.log('📍 Location changed, refetching data with radius filter...');
       fetchHomeData();
     }
-  }, []);
+  }, [currentLocation]);
 
   // Search through loaded data locally
   const searchLoadedData = useCallback((query) => {
@@ -1083,10 +1216,23 @@ const HomeScreen = () => {
             </View>
           )}
           
-          <View style={styles.locationContainer}>
+          <TouchableOpacity 
+            style={styles.locationContainer}
+            onPress={getCurrentLocation}
+            disabled={locationLoading}
+          >
             <Ionicons name="location-outline" size={14} color="#6B7280" style={styles.locationIcon} />
-            <Text style={styles.locationText}>All Sweden</Text>
-          </View>
+            {locationLoading ? (
+              <ActivityIndicator size="small" color="#6B7280" style={{ marginLeft: 4 }} />
+            ) : (
+              <Text style={styles.locationText}>
+                {currentLocation 
+                  ? `${currentLocation.city || 'Current Location'} (40 km radius)`
+                  : 'Tap to get location'
+                }
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 

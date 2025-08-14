@@ -32,7 +32,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { compressLogoImage, compressShopImage, compressAvatarImage } from '../../utils/imageCompression';
 
 // Import our Supabase service and auth context
-import { authService } from '../../lib/supabase/index';
+import { authService, locationService } from '../../lib/supabase/index';
 import normalizedShopService, { supabase, ShopStaff, WorkSchedule, LeaveDate } from '../../lib/supabase/normalized';
 import integratedShopService from '../../lib/supabase/integrated';
 import { OptimizedShopService } from '../../services/api/optimizedShop';
@@ -585,6 +585,13 @@ const ShopDetailsScreen: React.FC = () => {
     email: existingShop?.email || ''
   });
 
+  // Address autocomplete state
+  const [addressQuery, setAddressQuery] = useState(existingShop?.address || '');
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const addressSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Service form state
   const [serviceForm, setServiceForm] = useState<Partial<Service>>({
     name: '', description: '', price: 0, duration: 60, category: '', assigned_staff: [], location_type: 'in_house', is_active: true
@@ -689,6 +696,110 @@ const ShopDetailsScreen: React.FC = () => {
     }
     return undefined;
   };
+
+  // Address autocomplete functions
+  const searchAddresses = async (query: string) => {
+    if (!query || query.trim().length < 3) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      return;
+    }
+
+    setIsSearchingAddress(true);
+    
+    try {
+      console.log('🔍 Searching for addresses:', query);
+      const suggestions = await locationService.searchLocations(query.trim());
+      
+      if (suggestions && Array.isArray(suggestions)) {
+        setAddressSuggestions(suggestions);
+        setShowAddressSuggestions(suggestions.length > 0);
+        console.log('✅ Found', suggestions.length, 'address suggestions');
+      } else {
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+      }
+    } catch (error) {
+      console.error('❌ Address search error:', error);
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  };
+
+  const handleAddressQueryChange = (text: string) => {
+    setAddressQuery(text);
+    
+    // Update the actual address field
+    formValues.current.address = text;
+    setShop(prev => ({ ...prev, address: text }));
+    
+    // Clear existing timeout
+    if (addressSearchTimeout.current) {
+      clearTimeout(addressSearchTimeout.current);
+    }
+    
+    // Debounce search
+    addressSearchTimeout.current = setTimeout(() => {
+      searchAddresses(text);
+    }, 300);
+  };
+
+  const selectAddress = async (suggestion: any) => {
+    try {
+      console.log('📍 Selecting address:', suggestion);
+      
+      // Update address query display
+      setAddressQuery(suggestion.description);
+      setShowAddressSuggestions(false);
+      
+      // Auto-fill all address fields
+      const addressParts = suggestion.description.split(', ');
+      const streetAddress = addressParts[0] || suggestion.description;
+      const city = suggestion.city || '';
+      const state = suggestion.state || '';
+      const country = suggestion.country || '';
+      
+      // Update form values
+      formValues.current.address = streetAddress;
+      formValues.current.city = city;
+      formValues.current.state = state;
+      formValues.current.country = country;
+      
+      // Update shop state
+      setShop(prev => ({
+        ...prev,
+        address: streetAddress,
+        city: city,
+        state: state,
+        country: country
+      }));
+      
+      console.log('✅ Address fields auto-filled:', {
+        address: streetAddress,
+        city: city,
+        state: state,
+        country: country
+      });
+      
+    } catch (error) {
+      console.error('❌ Error selecting address:', error);
+    }
+  };
+
+  const dismissAddressSuggestions = () => {
+    setShowAddressSuggestions(false);
+  };
+
+  // Cleanup address search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (addressSearchTimeout.current) {
+        clearTimeout(addressSearchTimeout.current);
+      }
+    };
+  }, []);
 
   // Helper function to append timestamp to URL
   const appendTimestamp = (url: string, timestamp: number): string => {
@@ -2915,24 +3026,71 @@ const ShopDetailsScreen: React.FC = () => {
         
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Street Address *</Text>
-          <TextInput
-            style={styles.input}
-            value={shop.address}
-            onChangeText={(text) => {
-              // Update the ref value immediately
-              formValues.current.address = text;
-              
-              // Also update state for UI
-              setShop(prev => {
-                
-                const newState = { ...prev, address: text };
-                
-                return newState;
-              });
-            }}
-            placeholder="Street address"
-            placeholderTextColor="#9CA3AF"
-          />
+          <View style={styles.addressContainer}>
+            <TextInput
+              style={styles.input}
+              value={addressQuery || shop.address}
+              onChangeText={handleAddressQueryChange}
+              onFocus={() => {
+                // Set initial query if address exists
+                if (shop.address && !addressQuery) {
+                  setAddressQuery(shop.address);
+                }
+                // Hide suggestions when focusing on other fields
+                if (showAddressSuggestions && addressSuggestions.length > 0) {
+                  setShowAddressSuggestions(true);
+                }
+              }}
+              placeholder="Type your address to search..."
+              placeholderTextColor="#9CA3AF"
+            />
+            
+            {/* Address suggestions dropdown */}
+            <Modal
+              visible={showAddressSuggestions && addressSuggestions.length > 0}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={dismissAddressSuggestions}
+            >
+              <TouchableOpacity 
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={dismissAddressSuggestions}
+              >
+                <View style={styles.modalContent}>
+                  <View style={styles.modalSuggestionsList}>
+                    <Text style={styles.modalHeader}>Address Suggestions</Text>
+                    {addressSuggestions.slice(0, 5).map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={suggestion.id || index}
+                        style={styles.modalSuggestionItem}
+                        onPress={() => selectAddress(suggestion)}
+                      >
+                        <Ionicons name="location-outline" size={16} color="#6B7280" />
+                        <Text style={styles.modalSuggestionText} numberOfLines={2}>
+                          {suggestion.description}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.modalDismissButton}
+                      onPress={dismissAddressSuggestions}
+                    >
+                      <Text style={styles.modalDismissText}>Close suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+            
+            {/* Loading indicator */}
+            {isSearchingAddress && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#00B4A6" />
+                <Text style={styles.loadingText}>Searching addresses...</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View style={styles.row}>
@@ -2945,6 +3103,7 @@ const ShopDetailsScreen: React.FC = () => {
                 formValues.current.city = text;
                 setShop(prev => ({ ...prev, city: text }));
               }}
+              onFocus={dismissAddressSuggestions}
               placeholder="City"
               placeholderTextColor="#9CA3AF"
             />
@@ -2959,6 +3118,7 @@ const ShopDetailsScreen: React.FC = () => {
                 formValues.current.state = text;
                 setShop(prev => ({ ...prev, state: text }));
               }}
+              onFocus={dismissAddressSuggestions}
               placeholder="State"
               placeholderTextColor="#9CA3AF"
             />
@@ -2974,6 +3134,7 @@ const ShopDetailsScreen: React.FC = () => {
               formValues.current.country = text;
               setShop(prev => ({ ...prev, country: text }));
             }}
+            onFocus={dismissAddressSuggestions}
             placeholder="Country"
             placeholderTextColor="#9CA3AF"
           />
@@ -6051,6 +6212,84 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: 16,
     color: '#9CA3AF',
+  },
+  // Address autocomplete styles
+  addressContainer: {
+    position: 'relative',
+  },
+  // Old address suggestion styles - no longer used (replaced with Modal)
+  // Modal address suggestions styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'transparent',
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalSuggestionsList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    padding: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalSuggestionText: {
+    fontSize: 14,
+    color: '#1F2937',
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
+  },
+  modalDismissButton: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  modalDismissText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    marginTop: 4,
+    borderRadius: 6,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 8,
   },
   webPickerContainer: {
     backgroundColor: '#FFFFFF',
