@@ -173,7 +173,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Ionicons name="arrow-back" size={24} color="#1A2533" />
             </TouchableOpacity>
             <Text style={styles.title}>Enter Verification Code</Text>
           </View>
@@ -181,7 +181,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Illustration */}
           <View style={styles.illustrationContainer}>
             <View style={styles.illustration}>
-              <Ionicons name="mail" size={60} color="#00C9A7" />
+              <Ionicons name="mail" size={60} color="#1A2533" />
             </View>
           </View>
 
@@ -245,7 +245,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={styles.resendButton}
               >
                 {isResending ? (
-                  <ActivityIndicator size="small" color="#00C9A7" />
+                  <ActivityIndicator size="small" color="#1A2533" />
                 ) : (
                   <Text style={styles.resendButtonText}>Resend Code</Text>
                 )}
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A2533',
   },
   illustrationContainer: {
     alignItems: 'center',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   instructionsContainer: {
     alignItems: 'center',
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 8,
   },
   subInstructionText: {
@@ -346,15 +346,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A2533',
     backgroundColor: '#FFFFFF',
   },
   otpInputFilled: {
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     backgroundColor: '#F0FDF9',
   },
   verifyButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   resendButtonText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
   },

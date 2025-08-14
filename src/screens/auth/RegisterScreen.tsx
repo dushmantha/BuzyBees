@@ -61,11 +61,11 @@ interface LocationSuggestion {
 }
 
 
-// Brand Theme Colors - Updated to Mint Green Theme
+// Brand Theme Colors - Updated to Navy Blue Theme
 const colors = {
-  primary: '#00C9A7',
-  secondary: '#00C9A7',
-  darkAccent: '#1F2937',
+  primary: '#1A2533',
+  secondary: '#1A2533',
+  darkAccent: '#1A2533',
   lightAccent: '#F0FFFE',
   success: '#10B981',
   warning: '#F97316',
@@ -77,10 +77,10 @@ const colors = {
   gray200: '#E5E7EB',
   gray300: '#D1D5DB',
   gray400: '#9CA3AF',
-  gray500: '#6B7280',
+  gray500: '#1A2533',
   gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
+  gray700: '#1A2533',
+  gray800: '#1A2533',
   gray900: '#111827',
 };
 

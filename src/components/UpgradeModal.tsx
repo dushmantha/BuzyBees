@@ -197,7 +197,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             style={styles.closeButton}
             onPress={onClose}
           >
-            <Ionicons name="close" size={24} color="#6B7280" />
+            <Ionicons name="close" size={24} color="#1A2533" />
           </TouchableOpacity>
         </View>
         
@@ -209,7 +209,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           {/* Hero Section */}
           <View style={styles.heroSection}>
             <View style={styles.heroIcon}>
-              <Ionicons name="star" size={48} color="#F59E0B" />
+              <Ionicons name="star" size={48} color="#1A2533" />
             </View>
             <Text style={styles.heroTitle}>{title}</Text>
             <Text style={styles.heroSubtitle}>{subtitle}</Text>
@@ -323,7 +323,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <View style={styles.socialProofHeader}>
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons key={star} name="star" size={16} color="#F59E0B" />
+                  <Ionicons key={star} name="star" size={16} color="#1A2533" />
                 ))}
               </View>
               <Text style={styles.socialProofRating}>4.9/5 from 1,200+ users</Text>
@@ -378,7 +378,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </TouchableOpacity>
 
           <Text style={styles.secureText}>
-            <Ionicons name="shield-checkmark" size={14} color="#6B7280" /> Secure payment • Cancel anytime
+            <Ionicons name="shield-checkmark" size={14} color="#1A2533" /> Secure payment • Cancel anytime
           </Text>
           
           {selectedPlan && (
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: 32,
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   },
   featureDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     lineHeight: 20,
   },
 
@@ -551,12 +551,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   pricingOptionSelected: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FFFBEB',
+    borderColor: '#1A2533',
+    backgroundColor: '#F8F9FA',
   },
   pricingOptionRecommended: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FFFBEB',
+    borderColor: '#1A2533',
+    backgroundColor: '#F8F9FA',
   },
   pricingHeader: {
     flexDirection: 'row',
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -10,
     right: 16,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   },
   pricingDescription: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
 
   // Benefits List
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
   },
 
   // Social Proof
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
+    borderLeftColor: '#1A2533',
   },
   socialProofHeader: {
     flexDirection: 'row',
@@ -659,14 +659,14 @@ const styles = StyleSheet.create({
   },
   socialProofText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     fontStyle: 'italic',
     lineHeight: 20,
     marginBottom: 8,
   },
   socialProofAuthor: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
 
@@ -681,12 +681,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 12,
     gap: 8,
-    shadowColor: '#F59E0B',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   laterButtonText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '500',
   },
@@ -716,12 +716,12 @@ const styles = StyleSheet.create({
   },
   secureText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   selectedPlanText: {
     fontSize: 12,
-    color: '#F59E0B',
+    color: '#1A2533',
     textAlign: 'center',
     fontWeight: '600',
     marginTop: 4,
@@ -738,13 +738,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    borderColor: '#F59E0B',
+    borderColor: '#1A2533',
   },
   radioButtonInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
   },
 });
 

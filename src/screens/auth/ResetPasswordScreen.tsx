@@ -151,7 +151,7 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
               >
-                <Ionicons name="arrow-back" size={24} color="#333" />
+                <Ionicons name="arrow-back" size={24} color="#1A2533" />
               </TouchableOpacity>
               <Text style={styles.title}>Create New Password</Text>
             </View>
@@ -159,7 +159,7 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Illustration */}
             <View style={styles.illustrationContainer}>
               <View style={styles.illustration}>
-                <Ionicons name="lock-closed" size={60} color="#00C9A7" />
+                <Ionicons name="lock-closed" size={60} color="#1A2533" />
               </View>
             </View>
 
@@ -288,7 +288,7 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Security Note */}
             <View style={styles.securityContainer}>
-              <Ionicons name="shield-checkmark" size={20} color="#00C9A7" />
+              <Ionicons name="shield-checkmark" size={20} color="#1A2533" />
               <Text style={styles.securityText}>
                 Your password will be encrypted and stored securely.
               </Text>
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A2533',
   },
   illustrationContainer: {
     alignItems: 'center',
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   instructionsContainer: {
     alignItems: 'center',
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   inputContainer: {
     marginBottom: 24,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#1A2533',
     marginBottom: 8,
   },
   passwordInputContainer: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   resetButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

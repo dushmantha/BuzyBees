@@ -259,7 +259,7 @@ export const ServiceOptionsModal: React.FC<ServiceOptionsModalProps> = ({
               ))}
 
               <TouchableOpacity style={styles.addButton} onPress={handleAddOption}>
-                <Ionicons name="add-circle-outline" size={24} color="#F59E0B" />
+                <Ionicons name="add-circle-outline" size={24} color="#1A2533" />
                 <Text style={styles.addButtonText}>Add Option</Text>
               </TouchableOpacity>
 
@@ -320,19 +320,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#1A2533',
+    backgroundColor: '#F8F9FA',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   closeButton: {
     padding: 4,
   },
   serviceName: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     paddingHorizontal: 20,
     paddingTop: 10,
     fontWeight: '500',
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   optionsList: {
     padding: 20,
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
   optionNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
   },
   deleteButton: {
     padding: 4,
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 6,
     fontWeight: '500',
   },
@@ -414,10 +415,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   switchButtonActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#1A2533',
   },
   switchText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '600',
     fontSize: 13,
   },
@@ -431,12 +432,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#1A2533',
     borderRadius: 12,
     borderStyle: 'dashed',
   },
   addButtonText: {
-    color: '#F59E0B',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
@@ -477,14 +478,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   saveButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
     marginLeft: 8,
   },
   disabledButton: {
     opacity: 0.6,
   },
   cancelButtonText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
   },

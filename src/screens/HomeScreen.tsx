@@ -1058,11 +1058,6 @@ const HomeScreen = () => {
             Hello{user ? ` ${user.full_name || user.first_name || user.email?.split('@')[0] || 'there'}` : ''}! 👋
           </Text>
           <Text style={styles.headerTitle}>What would you like to book?</Text>
-          {__DEV__ && (
-            <Text style={styles.debugText}>
-              Debug: Premium={isPremium ? 'Yes' : 'No'} | Type={subscription?.subscription_type || 'None'} | Status={subscription?.subscription_status || 'None'}
-            </Text>
-          )}
         </View>
         {user && (
           <TouchableOpacity style={styles.profileButton}>
