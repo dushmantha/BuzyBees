@@ -34,7 +34,6 @@ interface ValidationErrors {
   phone?: string;
   password?: string;
   confirmPassword?: string;
-  address?: string;
   location?: string;
   general?: string;
 }
@@ -93,7 +92,6 @@ const RegisterScreen = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    address: '',
   });
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [birthDate, setBirthDate] = useState<Date>(new Date(2000, 0, 1));
@@ -418,12 +416,6 @@ const RegisterScreen = () => {
     return null;
   };
 
-  const validateAddress = (address: string): string | null => {
-    if (!address) return 'Address is required';
-    if (address.length < 10) return 'Please enter a complete address (minimum 10 characters)';
-    if (address.length > 200) return 'Address is too long (maximum 200 characters)';
-    return null;
-  };
 
   const validateLocation = (location: LocationData | null): string | null => {
     if (!location) return 'Please select your location';
@@ -616,7 +608,6 @@ const RegisterScreen = () => {
     newErrors.phone = validatePhone(formData.phone);
     newErrors.password = validatePassword(formData.password);
     newErrors.confirmPassword = validateConfirmPassword(formData.confirmPassword, formData.password);
-    newErrors.address = validateAddress(formData.address);
     newErrors.location = validateLocation(selectedLocation);
 
     // Validate age
@@ -694,7 +685,6 @@ const RegisterScreen = () => {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         phone: formData.phone.trim(),
-        address: formData.address.trim(),
         location: selectedLocation!,
         gender,
         birthDate: birthDate.toISOString().split('T')[0],
@@ -786,7 +776,6 @@ const RegisterScreen = () => {
           phone: '',
           password: '',
           confirmPassword: '',
-          address: '',
         });
         setSelectedLocation(null);
         setLocationQuery('');
@@ -846,7 +835,6 @@ const RegisterScreen = () => {
           phone: '',
           password: '',
           confirmPassword: '',
-          address: '',
         });
         setSelectedLocation(null);
         setLocationQuery('');
@@ -1014,7 +1002,7 @@ const RegisterScreen = () => {
                       errors.location && styles.inputError,
                       !errors.location && selectedLocation && styles.inputSuccess
                     ]}
-                    placeholder="Search for your city or location"
+                    placeholder="Search for your address, city or location"
                     value={locationQuery}
                     onChangeText={handleLocationQueryChange}
                     onFocus={() => {
@@ -1030,12 +1018,26 @@ const RegisterScreen = () => {
                     disabled={loading || googleLoading || appleLoading || isGettingLocation || locationSearchLoading}
                   >
                     {isGettingLocation ? (
-                      <Ionicons name="hourglass-outline" size={20} color={colors.primary} />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <Ionicons name="location" size={20} color={colors.primary} />
                     )}
                   </TouchableOpacity>
                 </View>
+                
+                {/* Enhanced "Use Current Location" button when no location is selected */}
+                {!selectedLocation && !isGettingLocation && locationPermissionStatus !== 'denied' && (
+                  <TouchableOpacity
+                    style={styles.useCurrentLocationButton}
+                    onPress={getCurrentLocation}
+                    disabled={loading || googleLoading || appleLoading || isGettingLocation || locationSearchLoading}
+                  >
+                    <View style={styles.useCurrentLocationContent}>
+                      <Ionicons name="location-outline" size={18} color={colors.white} />
+                      <Text style={styles.useCurrentLocationText}>Use Current Location</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
                 
                 {showLocationSuggestions && locationSuggestions.length > 0 && (
                   <View style={styles.suggestionsList}>
@@ -1101,26 +1103,6 @@ const RegisterScreen = () => {
               </Text>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Address *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.textArea,
-                  errors.address && styles.inputError,
-                  !errors.address && touched.address && formData.address && styles.inputSuccess
-                ]}
-                placeholder="Enter your complete address"
-                value={formData.address}
-                onChangeText={(text) => handleChange('address', text)}
-                onBlur={() => handleBlur('address')}
-                onFocus={dismissLocationSuggestions}
-                multiline
-                numberOfLines={3}
-                editable={!loading && !googleLoading}
-              />
-              {errors.address && <Text style={styles.fieldError}>{errors.address}</Text>}
-            </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Date of Birth *</Text>
@@ -1756,6 +1738,30 @@ const styles = StyleSheet.create({
     color: colors.warning,
     marginLeft: 6,
     flex: 1,
+  },
+  // Enhanced location button styles
+  useCurrentLocationButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  useCurrentLocationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  useCurrentLocationText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   button: {
     backgroundColor: colors.primary,

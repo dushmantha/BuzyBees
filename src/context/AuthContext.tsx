@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api/auth';
 import { supabase } from '../lib/supabase';
 import { authService } from '../lib/supabase/index';
+import { premiumService } from '../lib/premium/premiumService';
 
 export interface User {
   id: string;
@@ -159,6 +160,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (api.clearAuthToken) {
         api.clearAuthToken();
       }
+      
+      // Clear premium cache
+      premiumService.clearCache();
+      console.log('🗑️ Premium cache cleared during clearAllData');
+      
       setData({
         user: null,
         token: null,
@@ -535,6 +541,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Save token and user data to AsyncStorage
       await saveAuthData(token, user);
 
+      // Clear premium cache for new user to prevent data leakage
+      premiumService.clearCache();
+      console.log('🗑️ Premium cache cleared for new user sign in');
+
       // Update the auth state
       setData({
         user,
@@ -632,6 +642,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (api.signOut) {
         await api.signOut();
       }
+      
+      // Clear premium subscription cache to prevent user data leakage
+      premiumService.clearCache();
+      console.log('🗑️ Premium cache cleared on sign out');
       
       // Clear local auth data
       await clearAuthData();

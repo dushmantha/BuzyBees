@@ -21,6 +21,7 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const tokenRefreshInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Load subscription data on mount and set up token refresh
@@ -53,6 +54,24 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
         clearInterval(tokenRefreshInterval.current);
         tokenRefreshInterval.current = null;
       }
+    };
+  }, []);
+
+  // Watch for auth state changes to reload subscription
+  useEffect(() => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event);
+        
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          // Reload subscription when auth state changes
+          await loadSubscription();
+        }
+      }
+    );
+
+    return () => {
+      authSubscription?.unsubscribe();
     };
   }, []);
 
@@ -92,6 +111,29 @@ export const PremiumProvider: React.FC<PremiumProviderProps> = ({ children }) =>
     try {
       setIsLoading(true);
       console.log('📦 Loading subscription in context...');
+      
+      // Get current user to detect user changes
+      const { data: { user } } = await supabase.auth.getUser();
+      const newUserId = user?.id || null;
+      
+      // If user changed, reset state
+      if (currentUserId && currentUserId !== newUserId) {
+        console.log('🔄 User changed, resetting premium context state');
+        setSubscription(null);
+        setIsPremium(false);
+      }
+      
+      // Update current user ID
+      setCurrentUserId(newUserId);
+      
+      // Only load subscription if user is authenticated
+      if (!newUserId) {
+        setSubscription(null);
+        setIsPremium(false);
+        setIsLoading(false);
+        console.log('⚠️ No authenticated user, clearing premium state');
+        return;
+      }
       
       const sub = await premiumService.getUserSubscription();
       const premium = await premiumService.isPremium();

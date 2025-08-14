@@ -22,6 +22,7 @@ export interface PaymentHistory {
 
 class PremiumService {
   private cachedSubscription: UserSubscription | null = null;
+  private cachedUserId: string | null = null; // Track which user the cache belongs to
   private lastFetch: number = 0;
   private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
@@ -30,20 +31,30 @@ class PremiumService {
    */
   async getUserSubscription(forceRefresh: boolean = false): Promise<UserSubscription | null> {
     try {
-      // Use cache if available and not expired
-      if (!forceRefresh && this.cachedSubscription && (Date.now() - this.lastFetch) < this.CACHE_DURATION) {
-        console.log('📦 Using cached subscription data');
-        return this.cachedSubscription;
-      }
-
-      console.log('🔄 Fetching fresh subscription data');
-      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
         console.error('❌ User not authenticated:', userError);
+        this.clearCache(); // Clear cache if user not authenticated
         return null;
       }
+
+      // Clear cache if it belongs to a different user
+      if (this.cachedUserId && this.cachedUserId !== user.id) {
+        console.log('🔄 Different user detected, clearing cache');
+        this.clearCache();
+      }
+
+      // Use cache if available, not expired, and belongs to current user
+      if (!forceRefresh && 
+          this.cachedSubscription && 
+          this.cachedUserId === user.id && 
+          (Date.now() - this.lastFetch) < this.CACHE_DURATION) {
+        console.log('📦 Using cached subscription data for user:', user.id);
+        return this.cachedSubscription;
+      }
+
+      console.log('🔄 Fetching fresh subscription data for user:', user.id);
 
       const { data, error } = await supabase
         .from('users')
@@ -71,8 +82,9 @@ class PremiumService {
         stripe_customer_id: data.stripe_customer_id,
       };
 
-      // Cache the result
+      // Cache the result with user ID
       this.cachedSubscription = subscription;
+      this.cachedUserId = user.id;
       this.lastFetch = Date.now();
 
       console.log('✅ Subscription data fetched:', {
@@ -272,8 +284,16 @@ class PremiumService {
    */
   clearCache(): void {
     this.cachedSubscription = null;
+    this.cachedUserId = null;
     this.lastFetch = 0;
     console.log('🗑️ Premium subscription cache cleared');
+  }
+
+  /**
+   * Get the currently cached user ID (for detecting user switches)
+   */
+  getCachedUserId(): string | null {
+    return this.cachedUserId;
   }
 
   /**
