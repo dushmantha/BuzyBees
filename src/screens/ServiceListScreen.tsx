@@ -75,6 +75,7 @@ const ServiceListScreen = () => {
   const category = route.params?.category || 'All Services';
   const categoryId = route.params?.categoryId;
   const showPopular = route.params?.showPopular || false;
+  const servicesData = route.params?.servicesData; // Data passed from HomeScreen
 
   // State management
   const [services, setServices] = useState<Service[]>([]);
@@ -315,6 +316,58 @@ const ServiceListScreen = () => {
     try {
       if (showLoader) setLoading(true);
       
+      // If we have servicesData from HomeScreen, use that instead of API call
+      if (servicesData && servicesData.length > 0 && !searchQuery && Object.keys(filters).every(key => filters[key] === undefined)) {
+        console.log('📋 Using services data from HomeScreen:', servicesData.length, 'items');
+        
+        // Transform the data to match Service interface if needed
+        const transformedServices = servicesData.map((service, index) => ({
+          id: service.id || `service-${index}`,
+          name: service.name || service.salon_name || 'Unknown Service',
+          description: service.description || '',
+          price: service.price || 0,
+          duration: service.duration || 60,
+          category_id: categoryId || 'general',
+          image: service.image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+          rating: service.rating || 4.5,
+          reviews_count: service.reviews_count || 0,
+          professional_name: service.professional_name || 'Professional',
+          salon_name: service.salon_name || service.name || 'Salon',
+          location: service.location || 'Location',
+          distance: service.distance || '1.5 km',
+          available_times: service.available_times || ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+          certificate_images: service.certificate_images || [],
+          before_after_images: service.before_after_images || [],
+          available_time_text: service.available_time_text || 'Available today',
+          welcome_message: service.welcome_message || `Welcome to ${service.salon_name || service.name}!`,
+          special_note: service.special_note || service.description || '',
+          payment_methods: service.payment_methods || ['Card', 'Cash', 'Mobile Payment'],
+          is_favorite: service.is_favorite || false,
+          created_at: service.created_at || new Date().toISOString()
+        }));
+        
+        setServices(transformedServices);
+        setTotalResults(transformedServices.length);
+        setFilterOptions({
+          priceRange: { min: 0, max: 1000 },
+          locations: ['All Locations'],
+          durations: [30, 60, 90, 120],
+          categories: [],
+          paymentMethods: ['Card', 'Cash', 'Mobile Payment'],
+          sortOptions: [
+            { value: 'popularity', label: 'Popularity' },
+            { value: 'price', label: 'Price' },
+            { value: 'rating', label: 'Rating' },
+            { value: 'distance', label: 'Distance' }
+          ]
+        });
+        
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      // Fallback to API call if no servicesData or when searching/filtering
       const response = await apiService.getServiceListData({
         searchQuery,
         categoryId,
@@ -337,7 +390,7 @@ const ServiceListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, categoryId, showPopular, filters]);
+  }, [searchQuery, categoryId, showPopular, filters, servicesData]);
 
   // Toggle favorite
   const toggleFavorite = async (serviceId: string) => {

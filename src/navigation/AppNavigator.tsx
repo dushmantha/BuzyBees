@@ -557,6 +557,7 @@ export type RootStackParamList = {
     category: string; 
     categoryId: string;
     showPopular?: boolean;
+    servicesData?: any[]; // Optional: services data from HomeScreen
   };
   ServiceDetail: { 
     service: any; // Using any since Service type might not exist

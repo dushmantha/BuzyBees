@@ -70,6 +70,7 @@ interface AuthContextData {
   clearAllData: () => Promise<void>;
   getCurrentUser: () => User | null;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  reloadUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -214,6 +215,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const getCurrentUser = useCallback((): User | null => {
     return data.user;
   }, [data.user]);
+
+  // Reload user data from Supabase
+  const reloadUserData = useCallback(async () => {
+    try {
+      console.log('🔄 Force reloading user data from Supabase...');
+      
+      // Clear old cached demo data
+      await AsyncStorage.removeItem(USER_DATA_KEY);
+      
+      // Get current authenticated user from Supabase
+      const currentUser = await authService.getCurrentUser();
+      
+      if (currentUser) {
+        console.log('✅ Found authenticated user:', currentUser.email);
+        
+        // Get fresh profile data
+        const profileResponse = await authService.getUserProfile();
+        
+        if (profileResponse.success && profileResponse.data) {
+          const profileData = profileResponse.data;
+          console.log('✅ Loaded fresh profile:', profileData);
+          
+          // Create user data from profile
+          const userData = {
+            id: profileData.id,
+            email: profileData.email,
+            full_name: profileData.full_name || 
+                      (profileData.first_name && profileData.last_name ? `${profileData.first_name} ${profileData.last_name}` : '') ||
+                      profileData.first_name ||
+                      profileData.last_name ||
+                      currentUser.email?.split('@')[0] || 
+                      'User',
+            first_name: profileData.first_name || '',
+            last_name: profileData.last_name || '',
+            phone: profileData.phone || currentUser.phone || '',
+            avatar_url: profileData.avatar_url || currentUser.user_metadata?.avatar_url || '',
+            role: profileData.role || 'Consumer',
+            account_type: (profileData.account_type || 'consumer') as 'consumer' | 'provider',
+            created_at: profileData.created_at || currentUser.created_at,
+          };
+          
+          const transformedUser = transformUser(userData);
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          
+          if (token) {
+            await saveAuthData(token, transformedUser);
+            setData({
+              user: transformedUser,
+              token: token,
+              isAuthenticated: true,
+              isLoading: false,
+              isInitializing: false,
+            });
+            
+            console.log('✅ User data reloaded successfully:', transformedUser.email, transformedUser.full_name);
+          }
+        }
+      } else {
+        console.log('⚠️ No authenticated user found during reload');
+      }
+    } catch (error) {
+      console.error('❌ Failed to reload user data:', error);
+    }
+  }, []);
 
   // Load token and user data from storage on app start
   const loadAuthData = useCallback(async () => {
@@ -694,6 +760,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearAllData,
         getCurrentUser,
         updateUserProfile,
+        reloadUserData,
       }}
     >
       {children}

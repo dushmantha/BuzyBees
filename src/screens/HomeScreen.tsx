@@ -125,7 +125,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, reloadUserData } = useAuth();
   const { isPremium, subscription, isLoading: premiumLoading } = usePremium();
   
   const [homeData, setHomeData] = useState<HomeData>({
@@ -377,14 +377,25 @@ const HomeScreen = () => {
     }
   }, [authLoading, premiumLoading, user?.id, isPremium, subscription]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Reload user data first to get fresh profile
+    if (reloadUserData) {
+      await reloadUserData();
+    }
     fetchHomeData();
-  }, [fetchHomeData]);
+  }, [fetchHomeData, reloadUserData]);
 
   useEffect(() => {
-    fetchHomeData();
-  }, [fetchHomeData]);
+    // Load fresh user data on mount
+    if (reloadUserData && !authLoading) {
+      reloadUserData().then(() => {
+        fetchHomeData();
+      });
+    } else {
+      fetchHomeData();
+    }
+  }, []);
 
   // Search through loaded data locally
   const searchLoadedData = useCallback((query) => {
@@ -687,7 +698,38 @@ const HomeScreen = () => {
     navigation.navigate('ServiceList', {
       category: 'Popular Services',
       categoryId: 'popular',
-      showPopular: true
+      showPopular: true,
+      servicesData: homeData.popularServices
+    });
+  };
+
+  // Handle view all special offers
+  const handleViewAllSpecialOffers = () => {
+    navigation.navigate('ServiceList', {
+      category: 'Special Offers',
+      categoryId: 'special-offers',
+      showPopular: false,
+      servicesData: homeData.specialOffers
+    });
+  };
+
+  // Handle view all trending services
+  const handleViewAllTrending = () => {
+    navigation.navigate('ServiceList', {
+      category: 'Trending Services',
+      categoryId: 'trending',
+      showPopular: false,
+      servicesData: homeData.trendingServices
+    });
+  };
+
+  // Handle view all recommended services
+  const handleViewAllRecommended = () => {
+    navigation.navigate('ServiceList', {
+      category: 'Recommended Services',
+      categoryId: 'recommended',
+      showPopular: false,
+      servicesData: homeData.recommendedServices
     });
   };
 
@@ -1065,7 +1107,7 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, styles.specialOfferTitle]}>🔥 Special Offers</Text>
-              <TouchableOpacity onPress={() => console.log('View all special offers')}>
+              <TouchableOpacity onPress={handleViewAllSpecialOffers}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
             </View>
@@ -1122,7 +1164,7 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Trending</Text>
-              <TouchableOpacity onPress={() => console.log('View all trending services')}>
+              <TouchableOpacity onPress={handleViewAllTrending}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
             </View>
@@ -1176,7 +1218,7 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recommended</Text>
-              <TouchableOpacity onPress={() => console.log('View all recommended services')}>
+              <TouchableOpacity onPress={handleViewAllRecommended}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
             </View>
