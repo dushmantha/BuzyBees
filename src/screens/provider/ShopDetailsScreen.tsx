@@ -1498,7 +1498,7 @@ const ShopDetailsScreen: React.FC = () => {
             category: s.category,
             duration: s.duration,
             price: s.price,
-            currency: 'SEK',
+            currency: 'NZD',
             staff_ids: [],
             is_active: true,
             display_order: 0

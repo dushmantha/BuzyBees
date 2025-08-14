@@ -14,6 +14,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { stripeService, PRICING_PLANS } from '../lib/stripe/stripeService';
 import { usePremium } from '../contexts/PremiumContext';
 import StripeWebView from './StripeWebView';
+import { CURRENCY } from '../utils/currency';
 
 interface UpgradeModalProps {
   visible: boolean;
@@ -264,7 +265,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   )}
                 </View>
               </View>
-              <Text style={styles.pricingPrice}>${PRICING_PLANS.monthly.price}/month</Text>
+              <Text style={styles.pricingPrice}>{CURRENCY.symbol}{PRICING_PLANS.monthly.price}/month</Text>
               <Text style={styles.pricingDescription}>Perfect for trying out Pro features</Text>
             </TouchableOpacity>
             
@@ -294,7 +295,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 </View>
               </View>
               <View style={styles.pricingYearlyContainer}>
-                <Text style={styles.pricingPrice}>${PRICING_PLANS.yearly.price}/year</Text>
+                <Text style={styles.pricingPrice}>{CURRENCY.symbol}{PRICING_PLANS.yearly.price}/year</Text>
                 <Text style={styles.pricingSavings}>Save 17%</Text>
               </View>
               <Text style={styles.pricingDescription}>Best value - 2 months free!</Text>
@@ -382,7 +383,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           
           {selectedPlan && (
             <Text style={styles.selectedPlanText}>
-              Selected: {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Plan - ${selectedPlan === 'monthly' ? `${PRICING_PLANS.monthly.price}/month` : `${PRICING_PLANS.yearly.price}/year`}
+              Selected: {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Plan - {CURRENCY.symbol}{selectedPlan === 'monthly' ? `${PRICING_PLANS.monthly.price}/month` : `${PRICING_PLANS.yearly.price}/year`}
             </Text>
           )}
         </View>

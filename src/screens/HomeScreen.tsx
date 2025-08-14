@@ -26,6 +26,7 @@ import { shopAPI } from '../services/api/shops/shopAPI';
 import { categoryAPI } from '../services/api/categories/categoryAPI';
 import { useAuth } from '../context/AuthContext';
 import { usePremium } from '../contexts/PremiumContext';
+import { formatCurrency } from '../utils/currency';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 3;
@@ -985,11 +986,11 @@ const HomeScreen = () => {
           <View style={styles.servicePriceContainer}>
             {service.hasDiscount && service.originalPrice ? (
               <>
-                <Text style={styles.serviceOriginalPrice}>{service.originalPrice} kr</Text>
-                <Text style={styles.servicePrice}>{service.price} kr</Text>
+                <Text style={styles.serviceOriginalPrice}>{formatCurrency(service.originalPrice)}</Text>
+                <Text style={styles.servicePrice}>{formatCurrency(service.price)}</Text>
               </>
             ) : (
-              <Text style={styles.servicePrice}>{service.price} kr</Text>
+              <Text style={styles.servicePrice}>{formatCurrency(service.price)}</Text>
             )}
           </View>
           <Text style={styles.serviceDuration}>{service.duration} min</Text>
@@ -1148,7 +1149,7 @@ const HomeScreen = () => {
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{service.name}</Text>
                           <Text style={styles.searchResultSubtitle}>
-                            {service.professional_name} • {service.price} kr
+                            {service.professional_name} • {formatCurrency(service.price)}
                           </Text>
                         </View>
                       </TouchableOpacity>

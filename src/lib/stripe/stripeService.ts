@@ -6,13 +6,13 @@ export const STRIPE_CONFIG = {
   isTestMode: true,
 };
 
-// Pricing plans
+// Pricing plans (in NZD)
 export const PRICING_PLANS = {
   monthly: {
     id: 'monthly',
     name: 'Monthly Pro',
-    price: 9.99,
-    currency: 'usd',
+    price: 14.99,  // Adjusted for NZD
+    currency: 'nzd',
     interval: 'month',
     features: [
       'Unlimited Customer Requests',
@@ -24,8 +24,8 @@ export const PRICING_PLANS = {
   yearly: {
     id: 'yearly',
     name: 'Yearly Pro',
-    price: 99.99,
-    currency: 'usd',
+    price: 149.99,  // Adjusted for NZD
+    currency: 'nzd',
     interval: 'year',
     features: [
       'Unlimited Customer Requests',

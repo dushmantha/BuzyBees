@@ -3,6 +3,7 @@ import React from 'react';
 import mockService from './api/mock/index';
 import { ServiceOption, ServiceOptionState, ApiResponse } from '../types/service';
 import { serviceOptionsAPI, ServiceOption as APIServiceOption } from './api/serviceOptions/serviceOptionsAPI';
+import { formatCurrency, CURRENCY } from '../utils/currency';
 
 /**
  * Utility class for handling service-related API calls and data transformations
@@ -57,7 +58,7 @@ export class ServiceUtils {
         name: apiOption.option_name,
         description: apiOption.option_description || '',
         duration: `${apiOption.duration} min`,
-        price: `${apiOption.price} SEK`,
+        price: formatCurrency(apiOption.price),
         selected: index === 0, // Select first option by default
       }));
 
@@ -95,7 +96,7 @@ export class ServiceUtils {
         name: apiOption.name,
         description: apiOption.description,
         duration: `${apiOption.duration} min`,
-        price: `${apiOption.price} SEK`,
+        price: formatCurrency(apiOption.price),
         selected: apiOption.is_default || (index === 0 && !service.options.some(opt => opt.is_default)),
       }));
 
@@ -136,8 +137,8 @@ export class ServiceUtils {
   /**
    * Formats price for display
    */
-  static formatPrice(price: number, currency: string = 'SEK'): string {
-    return `${price} ${currency}`;
+  static formatPrice(price: number, currency: string = CURRENCY.code): string {
+    return formatCurrency(price);
   }
 
   /**

@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { shopAPI, Shop } from '../services/api/shops/shopAPI';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { formatCurrency } from '../utils/currency';
 
 type ServiceListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceList'>;
 type ServiceListScreenRouteProp = RouteProp<RootStackParamList, 'ServiceList'>;
@@ -709,7 +710,7 @@ const ServiceListScreen = () => {
                 <View style={styles.bottomSection}>
                   <View style={styles.priceSection}>
                     <Text style={styles.priceLabel}>From</Text>
-                    <Text style={styles.price}>{service.price} SEK</Text>
+                    <Text style={styles.price}>{formatCurrency(service.price)}</Text>
                     <View style={styles.durationContainer}>
                       <Ionicons name="time" size={12} color="#6B7280" />
                       <Text style={styles.duration}>{service.duration} min</Text>

@@ -23,6 +23,7 @@ import mockService from '../services/api/mock/index';
 import { useAuth } from '../navigation/AppNavigator';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
 import { reviewsAPI } from '../services/api/reviews/reviewsAPI';
+import { formatCurrency } from '../utils/currency';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -209,8 +210,7 @@ const BookingCard = ({
         </View>
         
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>{booking.price}</Text>
-          <Text style={styles.currency}>SEK</Text>
+          <Text style={styles.price}>{formatCurrency(booking.price)}</Text>
         </View>
       </View>
 

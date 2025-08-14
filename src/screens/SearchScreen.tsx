@@ -18,6 +18,7 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import mockService from '../services/api/mock';
+import { formatCurrency } from '../utils/currency';
 
 // Types
 interface Service {
@@ -247,7 +248,7 @@ const SearchScreen = () => {
             <Text style={styles.stars}>{renderStars(item.rating)}</Text>
             <Text style={styles.reviews}>({item.reviews_count})</Text>
           </View>
-          <Text style={styles.price}>{item.price} kr</Text>
+          <Text style={styles.price}>{formatCurrency(item.price)}</Text>
         </View>
         <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
       </View>

@@ -12,6 +12,7 @@ import { shopAPI, Shop } from '../services/api/shops/shopAPI';
 import { serviceOptionsAPI, ServiceOption } from '../services/api/serviceOptions/serviceOptionsAPI';
 import normalizedShopService, { CompleteShopData, supabase } from '../lib/supabase/normalized';
 import { favoritesAPI } from '../services/api/favorites/favoritesAPI';
+import { formatCurrency, CURRENCY } from '../utils/currency';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -595,7 +596,7 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
                   <Ionicons name="gift-outline" size={24} color="#00C9A7" />
                   <View style={styles.offerInfo}>
                     <Text style={styles.offerTitle}>
-                      {discount.type === 'percentage' ? `${discount.value}% OFF` : `${discount.value} SEK OFF`}
+                      {discount.type === 'percentage' ? `${discount.value}% OFF` : `${formatCurrency(discount.value)} OFF`}
                     </Text>
                     <Text style={styles.offerDescription}>{discount.description || 'Special offer'}</Text>
                   </View>

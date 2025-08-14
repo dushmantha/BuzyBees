@@ -16,6 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { serviceOptionsAPI, ServiceOption } from '../../services/api/serviceOptions/serviceOptionsAPI';
+import { formatCurrency, CURRENCY } from '../../utils/currency';
 
 // Navigation types
 type RootStackParamList = {
@@ -198,7 +199,7 @@ const ServiceOptionsScreen: React.FC = () => {
 
       <View style={styles.row}>
         <View style={[styles.optionField, styles.halfField]}>
-          <Text style={styles.fieldLabel}>Price (SEK)</Text>
+          <Text style={styles.fieldLabel}>Price ({CURRENCY.code})</Text>
           <TextInput
             style={styles.input}
             value={item.price.toString()}
