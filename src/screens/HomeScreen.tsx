@@ -901,7 +901,7 @@ const HomeScreen = () => {
             />
           ) : (
             <View style={styles.categoryImagePlaceholder}>
-              <Ionicons name="image-outline" size={32} color="#8E8E93" />
+              <Ionicons name="image-outline" size={32} color="#1A2533" />
             </View>
           )}
           <Text style={styles.categoryName}>{category.name}</Text>
@@ -954,7 +954,7 @@ const HomeScreen = () => {
         />
       ) : (
         <View style={styles.serviceImagePlaceholder}>
-          <Ionicons name="cut-outline" size={32} color="#8E8E93" />
+          <Ionicons name="cut-outline" size={32} color="#1A2533" />
         </View>
       )}
       
@@ -1073,11 +1073,11 @@ const HomeScreen = () => {
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color="#1A2533" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search services or categories"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor="#1A2533"
               value={searchQuery}
               onChangeText={handleSearchQueryChange}
               onSubmitEditing={handleSearch}
@@ -1085,7 +1085,7 @@ const HomeScreen = () => {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                <Ionicons name="close-circle" size={20} color="#1A2533" />
               </TouchableOpacity>
             )}
           </View>
@@ -1117,7 +1117,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('category', category)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="grid-outline" size={16} color="#00C9A7" />
+                          <Ionicons name="grid-outline" size={16} color="#1A2533" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{category.name}</Text>
@@ -1139,7 +1139,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('service', service)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="cut-outline" size={16} color="#00C9A7" />
+                          <Ionicons name="cut-outline" size={16} color="#1A2533" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{service.name}</Text>
@@ -1163,7 +1163,7 @@ const HomeScreen = () => {
                         onPress={() => handleSearchResultPress('professional', professional)}
                       >
                         <View style={styles.searchResultIcon}>
-                          <Ionicons name="person-outline" size={16} color="#00C9A7" />
+                          <Ionicons name="person-outline" size={16} color="#1A2533" />
                         </View>
                         <View style={styles.searchResultContent}>
                           <Text style={styles.searchResultTitle}>{professional.name}</Text>
@@ -1180,7 +1180,7 @@ const HomeScreen = () => {
                  searchResults.professionals.length === 0 && 
                  searchQuery.length >= 2 && !isSearching && (
                   <View style={styles.noResultsContainer}>
-                    <Ionicons name="search-outline" size={32} color="#8E8E93" />
+                    <Ionicons name="search-outline" size={32} color="#1A2533" />
                     <Text style={styles.noResultsTitle}>No results</Text>
                     <Text style={styles.noResultsText}>
                       Try different keywords or browse categories
@@ -1197,14 +1197,14 @@ const HomeScreen = () => {
                     <Text style={styles.showMoreButtonText}>
                       See all results for "{searchQuery}"
                     </Text>
-                    <Ionicons name="arrow-forward" size={16} color="#00C9A7" />
+                    <Ionicons name="arrow-forward" size={16} color="#1A2533" />
                   </TouchableOpacity>
                 )}
 
                 {/* Loading indicator */}
                 {isSearching && (
                   <View style={styles.searchLoadingContainer}>
-                    <ActivityIndicator size="small" color="#00C9A7" />
+                    <ActivityIndicator size="small" color="#1A2533" />
                     <Text style={styles.searchLoadingText}>Searching...</Text>
                   </View>
                 )}
@@ -1217,9 +1217,9 @@ const HomeScreen = () => {
             onPress={getCurrentLocation}
             disabled={locationLoading}
           >
-            <Ionicons name="location-outline" size={14} color="#6B7280" style={styles.locationIcon} />
+            <Ionicons name="location-outline" size={14} color="#1A2533" style={styles.locationIcon} />
             {locationLoading ? (
-              <ActivityIndicator size="small" color="#6B7280" style={{ marginLeft: 4 }} />
+              <ActivityIndicator size="small" color="#1A2533" style={{ marginLeft: 4 }} />
             ) : (
               <Text style={styles.locationText}>
                 {currentLocation 
@@ -1405,19 +1405,19 @@ const styles = StyleSheet.create({
   },
   headerGreeting: {
     fontSize: 16,
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
     marginBottom: 4,
     opacity: 0.8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
     letterSpacing: -0.5,
   },
   debugText: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 4,
   },
   profileButton: {
@@ -1452,8 +1452,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 8,
     borderWidth: 1.5,
-    borderColor: '#00C9A7', // Primary: Vibrant Teal
-    shadowColor: '#00C9A7',
+    borderColor: '#1A2533', // Primary: Vibrant Teal
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginRight: 12,
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
   },
   searchInput: {
     flex: 1,
@@ -1501,7 +1501,7 @@ const styles = StyleSheet.create({
   searchResultSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#F0FFFE',
@@ -1529,12 +1529,12 @@ const styles = StyleSheet.create({
   searchResultTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   searchResultSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   showMoreButton: {
     flexDirection: 'row',
@@ -1548,7 +1548,7 @@ const styles = StyleSheet.create({
   showMoreButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#1A2533',
     marginRight: 8,
   },
   searchLoadingContainer: {
@@ -1559,7 +1559,7 @@ const styles = StyleSheet.create({
   },
   searchLoadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 8,
   },
   // Debug styles - remove in production
@@ -1571,7 +1571,7 @@ const styles = StyleSheet.create({
   },
   debugText: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   // No results styles
@@ -1583,13 +1583,13 @@ const styles = StyleSheet.create({
   noResultsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 12,
     marginBottom: 4,
   },
   noResultsText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -1615,7 +1615,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   content: {
@@ -1636,7 +1636,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
   },
   specialOfferTitle: {
     fontSize: 22,
@@ -1645,7 +1645,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
     fontWeight: '600',
   },
   categoriesContainer: {
@@ -1698,7 +1698,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#00C9A7', // Primary: Vibrant Teal
+    color: '#1A2533', // Primary: Vibrant Teal
     textAlign: 'center',
     paddingHorizontal: 4,
     marginBottom: 2,
@@ -1738,7 +1738,7 @@ const styles = StyleSheet.create({
   },
   shopLoadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 8,
   },
   shopItem: {
@@ -1771,12 +1771,12 @@ const styles = StyleSheet.create({
   shopName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   shopAddress: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 4,
   },
   shopMeta: {
@@ -1790,13 +1790,13 @@ const styles = StyleSheet.create({
   },
   shopRatingText: {
     fontSize: 12,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 4,
     fontWeight: '500',
   },
   shopDistance: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   shopSeparator: {
     height: 1,
@@ -1809,7 +1809,7 @@ const styles = StyleSheet.create({
   },
   noShopsText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontStyle: 'italic',
   },
   viewAllShopsButton: {
@@ -1826,7 +1826,7 @@ const styles = StyleSheet.create({
   viewAllShopsText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#1A2533',
     marginRight: 4,
   },
   promotionsList: {
@@ -1880,7 +1880,7 @@ const styles = StyleSheet.create({
   },
   promotionDescription: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
     marginTop: 4,
   },
   servicesList: {
@@ -1924,7 +1924,7 @@ const styles = StyleSheet.create({
   },
   serviceProfessional: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
     marginBottom: 8,
   },
   serviceRating: {
@@ -1940,7 +1940,7 @@ const styles = StyleSheet.create({
   },
   reviewsText: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
     marginLeft: 4,
   },
   serviceFooter: {
@@ -1976,7 +1976,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   discountBadgeText: {
-    color: '#00C9A7', // Primary: Vibrant Teal for better contrast
+    color: '#1A2533', // Primary: Vibrant Teal for better contrast
     fontSize: 10,
     fontWeight: '700',
   },
@@ -1992,12 +1992,12 @@ const styles = StyleSheet.create({
   serviceOriginalPrice: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#8E8E93',
+    color: '#1A2533',
     textDecorationLine: 'line-through',
   },
   serviceDuration: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
   },
   bookingsList: {
     paddingHorizontal: 20,
@@ -2045,12 +2045,12 @@ const styles = StyleSheet.create({
   },
   bookingProfessional: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
     marginBottom: 2,
   },
   bookingTime: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#1A2533',
   },
   bookingStatus: {
     paddingHorizontal: 8,
@@ -2076,7 +2076,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8E8E93',
+    color: '#1A2533',
   },
   errorText: {
     fontSize: 16,

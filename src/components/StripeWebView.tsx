@@ -107,7 +107,7 @@ const StripeWebView: React.FC<StripeWebViewProps> = ({
             style={styles.closeButton}
             onPress={handleClose}
           >
-            <Ionicons name="close" size={24} color="#666" />
+            <Ionicons name="close" size={24} color="#1A2533" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Complete Payment</Text>
           <View style={styles.placeholder} />
@@ -116,7 +116,7 @@ const StripeWebView: React.FC<StripeWebViewProps> = ({
         {/* Loading Indicator */}
         {loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading secure payment...</Text>
           </View>
         )}
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   placeholder: {
     width: 40,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   errorContainer: {
@@ -220,19 +220,19 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   cancelButtonText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '500',
   },

@@ -31,7 +31,7 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer, style]}>
-        <ActivityIndicator size="small" color="#F59E0B" />
+        <ActivityIndicator size="small" color="#1A2533" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -51,7 +51,7 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
   return (
     <View style={[styles.container, styles.gateContainer, style]}>
       <View style={styles.iconContainer}>
-        <Ionicons name="star" size={24} color="#F59E0B" />
+        <Ionicons name="star" size={24} color="#1A2533" />
       </View>
       
       <Text style={styles.title}>{gateConfig.title}</Text>
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   gateContainer: {
     alignItems: 'center',
@@ -106,13 +106,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
     textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 20,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   upgradeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

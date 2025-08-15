@@ -248,7 +248,7 @@ const ServiceOptionsScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color="#1A2533" />
           </TouchableOpacity>
           <View style={styles.headerTitle}>
             <Text style={styles.title}>Service Options</Text>
@@ -259,7 +259,7 @@ const ServiceOptionsScreen: React.FC = () => {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading options...</Text>
           </View>
         ) : (
@@ -273,7 +273,7 @@ const ServiceOptionsScreen: React.FC = () => {
             {options.map((option, index) => renderOption(option, index))}
 
             <TouchableOpacity style={styles.addButton} onPress={handleAddOption}>
-              <Ionicons name="add-circle-outline" size={24} color="#00B4A6" />
+              <Ionicons name="add-circle-outline" size={24} color="#1A2533" />
               <Text style={styles.addButtonText}>Add Another Option</Text>
             </TouchableOpacity>
 
@@ -346,11 +346,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   loadingContainer: {
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   content: {
     flex: 1,
@@ -373,11 +373,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
+    borderLeftColor: '#1A2533',
   },
   infoText: {
     fontSize: 14,
-    color: '#1E40AF',
+    color: '#1A2533',
     lineHeight: 20,
   },
   optionCard: {
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   optionNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
   },
   deleteButton: {
     padding: 4,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 6,
     fontWeight: '500',
   },
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   textArea: {
     minHeight: 60,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   switchText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -467,13 +467,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     borderRadius: 12,
     borderStyle: 'dashed',
     backgroundColor: '#FFE4E1',
   },
   addButtonText: {
-    color: '#00B4A6',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
@@ -487,12 +487,12 @@ const styles = StyleSheet.create({
   exampleTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#92400E',
+    color: '#1A2533',
     marginBottom: 8,
   },
   exampleText: {
     fontSize: 13,
-    color: '#78350F',
+    color: '#1A2533',
     lineHeight: 20,
   },
   footer: {
@@ -517,14 +517,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     marginLeft: 8,
   },
   disabledButton: {
     opacity: 0.6,
   },
   cancelButtonText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
   },

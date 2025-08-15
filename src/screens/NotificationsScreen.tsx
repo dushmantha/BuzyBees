@@ -446,7 +446,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
       case 'payment':
         return '#059669';
       case 'review':
-        return '#F59E0B';
+        return '#1A2533';
       case 'reminder':
         return '#EF4444';
       case 'promotion':
@@ -461,7 +461,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
       case 'urgent':
         return '#EF4444';
       case 'high':
-        return '#F97316';
+        return '#1A2533';
       case 'normal':
         return '#3B82F6';
       case 'low':
@@ -523,7 +523,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
     },
     {
       icon: 'alarm-outline',
-      iconColor: '#F59E0B',
+      iconColor: '#1A2533',
       title: 'Smart Reminders',
       description: 'Get intelligent reminders based on your schedule'
     },
@@ -668,7 +668,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
       >
         <View style={styles.upgradeContent}>
           <View style={styles.upgradeIconContainer}>
-            <Ionicons name="star" size={24} color="#F59E0B" />
+            <Ionicons name="star" size={24} color="#1A2533" />
           </View>
           <View style={styles.upgradeTextContainer}>
             <Text style={styles.upgradeTitle}>
@@ -799,7 +799,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading notifications...</Text>
         </View>
       </SafeAreaView>
@@ -855,8 +855,8 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={['#00C9A7']}
-            tintColor="#00C9A7"
+            colors={['#1A2533']}
+            tintColor="#1A2533"
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activeFilter: {
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 14,
-    color: '#00C9A7', // Primary Vibrant Teal
+    color: '#1A2533', // Primary Navy Blue
     fontWeight: '600',
   },
   listContainer: {
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
   },
   unreadNotification: {
     borderLeftWidth: 4,
-    borderLeftColor: '#00C9A7', // Primary Vibrant Teal
+    borderLeftColor: '#1A2533', // Primary Navy Blue
   },
   notificationContent: {
     flexDirection: 'row',
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionButton: {
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

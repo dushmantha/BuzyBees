@@ -209,7 +209,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images = [], service, onB
         <Ionicons 
           name={service.is_favorite ? 'heart' : 'heart-outline'} 
           size={24} 
-          color={service.is_favorite ? '#EF4444' : '#00C9A7'} 
+          color={service.is_favorite ? '#EF4444' : '#1A2533'} 
         />
       </TouchableOpacity>
 
@@ -256,7 +256,7 @@ const StaffSelectionSection: React.FC<{
   return (
   <View style={styles.staffSection}>
     <View style={styles.sectionHeader}>
-      <Ionicons name="people-outline" size={20} color="#666" />
+      <Ionicons name="people-outline" size={20} color="#1A2533" />
       <Text style={styles.sectionTitle}>Select Staff Member</Text>
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.staffScroll}>
@@ -283,7 +283,7 @@ const StaffSelectionSection: React.FC<{
             )}
             {selectedStaff === staff.id && (
               <View style={styles.staffCheckmark}>
-                <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
+                <Ionicons name="checkmark-circle" size={24} color="#1A2533" />
               </View>
             )}
           </View>
@@ -378,7 +378,7 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
     <View style={styles.tabContent}>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="information-circle-outline" size={20} color="#666" />
+          <Ionicons name="information-circle-outline" size={20} color="#1A2533" />
           <Text style={styles.sectionTitle}>About {service.salon_name}</Text>
         </View>
         <Text style={styles.descriptionText}>
@@ -391,28 +391,28 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
           
           {shopData?.phone && (
             <View style={styles.contactItem}>
-              <Ionicons name="call-outline" size={20} color="#00C9A7" />
+              <Ionicons name="call-outline" size={20} color="#1A2533" />
               <Text style={styles.contactText}>{shopData.phone}</Text>
             </View>
           )}
           
           {shopData?.email && (
             <View style={styles.contactItem}>
-              <Ionicons name="mail-outline" size={20} color="#00C9A7" />
+              <Ionicons name="mail-outline" size={20} color="#1A2533" />
               <Text style={styles.contactText}>{shopData.email}</Text>
             </View>
           )}
           
           {shopData?.website_url && (
             <View style={styles.contactItem}>
-              <Ionicons name="globe-outline" size={20} color="#00C9A7" />
+              <Ionicons name="globe-outline" size={20} color="#1A2533" />
               <Text style={styles.contactText}>{shopData.website_url}</Text>
             </View>
           )}
 
           {shopData?.address && (
             <View style={styles.contactItem}>
-              <Ionicons name="location-outline" size={20} color="#00C9A7" />
+              <Ionicons name="location-outline" size={20} color="#1A2533" />
               <Text style={styles.contactText}>
                 {shopData.address}, {shopData.city}, {shopData.country}
               </Text>
@@ -508,7 +508,7 @@ const HoursTab: React.FC<ServiceTabProps> = ({ service }) => {
     <View style={styles.tabContent}>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="time-outline" size={20} color="#666" />
+          <Ionicons name="time-outline" size={20} color="#1A2533" />
           <Text style={styles.sectionTitle}>Opening Hours</Text>
         </View>
         
@@ -536,7 +536,7 @@ const HoursTab: React.FC<ServiceTabProps> = ({ service }) => {
         ) : shopData?.business_hours_start && shopData?.business_hours_end ? (
           <View style={styles.hoursContainer}>
             <View style={styles.basicHoursContainer}>
-              <Ionicons name="time-outline" size={20} color="#00C9A7" />
+              <Ionicons name="time-outline" size={20} color="#1A2533" />
               <Text style={styles.basicHoursText}>
                 General hours: {formatTime(shopData.business_hours_start)} - {formatTime(shopData.business_hours_end)}
               </Text>
@@ -582,7 +582,7 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
     <View style={styles.tabContent}>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="pricetag-outline" size={20} color="#666" />
+          <Ionicons name="pricetag-outline" size={20} color="#1A2533" />
           <Text style={styles.sectionTitle}>Current Offers</Text>
         </View>
         
@@ -593,7 +593,7 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
               .map((discount, index) => (
               <View key={index} style={styles.offerCard}>
                 <View style={styles.offerHeader}>
-                  <Ionicons name="gift-outline" size={24} color="#00C9A7" />
+                  <Ionicons name="gift-outline" size={24} color="#1A2533" />
                   <View style={styles.offerInfo}>
                     <Text style={styles.offerTitle}>
                       {discount.type === 'percentage' ? `${discount.value}% OFF` : `${formatCurrency(discount.value)} OFF`}
@@ -655,11 +655,11 @@ const ReviewsTab: React.FC<ServiceTabProps> = ({ service, reviewStats }) => {
     const hasHalfStar = rating % 1 >= 0.5;
     
     for (let i = 0; i < fullStars; i++) {
-      stars.push(<Ionicons key={`star-${i}`} name="star" size={16} color="#00C9A7" />);
+      stars.push(<Ionicons key={`star-${i}`} name="star" size={16} color="#1A2533" />);
     }
     
     if (hasHalfStar && fullStars < 5) {
-      stars.push(<Ionicons key="star-half" name="star-half" size={16} color="#00C9A7" />);
+      stars.push(<Ionicons key="star-half" name="star-half" size={16} color="#1A2533" />);
     }
     
     const emptyStars = 5 - Math.ceil(rating);
@@ -688,7 +688,7 @@ const ReviewsTab: React.FC<ServiceTabProps> = ({ service, reviewStats }) => {
     <View style={styles.tabContent}>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="star-outline" size={20} color="#666" />
+          <Ionicons name="star-outline" size={20} color="#1A2533" />
           <Text style={styles.sectionTitle}>Reviews</Text>
         </View>
         <Text style={styles.descriptionText}>
@@ -697,7 +697,7 @@ const ReviewsTab: React.FC<ServiceTabProps> = ({ service, reviewStats }) => {
         
         {loadingReviews ? (
           <View style={styles.reviewsPlaceholder}>
-            <ActivityIndicator size="large" color="#00C9A7" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.reviewsPlaceholderText}>Loading reviews...</Text>
           </View>
         ) : reviews.length > 0 ? (
@@ -1138,7 +1138,7 @@ const ServiceDetailScreen: React.FC = () => {
         // Transform staff data - simplified since normalized service returns proper format
         const transformedStaff = allStaff.map((staff, index) => {
           // Generate placeholder avatar if none exists
-          const avatarColors = ['#00C9A7', '#4ECDC4', '#45B7D1', '#96CEB4', '#DDA0DD'];
+          const avatarColors = ['#1A2533', '#4ECDC4', '#45B7D1', '#96CEB4', '#DDA0DD'];
           const avatarColor = avatarColors[index % avatarColors.length];
           const placeholderAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=${avatarColor.slice(1)}&color=fff&size=120`;
           
@@ -1784,7 +1784,7 @@ const ServiceDetailScreen: React.FC = () => {
       console.log('⚠️ Showing no services state - shopServices:', shopServices);
       return (
         <View style={styles.noOptionsContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#6B7280" />
+          <Ionicons name="alert-circle-outline" size={48} color="#1A2533" />
           <Text style={styles.noOptionsText}>No services available</Text>
           <Text style={styles.noOptionsSubtext}>This shop has not added any services yet</Text>
         </View>
@@ -1809,11 +1809,11 @@ const ServiceDetailScreen: React.FC = () => {
                 <Text style={styles.serviceDescription}>{service.description}</Text>
                 <View style={styles.serviceDetails}>
                   <View style={styles.serviceDetailItem}>
-                    <Ionicons name="time-outline" size={16} color="#6B7280" />
+                    <Ionicons name="time-outline" size={16} color="#1A2533" />
                     <Text style={styles.serviceDetailText}>{service.duration || 0} min</Text>
                   </View>
                   <View style={styles.serviceDetailItem}>
-                    <Ionicons name="cash-outline" size={16} color="#6B7280" />
+                    <Ionicons name="cash-outline" size={16} color="#1A2533" />
                     {selectedDiscount && selectedDiscount.percentage ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={styles.serviceDetailTextOriginal}>From ${service.price || 0} NZD</Text>
@@ -1831,7 +1831,7 @@ const ServiceDetailScreen: React.FC = () => {
               <Ionicons 
                 name={expandedServices.has(service.id || service.name) ? "chevron-up" : "chevron-down"} 
                 size={24} 
-                color="#6B7280" 
+                color="#1A2533" 
               />
             </TouchableOpacity>
             
@@ -2059,7 +2059,7 @@ const ServiceDetailScreen: React.FC = () => {
           <View style={styles.shopDetailsCard}>
             <View style={styles.shopHeader}>
               <Text style={styles.shopTitle}>{service.salon_name || service.name}</Text>
-              <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
+              <Ionicons name="checkmark-circle" size={24} color="#1A2533" />
             </View>
            
             <View style={styles.ratingRow}>
@@ -2069,7 +2069,7 @@ const ServiceDetailScreen: React.FC = () => {
                 </Text>
                 <View style={styles.starsContainer}>
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <Ionicons key={star} name="star" size={16} color="#00C9A7" />
+                    <Ionicons key={star} name="star" size={16} color="#1A2533" />
                   ))}
                 </View>
                 <Text style={styles.reviewCount}>
@@ -2411,7 +2411,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#00C9A7', // Primary amber/honey
+    backgroundColor: '#1A2533', // Primary amber/honey
   },
   tabContent: {
     flexDirection: 'row',
@@ -2423,11 +2423,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    color: '#6B7280', // Dark gray for inactive tabs
+    color: '#1A2533', // Dark gray for inactive tabs
     fontWeight: '500',
   },
   reviewBadge: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -2449,7 +2449,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cleanBadge: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -2508,13 +2508,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   stepNumberText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -2524,11 +2524,11 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   stepSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontStyle: 'italic',
     marginTop: 2,
   },
@@ -2560,7 +2560,7 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 12,
-    color: '#666',
+    color: '#1A2533',
     fontWeight: '500',
   },
   optionLeft: {
@@ -2573,7 +2573,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     marginRight: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2585,9 +2585,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   checkboxSelected: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
-    shadowColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -2613,7 +2613,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedOption: {
-    borderColor: '#00C9A7', // Primary amber/honey
+    borderColor: '#1A2533', // Primary amber/honey
     backgroundColor: '#F0FFFE', // Light accent cream honey
   },
   optionInfo: {
@@ -2622,13 +2622,13 @@ const styles = StyleSheet.create({
   optionName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 6,
     lineHeight: 20,
   },
   optionDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 6,
     lineHeight: 20,
     fontStyle: 'normal',
@@ -2645,7 +2645,7 @@ const styles = StyleSheet.create({
   optionPrice: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginRight: 12,
     textShadowColor: 'rgba(0, 201, 167, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
@@ -2672,7 +2672,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: '#1A2533',
     textAlign: 'center',
   },
   // Error states
@@ -2690,7 +2690,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#00C9A7', // Primary amber/honey
+    backgroundColor: '#1A2533', // Primary amber/honey
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -2701,7 +2701,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   retryButtonText: {
-    color: '#00C9A7', // Dark accent charcoal black
+    color: '#1A2533', // Dark accent charcoal black
     fontSize: 14,
     fontWeight: '700',
   },
@@ -2715,7 +2715,7 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: '#1A2533',
     textAlign: 'center',
   },
   // Image Carousel Styles
@@ -2814,7 +2814,7 @@ const styles = StyleSheet.create({
   shopTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     flex: 1,
   },
   ratingRow: {
@@ -2830,7 +2830,7 @@ const styles = StyleSheet.create({
   ratingNumber: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginRight: 8,
   },
   starsContainer: {
@@ -2839,22 +2839,22 @@ const styles = StyleSheet.create({
   },
   reviewCount: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
   },
   shopLocation: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 4,
   },
   shopHours: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
   },
   shopDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     lineHeight: 20,
     textAlign: 'left',
     alignSelf: 'flex-start',
@@ -2926,12 +2926,12 @@ const styles = StyleSheet.create({
   },
   imageUrlText: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 4,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2944,7 +2944,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -3015,7 +3015,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   activeDot: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     width: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -3089,7 +3089,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#00C9A7', // Dark accent charcoal black
+    color: '#1A2533', // Dark accent charcoal black
     marginBottom: 8,
   },
   ratingContainer: {
@@ -3117,13 +3117,13 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7', // Dark accent charcoal black
+    color: '#1A2533', // Dark accent charcoal black
     marginLeft: 4,
     marginRight: 8,
   },
   reviewsText: {
     fontSize: 14,
-    color: '#6B7280', // Darker gray for better readability
+    color: '#1A2533', // Darker gray for better readability
   },
   priceContainer: {
     alignItems: 'flex-end',
@@ -3131,16 +3131,16 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#00C9A7', // Dark accent charcoal black
+    color: '#1A2533', // Dark accent charcoal black
   },
   timeText: {
     fontSize: 14,
-    color: '#6B7280', // Darker gray for better readability
+    color: '#1A2533', // Darker gray for better readability
     marginTop: 4,
   },
   serviceDescription: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 6,
     marginBottom: 16,
     lineHeight: 22,
@@ -3182,7 +3182,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   discountBanner: {
     backgroundColor: '#F0FFFE', // Light accent cream honey
@@ -3208,7 +3208,7 @@ const styles = StyleSheet.create({
   discountTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 2,
   },
   discountPercentage: {
@@ -3240,7 +3240,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginRight: 16,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   shopLogoPlaceholderLarge: {
     width: 60,
@@ -3251,7 +3251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   businessHoursContainer: {
     alignItems: 'flex-end',
@@ -3300,18 +3300,18 @@ const styles = StyleSheet.create({
   ratingValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginLeft: 4,
   },
   priceValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   statusDot: {
@@ -3338,7 +3338,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 8,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -3355,15 +3355,15 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     fontSize: 14,
-    color: '#666',
+    color: '#1A2533',
   },
   descriptionText: {
     fontSize: 14,
     lineHeight: 22,
-    color: '#4A4A4A',
+    color: '#1A2533',
   },
   bookButton: {
-    backgroundColor: '#00C9A7', // Primary amber/honey
+    backgroundColor: '#1A2533', // Primary amber/honey
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -3390,7 +3390,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   bookButtonTextInactive: {
-    color: '#00C9A7', // Teal text when button is inactive
+    color: '#1A2533', // Teal text when button is inactive
   },
   // Staff Selection Styles
   staffSection: {
@@ -3419,7 +3419,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedStaffCard: {
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     backgroundColor: '#F0FFFE',
   },
   staffAvatar: {
@@ -3450,17 +3450,17 @@ const styles = StyleSheet.create({
   staffName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 2,
     width: '100%',
   },
   selectedStaffName: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   staffRole: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 4,
     fontStyle: 'italic',
@@ -3472,7 +3472,7 @@ const styles = StyleSheet.create({
   },
   staffRatingText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 2,
   },
   staffSpecialty: {
@@ -3489,13 +3489,13 @@ const styles = StyleSheet.create({
   noStaffText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     textAlign: 'center',
     marginTop: 12,
   },
   noStaffSubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -3510,13 +3510,13 @@ const styles = StyleSheet.create({
   baseServiceTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginTop: 12,
     marginBottom: 8,
   },
   baseServiceDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
@@ -3533,14 +3533,14 @@ const styles = StyleSheet.create({
   },
   baseServiceInfoText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 6,
     fontWeight: '500',
   },
   selectedPriceText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   serviceOptionCard: {
     flexDirection: 'row',
@@ -3553,7 +3553,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   selectedServiceOption: {
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     backgroundColor: '#F0FFFE',
   },
   optionRadio: {
@@ -3569,13 +3569,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioOuterSelected: {
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
   },
   optionContent: {
     flex: 1,
@@ -3590,12 +3590,12 @@ const styles = StyleSheet.create({
   },
   optionDuration: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 4,
   },
   sectionSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 24,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -3610,7 +3610,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 20,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -3620,7 +3620,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 16,
     textAlign: 'center',
     paddingBottom: 12,
@@ -3636,13 +3636,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 15,
-    color: '#374151',
+    color: '#1A2533',
     fontWeight: '600',
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   discountLabel: {
     color: '#DC2626',
@@ -3664,12 +3664,12 @@ const styles = StyleSheet.create({
   finalTotalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   finalTotalValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   noOptionsContainer: {
     alignItems: 'center',
@@ -3679,14 +3679,14 @@ const styles = StyleSheet.create({
   noOptionsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 8,
   },
   noOptionsSubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -3729,7 +3729,7 @@ const styles = StyleSheet.create({
   },
   serviceDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 8,
   },
   serviceDetails: {
@@ -3749,7 +3749,7 @@ const styles = StyleSheet.create({
   },
   serviceDetailText: {
     fontSize: 13,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
   },
   serviceDetailTextOriginal: {
@@ -3788,7 +3788,7 @@ const styles = StyleSheet.create({
   },
   noOptionsText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
   },
   selectBaseService: {
@@ -3831,8 +3831,8 @@ const styles = StyleSheet.create({
   },
   serviceOptionSelected: {
     backgroundColor: '#F0FFFE',
-    borderColor: '#00C9A7',
-    shadowColor: '#00C9A7',
+    borderColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -3869,7 +3869,7 @@ const styles = StyleSheet.create({
   },
   contactText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     flex: 1,
   },
   // Hours tab styles
@@ -3891,7 +3891,7 @@ const styles = StyleSheet.create({
   },
   hourTime: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   noHoursContainer: {
     alignItems: 'center',
@@ -4022,7 +4022,7 @@ const styles = StyleSheet.create({
   reviewerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 4,
   },
   reviewRating: {
@@ -4035,7 +4035,7 @@ const styles = StyleSheet.create({
   },
   reviewComment: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -4059,7 +4059,7 @@ const styles = StyleSheet.create({
   reviewDetailValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   // Shop logo and name styles
   shopInfoSection: {
@@ -4076,7 +4076,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   shopLogoPlaceholder: {
     width: 50,
@@ -4087,7 +4087,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   shopNameSection: {
     flex: 1,
@@ -4127,11 +4127,11 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 16,
     paddingBottom: 8,
     borderBottomWidth: 2,
-    borderBottomColor: '#00C9A7',
+    borderBottomColor: '#1A2533',
   },
   offersContent: {
     gap: 16,
@@ -4159,19 +4159,19 @@ const styles = StyleSheet.create({
   discountTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 4,
   },
   noOffersText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     fontStyle: 'italic',
     paddingVertical: 20,
   },
   discountDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -4182,13 +4182,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   selectedDiscountButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
   },
   selectDiscountText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -4231,12 +4231,12 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: '#1A2533',
     textTransform: 'capitalize',
   },
   timeText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   noHoursContainer: {

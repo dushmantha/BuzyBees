@@ -560,7 +560,7 @@ const EarningsScreen = ({ navigation }) => {
       },
       {
         icon: 'document-text-outline',
-        iconColor: '#00B4A6',
+        iconColor: '#1A2533',
         title: 'Premium Invoices',
         description: 'Professional invoices with custom logo, digital signature, and branded templates'
       },
@@ -643,7 +643,7 @@ const EarningsScreen = ({ navigation }) => {
         </Text>
         {isBlurred && (
           <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={20} color="#00B4A6" />
+            <Ionicons name="lock-closed" size={20} color="#1A2533" />
           </View>
         )}
       </View>
@@ -686,7 +686,7 @@ const EarningsScreen = ({ navigation }) => {
         </View>
         {isBlurred && (
           <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={16} color="#00B4A6" />
+            <Ionicons name="lock-closed" size={16} color="#1A2533" />
           </View>
         )}
       </View>
@@ -709,11 +709,11 @@ const EarningsScreen = ({ navigation }) => {
         onPress={() => handleUpgradePress(type)}
       >
         <View style={styles.premiumPromptContent}>
-          <Ionicons name="lock-closed" size={20} color="#00B4A6" />
+          <Ionicons name="lock-closed" size={20} color="#1A2533" />
           <Text style={styles.premiumPromptText}>
             {remainingCount} more {type} available with Premium
           </Text>
-          <Ionicons name="arrow-forward" size={16} color="#00B4A6" />
+          <Ionicons name="arrow-forward" size={16} color="#1A2533" />
         </View>
       </TouchableOpacity>
     );
@@ -724,7 +724,7 @@ const EarningsScreen = ({ navigation }) => {
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading earnings data...</Text>
         </View>
       </SafeAreaView>
@@ -802,13 +802,13 @@ const EarningsScreen = ({ navigation }) => {
           <Ionicons 
             name="download-outline" 
             size={24} 
-            color={isPremium ? "#10B981" : "#00B4A6"} 
+            color={isPremium ? "#10B981" : "#1A2533"} 
           />
           {!isPremium && (
             <Ionicons 
               name="lock-closed" 
               size={12} 
-              color="#00B4A6" 
+              color="#1A2533" 
               style={styles.lockIcon} 
             />
           )}
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   },
   freeUserText: {
     fontSize: 12,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '600',
   },
   headerRight: {
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   
   // Earnings Styles
   earningsCard: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activePeriodButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
   },
   periodButtonText: {
     fontSize: 14,
@@ -1258,7 +1258,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   pendingText: {
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   
   // Blurred/Locked Items
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   premiumPromptText: {
     fontSize: 14,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '600',
     marginHorizontal: 8,
   },
@@ -1335,8 +1335,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   activeFilterOption: {
-    backgroundColor: '#00B4A6',
-    borderColor: '#00B4A6',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   lockedFilterOption: {
     backgroundColor: '#FFE4E1',
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   upgradeButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

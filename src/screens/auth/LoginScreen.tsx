@@ -26,7 +26,7 @@ const colors = {
   success: '#10B981',
   warning: '#F97316',
   error: '#EF4444',
-  info: '#3B82F6',
+  info: '#1A2533',
   white: '#FFFFFF',
   gray50: '#F9FAFB',
   gray100: '#F3F4F6',
@@ -34,7 +34,7 @@ const colors = {
   gray300: '#D1D5DB',
   gray400: '#9CA3AF',
   gray500: '#1A2533',
-  gray600: '#4B5563',
+  gray600: '#1A2533',
   gray700: '#1A2533',
   gray800: '#1A2533',
   gray900: '#111827',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     marginLeft: 12,
     fontSize: 16,
-    color: '#3C4043',
+    color: '#1A2533',
     fontWeight: '500',
   },
   socialButton: {

@@ -498,7 +498,7 @@ const ServiceListScreen = () => {
         {/* Main Header - Only one navigation bar */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color="#1A2533" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{category}</Text>
           <View style={styles.headerRight}>
@@ -506,7 +506,7 @@ const ServiceListScreen = () => {
           </View>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading services...</Text>
         </View>
       </View>
@@ -520,7 +520,7 @@ const ServiceListScreen = () => {
       {/* Main Header - Only one navigation bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color="#1A2533" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{category}</Text>
         <View style={styles.headerRight}>
@@ -531,7 +531,7 @@ const ServiceListScreen = () => {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color="#1A2533" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search treatment, clinic, location..."
@@ -545,7 +545,7 @@ const ServiceListScreen = () => {
               style={styles.clearButton}
               onPress={() => setSearchQuery('')}
             >
-              <Ionicons name="close-circle" size={20} color="#6B7280" />
+              <Ionicons name="close-circle" size={20} color="#1A2533" />
             </TouchableOpacity>
           )}
         </View>
@@ -559,8 +559,8 @@ const ServiceListScreen = () => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            tintColor="#00C9A7"
-            colors={['#00C9A7']}
+            tintColor="#1A2533"
+            colors={['#1A2533']}
           />
         }
       >
@@ -606,7 +606,7 @@ const ServiceListScreen = () => {
                     resizeMode="cover"
                   />
                   <View style={styles.certificateBadge}>
-                    <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+                    <Ionicons name="shield-checkmark" size={12} color="#1A2533" />
                     <Text style={styles.certificateText}>Certified</Text>
                   </View>
                 </View>
@@ -666,14 +666,14 @@ const ServiceListScreen = () => {
                     </View>
                     
                     <View style={styles.locationContainer}>
-                      <Ionicons name="location-outline" size={14} color="#6B7280" />
+                      <Ionicons name="location-outline" size={14} color="#1A2533" />
                       <Text style={styles.location} numberOfLines={1}>
                         {service.location}
                       </Text>
                     </View>
                     
                     <View style={styles.availabilityContainer}>
-                      <Ionicons name="time-outline" size={14} color="#10B981" />
+                      <Ionicons name="time-outline" size={14} color="#1A2533" />
                       <Text style={styles.availableTime}>
                         {service.available_time_text}
                       </Text>
@@ -692,7 +692,7 @@ const ServiceListScreen = () => {
                 {/* Payment Methods */}
                 {service.payment_methods && service.payment_methods.length > 0 && (
                   <View style={styles.paymentMethods}>
-                    <Ionicons name="card-outline" size={14} color="#6B7280" style={styles.paymentIcon} />
+                    <Ionicons name="card-outline" size={14} color="#1A2533" style={styles.paymentIcon} />
                     {service.payment_methods.slice(0, 3).map((method, index) => (
                       <View key={index} style={styles.paymentTag}>
                         <Text style={styles.paymentText}>{method}</Text>
@@ -712,14 +712,14 @@ const ServiceListScreen = () => {
                     <Text style={styles.priceLabel}>From</Text>
                     <Text style={styles.price}>{formatCurrency(service.price)}</Text>
                     <View style={styles.durationContainer}>
-                      <Ionicons name="time" size={12} color="#6B7280" />
+                      <Ionicons name="time" size={12} color="#1A2533" />
                       <Text style={styles.duration}>{service.duration} min</Text>
                     </View>
                   </View>
                   
                   <TouchableOpacity style={styles.viewButton}>
                     <Text style={styles.viewButtonText}>View Details</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#00C9A7" />
+                    <Ionicons name="chevron-forward" size={16} color="#1A2533" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -734,7 +734,7 @@ const ServiceListScreen = () => {
             onPress={() => loadServices()}
           >
             <Text style={styles.loadMoreText}>Load More Services</Text>
-            <Ionicons name="chevron-down" size={20} color="#1F2937" />
+            <Ionicons name="chevron-down" size={20} color="#1A2533" />
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 16,
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   searchContainer: {
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   clearButton: {
     padding: 4,
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     margin: 16,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -846,19 +846,19 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 24,
   },
   clearSearchButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   },
   certificateText: {
     fontSize: 10,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   serviceDetails: {
     flex: 1,
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     flex: 1,
     marginRight: 8,
   },
@@ -980,17 +980,17 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginRight: 4,
   },
   stars: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 14,
     marginRight: 4,
   },
   reviews: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   locationContainer: {
@@ -1000,7 +1000,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 4,
     flex: 1,
@@ -1011,20 +1011,20 @@ const styles = StyleSheet.create({
   },
   availableTime: {
     fontSize: 13,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 4,
   },
   welcomeMessage: {
     fontSize: 15,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '600',
     marginBottom: 8,
     lineHeight: 20,
   },
   specialNote: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
     lineHeight: 18,
     fontStyle: 'italic',
@@ -1046,16 +1046,16 @@ const styles = StyleSheet.create({
     marginRight: 6,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   paymentText: {
     fontSize: 11,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '500',
   },
   morePayments: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -1073,14 +1073,14 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginRight: 4,
     fontWeight: '500',
   },
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginRight: 8,
   },
   durationContainer: {
@@ -1089,7 +1089,7 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 2,
   },
@@ -1101,11 +1101,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   viewButtonText: {
     fontSize: 13,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginRight: 4,
   },
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
   },
   loadMoreText: {
     fontSize: 15,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '600',
     marginRight: 8,
   },

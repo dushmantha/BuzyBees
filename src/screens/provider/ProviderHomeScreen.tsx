@@ -751,7 +751,7 @@ const ProviderHomeScreen: React.FC = () => {
       title: 'Schedule',
       subtitle: 'Manage bookings',
       icon: 'calendar-outline',
-      color: '#3B82F6',
+      color: '#1A2533',
       backgroundColor: '#EFF6FF',
       action: () => {
         navigation.navigate('ProviderTabs', { screen: 'ServicesTab' });
@@ -762,7 +762,7 @@ const ProviderHomeScreen: React.FC = () => {
       title: 'Analytics',
       subtitle: 'View insights',
       icon: 'analytics-outline',
-      color: '#10B981',
+      color: '#1A2533',
       backgroundColor: '#ECFDF5',
       action: () => {
         navigation.navigate('Analytics');
@@ -773,7 +773,7 @@ const ProviderHomeScreen: React.FC = () => {
       title: 'Earnings',
       subtitle: 'Track income',
       icon: 'trending-up-outline',
-      color: '#00B4A6',
+      color: '#1A2533',
       backgroundColor: '#FFE4E1',
       action: () => {
         navigation.navigate('ProviderTabs', { screen: 'EarningsTab' });
@@ -784,7 +784,7 @@ const ProviderHomeScreen: React.FC = () => {
       title: 'Customers',
       subtitle: 'Manage clients',
       icon: 'people-outline',
-      color: '#F97316',
+      color: '#1A2533',
       backgroundColor: '#FED7AA',
       action: () => {
         navigation.navigate('Customers');
@@ -958,22 +958,22 @@ const ProviderHomeScreen: React.FC = () => {
 
   const getActivityIcon = (type: string) => {
     const icons = {
-      job_completed: { name: 'checkmark-circle', color: '#10B981' },
-      new_booking: { name: 'calendar', color: '#3B82F6' },
-      payment_received: { name: 'card', color: '#10B981' },
-      review_received: { name: 'star', color: '#F59E0B' },
-      schedule_updated: { name: 'time', color: '#F97316' },
+      job_completed: { name: 'checkmark-circle', color: '#1A2533' },
+      new_booking: { name: 'calendar', color: '#1A2533' },
+      payment_received: { name: 'card', color: '#1A2533' },
+      review_received: { name: 'star', color: '#1A2533' },
+      schedule_updated: { name: 'time', color: '#1A2533' },
       customer_message: { name: 'chatbubble', color: '#EF4444' },
     };
-    return icons[type] || { name: 'information-circle', color: '#4B5563' };
+    return icons[type] || { name: 'information-circle', color: '#1A2533' };
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return '#EF4444';
-      case 'medium': return '#F97316';
-      case 'low': return '#4B5563';
-      default: return '#4B5563';
+      case 'medium': return '#1A2533';
+      case 'low': return '#1A2533';
+      default: return '#1A2533';
     }
   };
 
@@ -1088,25 +1088,25 @@ const ProviderHomeScreen: React.FC = () => {
   const dashboardFeatures = [
     {
       icon: 'trending-up-outline',
-      iconColor: '#10B981',
+      iconColor: '#1A2533',
       title: 'Advanced Analytics Dashboard',
       description: 'Comprehensive business insights with revenue forecasting and customer behavior analysis'
     },
     {
       icon: 'people-outline',
-      iconColor: '#3B82F6',
+      iconColor: '#1A2533',
       title: 'Complete Activity History',
       description: 'Unlimited access to all business activities, transactions, and customer interactions'
     },
     {
       icon: 'document-text-outline',
-      iconColor: '#00B4A6',
+      iconColor: '#1A2533',
       title: 'Professional Reports & Invoices',
       description: 'Custom branded reports, invoices with digital signatures, and automated billing'
     },
     {
       icon: 'notifications-outline',
-      iconColor: '#F97316',
+      iconColor: '#1A2533',
       title: 'Priority Business Alerts',
       description: 'Real-time notifications for VIP customers, large bookings, and important business events'
     }
@@ -1179,7 +1179,7 @@ const ProviderHomeScreen: React.FC = () => {
       <View style={styles.secondaryStatsContainer}>
         <View style={[styles.statCard, styles.secondaryStatCard]}>
           <View style={styles.statIconContainer}>
-            <Ionicons name="people" size={18} color="#3B82F6" />
+            <Ionicons name="people" size={18} color="#1A2533" />
           </View>
           <Text style={styles.statValue}>{dashboardStats.totalCustomers || 0}</Text>
           <Text style={styles.statLabel}>Total Customers</Text>
@@ -1187,7 +1187,7 @@ const ProviderHomeScreen: React.FC = () => {
         
         <View style={[styles.statCard, styles.secondaryStatCard]}>
           <View style={styles.statIconContainer}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color="#1A2533" />
           </View>
           <Text style={styles.statValue}>{dashboardStats.completedJobs || 0}</Text>
           <Text style={styles.statLabel}>Jobs Completed</Text>
@@ -1244,7 +1244,7 @@ const ProviderHomeScreen: React.FC = () => {
         <View style={styles.reviewStatsGrid}>
           <View style={[styles.reviewStatCard, styles.primaryReviewCard]}>
             <View style={styles.reviewStatHeader}>
-              <Ionicons name="star" size={20} color="#00B4A6" />
+              <Ionicons name="star" size={20} color="#1A2533" />
               <Text style={styles.reviewStatLabel}>Overall Rating</Text>
             </View>
             <Text style={styles.reviewStatValue}>
@@ -1257,7 +1257,7 @@ const ProviderHomeScreen: React.FC = () => {
 
           <View style={styles.reviewStatCard}>
             <View style={styles.reviewStatHeader}>
-              <Ionicons name="business-outline" size={16} color="#4B5563" />
+              <Ionicons name="business-outline" size={16} color="#1A2533" />
               <Text style={styles.reviewStatLabelSmall}>Businesses</Text>
             </View>
             <Text style={styles.reviewStatValueSmall}>
@@ -1268,7 +1268,7 @@ const ProviderHomeScreen: React.FC = () => {
 
           <View style={styles.reviewStatCard}>
             <View style={styles.reviewStatHeader}>
-              <Ionicons name="chatbubbles-outline" size={16} color="#4B5563" />
+              <Ionicons name="chatbubbles-outline" size={16} color="#1A2533" />
               <Text style={styles.reviewStatLabelSmall}>Total Reviews</Text>
             </View>
             <Text style={styles.reviewStatValueSmall}>
@@ -1288,7 +1288,7 @@ const ProviderHomeScreen: React.FC = () => {
                   <Text style={styles.businessReviewName}>{business.business_name}</Text>
                   <View style={styles.businessReviewStats}>
                     <View style={styles.businessReviewRating}>
-                      <Ionicons name="star" size={12} color="#00B4A6" />
+                      <Ionicons name="star" size={12} color="#1A2533" />
                       <Text style={styles.businessReviewRatingText}>
                         {business.average_rating.toFixed(1)}
                       </Text>
@@ -1312,7 +1312,7 @@ const ProviderHomeScreen: React.FC = () => {
       <View style={styles.overviewGrid}>
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <Ionicons name="calendar-outline" size={16} color="#4B5563" />
+            <Ionicons name="calendar-outline" size={16} color="#1A2533" />
             <Text style={styles.overviewLabel}>This Month</Text>
           </View>
           <Text style={styles.overviewValue}>
@@ -1327,11 +1327,11 @@ const ProviderHomeScreen: React.FC = () => {
             <Ionicons 
               name={(dashboardStats.monthlyGrowth || 0) > 0 ? "arrow-up" : "arrow-down"} 
               size={12} 
-              color={(dashboardStats.monthlyGrowth || 0) > 0 ? "#10B981" : "#EF4444"} 
+              color={(dashboardStats.monthlyGrowth || 0) > 0 ? "#1A2533" : "#EF4444"} 
             />
             <Text style={[
               styles.overviewChangeText,
-              { color: (dashboardStats.monthlyGrowth || 0) > 0 ? "#10B981" : "#EF4444" }
+              { color: (dashboardStats.monthlyGrowth || 0) > 0 ? "#1A2533" : "#EF4444" }
             ]}>
               {formatPercentage(dashboardStats.monthlyGrowth)}
             </Text>
@@ -1340,7 +1340,7 @@ const ProviderHomeScreen: React.FC = () => {
 
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <Ionicons name="star-outline" size={16} color="#4B5563" />
+            <Ionicons name="star-outline" size={16} color="#1A2533" />
             <Text style={styles.overviewLabel}>Rating</Text>
           </View>
           <Text style={styles.overviewValue}>{(dashboardStats.customerRating || 0).toFixed(1)}</Text>
@@ -1351,7 +1351,7 @@ const ProviderHomeScreen: React.FC = () => {
 
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <Ionicons name="cash-outline" size={16} color="#4B5563" />
+            <Ionicons name="cash-outline" size={16} color="#1A2533" />
             <Text style={styles.overviewLabel}>Avg. Job Value</Text>
           </View>
           <Text style={styles.overviewValue}>
@@ -1362,7 +1362,7 @@ const ProviderHomeScreen: React.FC = () => {
 
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <Ionicons name="time-outline" size={16} color="#4B5563" />
+            <Ionicons name="time-outline" size={16} color="#1A2533" />
             <Text style={styles.overviewLabel}>Response Time</Text>
           </View>
           <Text style={styles.overviewValue}>
@@ -1398,7 +1398,7 @@ const ProviderHomeScreen: React.FC = () => {
         <TouchableOpacity style={styles.addShopCard} onPress={handleAddNewShop}>
           <View style={styles.addShopContent}>
             <View style={styles.addShopIcon}>
-              <Ionicons name="add-circle-outline" size={32} color="#00B4A6" />
+              <Ionicons name="add-circle-outline" size={32} color="#1A2533" />
             </View>
             <Text style={styles.addShopText}>Add New Shop</Text>
             <Text style={styles.addShopSubtext}>Expand your business</Text>
@@ -1447,15 +1447,15 @@ const ProviderHomeScreen: React.FC = () => {
           
           <View style={styles.shopMetrics}>
             <View style={styles.shopMetric}>
-              <Ionicons name="star" size={12} color="#00B4A6" />
+              <Ionicons name="star" size={12} color="#1A2533" />
               <Text style={styles.shopMetricText}>{item.rating?.toFixed(1) || '0.0'}</Text>
             </View>
             <View style={styles.shopMetric}>
-              <Ionicons name="people" size={12} color="#4B5563" />
+              <Ionicons name="people" size={12} color="#1A2533" />
               <Text style={styles.shopMetricText}>{item.staff_count || 0}</Text>
             </View>
             <View style={styles.shopMetric}>
-              <Ionicons name="construct" size={12} color="#10B981" />
+              <Ionicons name="construct" size={12} color="#1A2533" />
               <Text style={styles.shopMetricText}>{item.total_services || 0}</Text>
             </View>
           </View>
@@ -1501,7 +1501,7 @@ const ProviderHomeScreen: React.FC = () => {
               style={styles.proButton}
               onPress={() => setShowUpgradeModal(true)}
             >
-              <Ionicons name="star" size={12} color="#00B4A6" />
+              <Ionicons name="star" size={12} color="#1A2533" />
               <Text style={styles.proButtonText}>PRO</Text>
             </TouchableOpacity>
           )}
@@ -1540,7 +1540,7 @@ const ProviderHomeScreen: React.FC = () => {
                     )}
                     {activity.rating && (
                       <View style={styles.activityRating}>
-                        <Ionicons name="star" size={12} color="#00B4A6" />
+                        <Ionicons name="star" size={12} color="#1A2533" />
                         <Text style={styles.activityRatingText}>{activity.rating}.0</Text>
                       </View>
                     )}
@@ -1560,7 +1560,7 @@ const ProviderHomeScreen: React.FC = () => {
           >
             <View style={styles.upgradePromptContent}>
               <View style={styles.upgradeIconContainer}>
-                <Ionicons name="star" size={20} color="#00B4A6" />
+                <Ionicons name="star" size={20} color="#1A2533" />
               </View>
               <View style={styles.upgradeTextContainer}>
                 <Text style={styles.upgradeTitle}>
@@ -1570,7 +1570,7 @@ const ProviderHomeScreen: React.FC = () => {
                   Upgrade to Pro for complete business insights
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={16} color="#00B4A6" />
+              <Ionicons name="arrow-forward" size={16} color="#1A2533" />
             </View>
           </TouchableOpacity>
         )}
@@ -1584,7 +1584,7 @@ const ProviderHomeScreen: React.FC = () => {
         <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         <View style={styles.loadingContainer}>
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading your dashboard...</Text>
             <Text style={styles.loadingSubtext}>Preparing your business insights</Text>
           </View>
@@ -1608,8 +1608,8 @@ const ProviderHomeScreen: React.FC = () => {
           <RefreshControl 
             refreshing={isRefreshing} 
             onRefresh={onRefresh} 
-            colors={['#00B4A6']}
-            tintColor="#00B4A6"
+            colors={['#1A2533']}
+            tintColor="#1A2533"
           />
         }
       >
@@ -1670,7 +1670,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1690,7 +1690,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   userName: {
@@ -1753,7 +1753,7 @@ const styles = StyleSheet.create({
   loadingSubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
   },
 
   // Stats Section
@@ -1772,7 +1772,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   primaryStatCard: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     marginBottom: 16,
   },
   secondaryStatCard: {
@@ -1829,7 +1829,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
 
@@ -1850,7 +1850,7 @@ const styles = StyleSheet.create({
   },
   shopCount: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   proButton: {
@@ -1865,7 +1865,7 @@ const styles = StyleSheet.create({
   proButtonText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
 
   // Quick Actions
@@ -1897,7 +1897,7 @@ const styles = StyleSheet.create({
   },
   quickActionSubtitle: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
   },
 
@@ -1926,7 +1926,7 @@ const styles = StyleSheet.create({
   },
   overviewLabel: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 6,
   },
@@ -1938,7 +1938,7 @@ const styles = StyleSheet.create({
   },
   overviewSubtext: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   overviewStats: {
     marginVertical: 4,
@@ -2038,7 +2038,7 @@ const styles = StyleSheet.create({
   },
   shopCategory: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     marginBottom: 12,
   },
   shopMetrics: {
@@ -2054,7 +2054,7 @@ const styles = StyleSheet.create({
   shopMetricText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
   },
   shopRevenue: {
     flexDirection: 'row',
@@ -2066,13 +2066,13 @@ const styles = StyleSheet.create({
   },
   shopRevenueLabel: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   shopRevenueValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
 
   // Add Shop Card
@@ -2097,12 +2097,12 @@ const styles = StyleSheet.create({
   addShopText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginBottom: 4,
   },
   addShopSubtext: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
   },
 
@@ -2157,12 +2157,12 @@ const styles = StyleSheet.create({
   },
   activityTime: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   activityDescription: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -2175,13 +2175,13 @@ const styles = StyleSheet.create({
   },
   activityCustomer: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   activityAmount: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#10B981',
+    color: '#1A2533',
   },
   activityRating: {
     flexDirection: 'row',
@@ -2191,7 +2191,7 @@ const styles = StyleSheet.create({
   activityRatingText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
 
   // Upgrade Prompt
@@ -2222,12 +2222,12 @@ const styles = StyleSheet.create({
   upgradeTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#92400E',
+    color: '#1A2533',
     marginBottom: 2,
   },
   upgradeDescription: {
     fontSize: 12,
-    color: '#A16207',
+    color: '#1A2533',
   },
 
   // Review Statistics Styles
@@ -2254,12 +2254,12 @@ const styles = StyleSheet.create({
   noReviewsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   noReviewsSubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   reviewStatsGrid: {
@@ -2290,20 +2290,20 @@ const styles = StyleSheet.create({
   },
   reviewStatLabel: {
     fontSize: 14,
-    color: '#92400E',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 8,
   },
   reviewStatLabelSmall: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 6,
   },
   reviewStatValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#92400E',
+    color: '#1A2533',
     marginBottom: 4,
   },
   reviewStatValueSmall: {
@@ -2314,12 +2314,12 @@ const styles = StyleSheet.create({
   },
   reviewStatSubtext: {
     fontSize: 13,
-    color: '#A16207',
+    color: '#1A2533',
     fontWeight: '500',
   },
   reviewStatSubtextSmall: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   businessReviewsList: {
     marginTop: 8,
@@ -2327,7 +2327,7 @@ const styles = StyleSheet.create({
   businessReviewsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 12,
   },
   businessReviewItem: {
@@ -2362,11 +2362,11 @@ const styles = StyleSheet.create({
   businessReviewRatingText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   businessReviewCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
 

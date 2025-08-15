@@ -123,9 +123,9 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         marks[selectedDate] = {
           ...marks[selectedDate],
           selected: true,
-          selectedColor: '#00C9A7',
+          selectedColor: '#1A2533',
           customStyles: {
-            container: { backgroundColor: '#00C9A7' },
+            container: { backgroundColor: '#1A2533' },
             text: { color: 'white', fontWeight: 'bold' }
           }
         };
@@ -453,7 +453,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               <Text style={styles.staffName}>{selectedStaff?.name}</Text>
               {selectedStaff?.rating > 0 && (
                 <View style={styles.staffRating}>
-                  <Ionicons name="star" size={16} color="#FFC107" />
+                  <Ionicons name="star" size={16} color="#1A2533" />
                   <Text style={styles.staffRatingText}>{selectedStaff.rating}</Text>
                 </View>
               )}
@@ -469,14 +469,14 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         {/* Calendar Section */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="calendar-outline" size={20} color="#00C9A7" />
+            <Ionicons name="calendar-outline" size={20} color="#1A2533" />
             {' '}Choose Date
           </Text>
           
           {/* Calendar Legend */}
           <View style={styles.calendarLegend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#00C9A7' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
               <Text style={styles.legendText}>Available</Text>
             </View>
             <View style={styles.legendItem}>
@@ -484,7 +484,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               <Text style={styles.legendText}>On Leave</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
               <Text style={styles.legendText}>Not Working</Text>
             </View>
           </View>
@@ -500,22 +500,22 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               enableSwipeMonths={true}
               style={styles.calendar}
               theme={{
-                textSectionTitleColor: '#00C9A7',
-                selectedDayBackgroundColor: '#00C9A7',
+                textSectionTitleColor: '#1A2533',
+                selectedDayBackgroundColor: '#1A2533',
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#00C9A7',
+                todayTextColor: '#1A2533',
                 dayTextColor: '#2D2D2D',
                 textDisabledColor: '#D1D5DB',
-                dotColor: '#00C9A7',
+                dotColor: '#1A2533',
                 selectedDotColor: '#FFFFFF',
-                arrowColor: '#00C9A7',
-                monthTextColor: '#00C9A7',
+                arrowColor: '#1A2533',
+                monthTextColor: '#1A2533',
                 textDayFontSize: 14,
                 textMonthFontSize: 16,
                 textDayHeaderFontSize: 12,
                 calendarBackground: '#FFFFFF',
                 backgroundColor: '#FFFFFF',
-                agendaKnobColor: '#00C9A7',
+                agendaKnobColor: '#1A2533',
               }}
             />
           </View>
@@ -525,13 +525,13 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         {selectedDate && (
           <View style={styles.timeSlotsSection}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="time-outline" size={20} color="#00C9A7" />
+              <Ionicons name="time-outline" size={20} color="#1A2533" />
               {' '}Available Times for {formatDisplayDate(selectedDate)}
             </Text>
             
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00C9A7" />
+                <ActivityIndicator size="large" color="#1A2533" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
             ) : availableSlots.length > 0 ? (
@@ -563,7 +563,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
               </View>
             ) : (
               <View style={styles.noSlotsContainer}>
-                <Ionicons name="calendar-clear-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="calendar-clear-outline" size={48} color="#1A2533" />
                 <Text style={styles.noSlotsText}>No available time slots</Text>
                 <Text style={styles.noSlotsSubtext}>
                   {selectedStaff?.name} is not working on this day
@@ -670,7 +670,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
             <Ionicons 
               name="warning" 
               size={64} 
-              color="#00C9A7" 
+              color="#1A2533" 
               style={styles.warningIcon} 
             />
             <Text style={styles.warningTitle}>Staff Not Available</Text>
@@ -699,7 +699,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
             <Ionicons 
               name="checkmark-circle" 
               size={64} 
-              color="#10B981" 
+              color="#1A2533" 
               style={styles.successIcon} 
             />
             <Text style={styles.successTitle}>Booking Confirmed!</Text>
@@ -734,12 +734,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderWidth: 1,
     borderColor: 'rgba(0, 201, 167, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 2,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   content: {
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 12,
   },
   staffCard: {
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
   staffName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     flex: 1,
   },
   staffRating: {
@@ -814,12 +814,12 @@ const styles = StyleSheet.create({
   },
   staffRatingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 2,
   },
   staffSpecialties: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   calendarSection: {
     marginTop: 24,
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 13,
-    color: '#374151',
+    color: '#1A2533',
     fontWeight: '600',
   },
   calendarContainer: {
@@ -897,9 +897,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedTimeSlot: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
-    shadowColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -913,14 +913,14 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   selectedTimeText: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
   unavailableTimeText: {
-    color: '#9CA3AF',
+    color: '#1A2533',
     fontWeight: '500',
   },
   bookedText: {
@@ -944,7 +944,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
     fontWeight: '500',
   },
@@ -964,12 +964,12 @@ const styles = StyleSheet.create({
   noSlotsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
   },
   noSlotsSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#1A2533',
     marginTop: 4,
   },
   selectionSummary: {
@@ -979,7 +979,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 12,
   },
   summaryCard: {
@@ -1002,7 +1002,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   discountText: {
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
   },
   summaryDivider: {
@@ -1021,12 +1021,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   bottomSpacing: {
     height: 24,
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   confirmButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1095,19 +1095,19 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 12,
     textAlign: 'center',
   },
   warningText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
   },
   warningButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1123,14 +1123,14 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 8,
     textAlign: 'center',
   },
   successSubtitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1147,7 +1147,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,

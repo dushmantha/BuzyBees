@@ -382,12 +382,12 @@ const QuickBookingModal = ({
         case 'closed':
           marks[dateStr] = {
             marked: true,
-            dotColor: '#4B5563',
+            dotColor: '#1A2533',
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
               container: { backgroundColor: '#F3F4F6' },
-              text: { color: '#4B5563', fontWeight: 'bold' }
+              text: { color: '#1A2533', fontWeight: 'bold' }
             }
           };
           break;
@@ -421,7 +421,7 @@ const QuickBookingModal = ({
         case 'fully_booked':
           marks[dateStr] = {
             marked: true,
-            dotColor: '#00B4A6',
+            dotColor: '#1A2533',
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
@@ -449,9 +449,9 @@ const QuickBookingModal = ({
       marks[selectedDate] = {
         ...marks[selectedDate],
         selected: true,
-        selectedColor: '#00B4A6',
+        selectedColor: '#1A2533',
         customStyles: {
-          container: { backgroundColor: '#00B4A6' },
+          container: { backgroundColor: '#1A2533' },
           text: { color: 'white', fontWeight: 'bold' }
         }
       };
@@ -752,7 +752,7 @@ const QuickBookingModal = ({
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading times...</Text>
         </View>
       );
@@ -811,7 +811,7 @@ const QuickBookingModal = ({
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Quick Booking</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={24} color="#4B5563" />
+            <Ionicons name="close" size={24} color="#1A2533" />
           </TouchableOpacity>
         </View>
 
@@ -880,7 +880,7 @@ const QuickBookingModal = ({
                               <Ionicons 
                                 name="checkmark-circle" 
                                 size={20} 
-                                color="#10B981" 
+                                color="#059669" 
                               />
                             )}
                           </View>
@@ -959,7 +959,7 @@ const QuickBookingModal = ({
             
             {loadingStaff ? (
               <View style={styles.staffLoadingContainer}>
-                <ActivityIndicator size="small" color="#00B4A6" />
+                <ActivityIndicator size="small" color="#1A2533" />
                 <Text style={styles.staffLoadingText}>Loading staff members...</Text>
               </View>
             ) : (
@@ -991,7 +991,7 @@ const QuickBookingModal = ({
                   </View>
                   
                   {!selectedStaffId && (
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={20} color="#059669" />
                   )}
                 </TouchableOpacity>
                 
@@ -1041,7 +1041,7 @@ const QuickBookingModal = ({
                     </View>
                     
                     {selectedStaffId === staff.id && (
-                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      <Ionicons name="checkmark-circle" size={20} color="#059669" />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -1069,12 +1069,12 @@ const QuickBookingModal = ({
             {selectedDate && (
               <View style={styles.selectedDateTime}>
                 <View style={styles.selectedDateTimeItem}>
-                  <Ionicons name="calendar-outline" size={16} color="#00B4A6" />
+                  <Ionicons name="calendar-outline" size={16} color="#1A2533" />
                   <Text style={styles.selectedDateTimeText}>{formatDisplayDate(selectedDate)}</Text>
                 </View>
                 {selectedTime && (
                   <View style={styles.selectedDateTimeItem}>
-                    <Ionicons name="time-outline" size={16} color="#00B4A6" />
+                    <Ionicons name="time-outline" size={16} color="#1A2533" />
                     <Text style={styles.selectedDateTimeText}>{formatDisplayTime(selectedTime)}</Text>
                   </View>
                 )}
@@ -1086,11 +1086,11 @@ const QuickBookingModal = ({
               <Text style={styles.legendTitle}>Calendar Guide</Text>
               <View style={styles.legendGrid}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                  <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
                   <Text style={styles.legendText}>Available</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#00B4A6' }]} />
+                  <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
                   <Text style={styles.legendText}>Fully Booked</Text>
                 </View>
                 {selectedStaffId && (
@@ -1106,7 +1106,7 @@ const QuickBookingModal = ({
                   </>
                 )}
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#4B5563' }]} />
+                  <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
                   <Text style={styles.legendText}>Closed</Text>
                 </View>
               </View>
@@ -1114,7 +1114,7 @@ const QuickBookingModal = ({
             
             {!selectedStaffId && shopStaff.length > 0 && (
               <View style={styles.staffAvailabilityHint}>
-                <Ionicons name="information-circle-outline" size={16} color="#00B4A6" />
+                <Ionicons name="information-circle-outline" size={16} color="#1A2533" />
                 <Text style={styles.staffAvailabilityHintText}>
                   Select a specific staff member above to see their personal schedule and leave dates
                 </Text>
@@ -1133,15 +1133,15 @@ const QuickBookingModal = ({
                   enableSwipeMonths={true}
                   markingType={'custom'}
                   theme={{
-                    selectedDayBackgroundColor: '#00B4A6',
+                    selectedDayBackgroundColor: '#1A2533',
                     selectedDayTextColor: '#FFFFFF',
-                    todayTextColor: '#00B4A6',
-                    dayTextColor: '#1F2937',
+                    todayTextColor: '#1A2533',
+                    dayTextColor: '#1A2533',
                     textDisabledColor: '#D1D5DB',
                     // Removed hardcoded dotColor to allow individual date colors
                     selectedDotColor: '#FFFFFF',
-                    arrowColor: '#00B4A6',
-                    monthTextColor: '#1F2937',
+                    arrowColor: '#1A2533',
+                    monthTextColor: '#1A2533',
                     textDayFontSize: 14,
                     textMonthFontSize: 16,
                     textDayHeaderFontSize: 12,
@@ -1153,7 +1153,7 @@ const QuickBookingModal = ({
             {/* Loading state for availability */}
             {!serviceAvailability && selectedService && (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00B4A6" />
+                <ActivityIndicator size="large" color="#1A2533" />
                 <Text style={styles.loadingText}>Loading availability...</Text>
               </View>
             )}
@@ -1473,7 +1473,7 @@ const ServiceManagementScreen = ({ navigation }) => {
               onPress={() => setShowShopSelector(false)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close" size={24} color="#4B5563" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           
@@ -1514,7 +1514,7 @@ const ServiceManagementScreen = ({ navigation }) => {
               onPress={() => setShowAvailabilityEditor(false)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close" size={24} color="#6B6B6B" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           
@@ -1578,7 +1578,7 @@ const ServiceManagementScreen = ({ navigation }) => {
             value={item.is_active}
             onValueChange={() => toggleServiceStatus(item)}
             trackColor={{ false: '#E5E7EB', true: '#D1FAE5' }}
-            thumbColor={item.is_active ? '#10B981' : '#9CA3AF'}
+            thumbColor={item.is_active ? '#059669' : '#9CA3AF'}
           />
         </View>
       </View>
@@ -1589,15 +1589,15 @@ const ServiceManagementScreen = ({ navigation }) => {
       
       <View style={styles.serviceDetails}>
         <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={16} color="#4B5563" />
+          <Ionicons name="cash-outline" size={16} color="#1A2533" />
           <Text style={styles.detailText}>{formatCurrency(item.price || item.base_price)}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Ionicons name="time-outline" size={16} color="#4B5563" />
+          <Ionicons name="time-outline" size={16} color="#1A2533" />
           <Text style={styles.detailText}>{formatDuration(item.duration_minutes)}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Ionicons name="calendar-outline" size={16} color="#4B5563" />
+          <Ionicons name="calendar-outline" size={16} color="#1A2533" />
           <Text style={styles.detailText}>{String(item.available_dates?.length || 0)} available days</Text>
         </View>
       </View>
@@ -1608,7 +1608,7 @@ const ServiceManagementScreen = ({ navigation }) => {
           onPress={() => createQuickBooking(item)}
           hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
         >
-          <Ionicons name="calendar-outline" size={16} color="#3B82F6" />
+          <Ionicons name="calendar-outline" size={16} color="#1A2533" />
           <Text style={styles.quickBookingButtonText}>Quick Book</Text>
         </TouchableOpacity>
         
@@ -1656,7 +1656,7 @@ const ServiceManagementScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Initializing...</Text>
         </View>
       </SafeAreaView>
@@ -1708,7 +1708,7 @@ const ServiceManagementScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading services...</Text>
         </View>
       </SafeAreaView>
@@ -1728,7 +1728,7 @@ const ServiceManagementScreen = ({ navigation }) => {
             onPress={() => setShowShopSelector(true)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-down" size={20} color="#6B6B6B" />
+            <Ionicons name="chevron-down" size={20} color="#1A2533" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1763,8 +1763,8 @@ const ServiceManagementScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={['#00B4A6']}
-            tintColor="#00B4A6"
+            colors={['#1A2533']}
+            tintColor="#1A2533"
           />
         }
         removeClippedSubviews={true}
@@ -1800,7 +1800,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#4B5563',
+    color: '#1A2533',
   },
   header: {
     flexDirection: 'row',
@@ -1823,11 +1823,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   shopLocation: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     marginTop: 2,
   },
   statsBar: {
@@ -1845,12 +1845,12 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 11,
-    color: '#4B5563',
+    color: '#1A2533',
   },
   content: {
     padding: 16,
@@ -1865,18 +1865,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyDescription: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1912,12 +1912,12 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   serviceCategory: {
     fontSize: 12,
-    color: '#00B4A6',
+    color: '#1A2533',
     backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -1931,7 +1931,7 @@ const styles = StyleSheet.create({
   },
   serviceDescription: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -1948,7 +1948,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     marginLeft: 4,
   },
   serviceActions: {
@@ -1970,7 +1970,7 @@ const styles = StyleSheet.create({
   },
   editServiceText: {
     fontSize: 14,
-    color: '#10B981',
+    color: '#059669',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -1986,7 +1986,7 @@ const styles = StyleSheet.create({
   },
   quickBookingButtonText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -2025,10 +2025,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   activeStatusText: {
-    color: '#10B981',
+    color: '#059669',
   },
   inactiveStatusText: {
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   // Modal Styles
   modalOverlay: {
@@ -2059,7 +2059,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   // Shop Selector Styles
   shopList: {
@@ -2081,17 +2081,17 @@ const styles = StyleSheet.create({
   shopItemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   shopItemLocation: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     marginBottom: 2,
   },
   shopItemCategory: {
     fontSize: 12,
-    color: '#00B4A6',
+    color: '#1A2533',
     backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -2105,7 +2105,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   activeShopDot: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#059669',
   },
   inactiveShopDot: {
     backgroundColor: '#9CA3AF',
@@ -2120,7 +2120,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 12,
   },
   datesList: {
@@ -2142,7 +2142,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: '#10B981',
+    color: '#059669',
     fontWeight: '500',
   },
   unavailableDateText: {
@@ -2161,7 +2161,7 @@ const styles = StyleSheet.create({
   },
   editAvailabilityText: {
     fontSize: 16,
-    color: '#10B981',
+    color: '#059669',
     fontWeight: '600',
     marginLeft: 8,
   },
@@ -2186,12 +2186,12 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
   },
   serviceSubtitle: {
     fontSize: 14,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '500',
   },
   inputGroup: {
@@ -2205,12 +2205,12 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 6,
   },
   inputSubLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 8,
     fontStyle: 'italic',
   },
@@ -2222,7 +2222,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   textArea: {
     height: 80,
@@ -2252,7 +2252,7 @@ const styles = StyleSheet.create({
   },
   toggleCalendarText: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   selectedDateTime: {
@@ -2273,7 +2273,7 @@ const styles = StyleSheet.create({
   selectedDateTimeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginLeft: 4,
   },
   calendarLegend: {
@@ -2292,7 +2292,7 @@ const styles = StyleSheet.create({
   legendTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -2321,7 +2321,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 11,
-    color: '#374151',
+    color: '#1A2533',
     fontWeight: '500',
     flex: 1,
   },
@@ -2338,7 +2338,7 @@ const styles = StyleSheet.create({
   timeSlotsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 8,
   },
   timeSlotsGrid: {
@@ -2356,13 +2356,13 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   selectedTimeSlot: {
-    backgroundColor: '#00B4A6',
-    borderColor: '#00B4A6',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   timeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedTimeText: {
     color: '#FFFFFF',
@@ -2380,7 +2380,7 @@ const styles = StyleSheet.create({
   noSlotsText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#1A2533',
   },
   noSlotsSubtext: {
     fontSize: 12,
@@ -2407,13 +2407,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#1A2533',
   },
   createButton: {
     flex: 2,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2436,7 +2436,7 @@ const styles = StyleSheet.create({
   staffLoadingText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
   },
   staffSelection: {
     gap: 8,
@@ -2461,7 +2461,7 @@ const styles = StyleSheet.create({
   staffOptionText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedStaffOptionText: {
     color: '#10B981',
@@ -2469,7 +2469,7 @@ const styles = StyleSheet.create({
   },
   staffSpecialties: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#1A2533',
     marginTop: 2,
   },
   staffExperience: {
@@ -2491,7 +2491,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2504,7 +2504,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6B7280',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2515,7 +2515,7 @@ const styles = StyleSheet.create({
   noStaffText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#4B5563',
+    color: '#1A2533',
   },
   noStaffSubtext: {
     fontSize: 12,
@@ -2535,7 +2535,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   inactiveServiceName: {
-    color: '#6B7280',
+    color: '#1A2533',
   },
   inactiveServiceCategory: {
     color: '#9CA3AF',
@@ -2549,7 +2549,7 @@ const styles = StyleSheet.create({
   inactiveBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   staffAvailabilityHint: {
     flexDirection: 'row',
@@ -2564,7 +2564,7 @@ const styles = StyleSheet.create({
   },
   staffAvailabilityHintText: {
     fontSize: 12,
-    color: '#92400E',
+    color: '#1A2533',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
@@ -2618,7 +2618,7 @@ const styles = StyleSheet.create({
   serviceOptionDetails: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 4,
   },
   serviceOptionDetailsSelected: {
@@ -2630,7 +2630,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   serviceOptionDescriptionSelected: {
-    color: '#6B7280',
+    color: '#1A2533',
   },
 });
 

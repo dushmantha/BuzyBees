@@ -133,7 +133,7 @@ export const FriendlyScheduleDisplay: React.FC<FriendlyScheduleDisplayProps> = (
       return { 
         isOpen: false, 
         text: `Opens at ${formatTime(todayHours.openTime)}`, 
-        color: '#F59E0B' 
+        color: '#1A2533' 
       };
     }
     
@@ -236,7 +236,7 @@ export const FriendlyScheduleDisplay: React.FC<FriendlyScheduleDisplayProps> = (
               <Ionicons 
                 name={day.type === 'holiday' ? 'calendar-outline' : 'information-circle-outline'} 
                 size={16} 
-                color="#F59E0B" 
+                color="#1A2533" 
               />
               <Text style={styles.specialDayText}>
                 {day.name} - {formatSpecialDay(day.date)}
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 15,
-    color: '#374151',
+    color: '#1A2533',
     flex: 1,
   },
   todayText: {
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 15,
-    color: '#374151',
+    color: '#1A2533',
   },
   timeSeparator: {
     marginHorizontal: 8,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   specialDayText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 8,
   },
   statusRow: {
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   },
   compactSpecialDay: {
     fontSize: 12,
-    color: '#F59E0B',
+    color: '#1A2533',
     marginTop: 4,
   },
 });

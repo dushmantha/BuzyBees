@@ -371,11 +371,11 @@ const BookingDateTimeScreen: React.FC = () => {
                 disabled: true,
                 disableTouchEvent: true,
                 customStyles: {
-                  container: { backgroundColor: '#6B7280' },
+                  container: { backgroundColor: '#1A2533' },
                   text: { color: 'white', fontWeight: 'bold' }
                 },
                 marked: true,
-                dotColor: '#6B7280'
+                dotColor: '#1A2533'
               };
               break;
               
@@ -395,10 +395,10 @@ const BookingDateTimeScreen: React.FC = () => {
             case 'available':
               marks[dateStr] = {
                 marked: true,
-                dotColor: '#10B981',
+                dotColor: '#1A2533',
                 customStyles: {
                   container: { backgroundColor: 'transparent' },
-                  text: { color: '#00C9A7' }
+                  text: { color: '#1A2533' }
                 }
               };
               break;
@@ -478,9 +478,9 @@ const BookingDateTimeScreen: React.FC = () => {
             marks[selectedDate] = {
               ...marks[selectedDate],
               selected: true,
-              selectedColor: '#00C9A7',
+              selectedColor: '#1A2533',
               customStyles: {
-                container: { backgroundColor: '#00C9A7' },
+                container: { backgroundColor: '#1A2533' },
                 text: { color: 'white', fontWeight: 'bold' }
               }
             };
@@ -640,7 +640,7 @@ const BookingDateTimeScreen: React.FC = () => {
           style={styles.backButton}
           onPress={handleBackPress}
         >
-          <Ionicons name="arrow-back" size={20} color="#00C9A7" />
+          <Ionicons name="arrow-back" size={20} color="#1A2533" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Book Appointment</Text>
@@ -697,11 +697,11 @@ const BookingDateTimeScreen: React.FC = () => {
               <Text style={styles.serviceDescription}>{selectedServiceOption.description}</Text>
               <View style={styles.serviceDetails}>
                 <View style={styles.serviceDetailItem}>
-                  <Ionicons name="time-outline" size={14} color="#6B7280" />
+                  <Ionicons name="time-outline" size={14} color="#1A2533" />
                   <Text style={styles.serviceDetailText}>{selectedServiceOption.duration}min</Text>
                 </View>
                 <View style={styles.serviceDetailItem}>
-                  <Ionicons name="business-outline" size={14} color="#6B7280" />
+                  <Ionicons name="business-outline" size={14} color="#1A2533" />
                   <Text style={styles.serviceDetailText}>{selectedServiceOption.salon_name}</Text>
                 </View>
               </View>
@@ -712,14 +712,14 @@ const BookingDateTimeScreen: React.FC = () => {
         {/* Calendar Section */}
         <View style={styles.calendarSection}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="calendar-outline" size={20} color="#00C9A7" />
+            <Ionicons name="calendar-outline" size={20} color="#1A2533" />
             {' '}Choose Date
           </Text>
           
           {/* Calendar Legend */}
           <View style={styles.calendarLegend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
               <Text style={styles.legendText}>Available</Text>
             </View>
             <View style={styles.legendItem}>
@@ -727,7 +727,7 @@ const BookingDateTimeScreen: React.FC = () => {
               <Text style={styles.legendText}>Fully Booked</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#6B7280' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#1A2533' }]} />
               <Text style={styles.legendText}>Closed</Text>
             </View>
           </View>
@@ -743,16 +743,16 @@ const BookingDateTimeScreen: React.FC = () => {
               enableSwipeMonths={true}
               style={styles.calendar}
               theme={{
-                textSectionTitleColor: '#00C9A7',
-                selectedDayBackgroundColor: '#00C9A7',
+                textSectionTitleColor: '#1A2533',
+                selectedDayBackgroundColor: '#1A2533',
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#00C9A7',
+                todayTextColor: '#1A2533',
                 dayTextColor: '#2D2D2D',
                 textDisabledColor: '#D1D5DB',
-                dotColor: '#10B981',
+                dotColor: '#1A2533',
                 selectedDotColor: '#FFFFFF',
-                arrowColor: '#00C9A7',
-                monthTextColor: '#00C9A7',
+                arrowColor: '#1A2533',
+                monthTextColor: '#1A2533',
                 textDayFontSize: 14,
                 textMonthFontSize: 16,
                 textDayHeaderFontSize: 12,
@@ -765,13 +765,13 @@ const BookingDateTimeScreen: React.FC = () => {
         {selectedDate && (
           <View style={styles.timeSlotsSection}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="time-outline" size={20} color="#00C9A7" />
+              <Ionicons name="time-outline" size={20} color="#1A2533" />
               {' '}Available Times for {formatDisplayDate(selectedDate)}
             </Text>
             
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00C9A7" />
+                <ActivityIndicator size="large" color="#1A2533" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
             ) : availableSlots.length > 0 ? (
@@ -806,7 +806,7 @@ const BookingDateTimeScreen: React.FC = () => {
               </View>
             ) : (
               <View style={styles.noSlotsContainer}>
-                <Ionicons name="calendar-clear-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="calendar-clear-outline" size={48} color="#1A2533" />
                 <Text style={styles.noSlotsText}>No available time slots</Text>
                 <Text style={styles.noSlotsSubtext}>Please select another date</Text>
               </View>
@@ -878,7 +878,7 @@ const BookingDateTimeScreen: React.FC = () => {
             <Ionicons 
               name="checkmark-circle" 
               size={64} 
-              color="#10B981" 
+              color="#1A2533" 
               style={styles.successIcon} 
             />
             <Text style={styles.successTitle}>Booking Confirmed!</Text>
@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 2,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     textShadowColor: 'rgba(255, 255, 255, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 12,
   },
   serviceOptionButton: {
@@ -982,18 +982,18 @@ const styles = StyleSheet.create({
     borderColor: '#F8FFFE',
   },
   selectedServiceOption: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   serviceOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     textAlign: 'center',
   },
   serviceOptionSubtext: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginTop: 2,
   },
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     flex: 1,
   },
   servicePrice: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
   },
   serviceDescription: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 8,
   },
   serviceDetails: {
@@ -1054,7 +1054,7 @@ const styles = StyleSheet.create({
   },
   serviceDetailText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   calendarSection: {
     marginTop: 24,
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   calendarContainer: {
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1133,20 +1133,20 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   selectedTimeSlot: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   timeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   selectedTimeText: {
     color: '#FFFFFF',
   },
   durationText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
     fontWeight: '500',
   },
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
     fontWeight: '500',
   },
@@ -1185,12 +1185,12 @@ const styles = StyleSheet.create({
   noSlotsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
   },
   noSlotsSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#1A2533',
     marginTop: 4,
   },
   selectionSummary: {
@@ -1217,12 +1217,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   summaryValue: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
   },
   summaryDivider: {
@@ -1233,12 +1233,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   bottomSpacing: {
     height: 24,
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   confirmButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1268,7 +1268,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1307,14 +1307,14 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 8,
     textAlign: 'center',
   },
   successSubtitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 16,
     textAlign: 'center',
   },

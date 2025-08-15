@@ -271,7 +271,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
           false: '#F3F4F6', 
           true: '#BBF7D0'
         }}
-        thumbColor={value ? '#00C9A7' : '#FFFFFF'}
+        thumbColor={value ? '#1A2533' : '#FFFFFF'}
       />
     </View>
   );
@@ -301,7 +301,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
         <Ionicons 
           name="checkmark-circle" 
           size={24} 
-          color="#00C9A7" 
+          color="#1A2533" 
         />
       )}
     </TouchableOpacity>
@@ -311,7 +311,7 @@ const PrivacyScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading privacy settings...</Text>
         </View>
       </SafeAreaView>
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
   },
   content: {
     flex: 1,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     marginBottom: 4,
   },
   sectionDescription: {
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -692,13 +692,13 @@ const styles = StyleSheet.create({
   },
   visibilityLabel: {
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     fontWeight: '500',
     marginBottom: 4,
   },
   selectedVisibilityLabel: {
     fontWeight: '600',
-    color: '#00C9A7', // Primary Vibrant Teal
+    color: '#1A2533', // Primary Navy Blue
   },
   visibilityDescription: {
     fontSize: 13,
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   providerSaveButton: {
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
   },
   disabledButton: {
     opacity: 0.6,

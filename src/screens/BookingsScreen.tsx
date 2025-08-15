@@ -166,11 +166,11 @@ const BookingCard = ({
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Confirmed': return '#00C9A7';
-      case 'Pending': return '#F59E0B';
+      case 'Confirmed': return '#1A2533';
+      case 'Pending': return '#1A2533';
       case 'Completed': return '#10B981';
       case 'Cancelled': return '#EF4444';
-      default: return '#6B7280';
+      default: return '#1A2533';
     }
   };
 
@@ -217,25 +217,25 @@ const BookingCard = ({
       {/* Booking Details */}
       <View style={styles.bookingDetails}>
         <View style={styles.detailRow}>
-          <Ionicons name="calendar" size={16} color="#6B7280" />
+          <Ionicons name="calendar" size={16} color="#1A2533" />
           <Text style={styles.detailText}>{booking.date}</Text>
         </View>
         
         <View style={styles.detailRow}>
-          <Ionicons name="person" size={16} color="#6B7280" />
+          <Ionicons name="person" size={16} color="#1A2533" />
           <Text style={styles.detailText}>with {booking.professional}</Text>
         </View>
         
         {booking.duration && (
           <View style={styles.detailRow}>
-            <Ionicons name="time" size={16} color="#6B7280" />
+            <Ionicons name="time" size={16} color="#1A2533" />
             <Text style={styles.detailText}>{booking.duration} minutes</Text>
           </View>
         )}
 
         {booking.notes && (
           <View style={styles.detailRow}>
-            <Ionicons name="document-text" size={16} color="#6B7280" />
+            <Ionicons name="document-text" size={16} color="#1A2533" />
             <Text style={styles.detailText} numberOfLines={2}>{booking.notes}</Text>
           </View>
         )}
@@ -262,7 +262,7 @@ const BookingCard = ({
               style={styles.reviewButton}
               onPress={() => onReview(booking)}
             >
-              <Ionicons name="star" size={14} color="#F59E0B" />
+              <Ionicons name="star" size={14} color="#1A2533" />
               <Text style={styles.reviewButtonText}>Review</Text>
             </TouchableOpacity>
           )}
@@ -778,7 +778,7 @@ const BookingsScreen = () => {
           <Text style={styles.headerTitle}>My Bookings</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Checking authentication...</Text>
         </View>
       </View>
@@ -842,7 +842,7 @@ const BookingsScreen = () => {
             <Ionicons 
               name="calendar" 
               size={20} 
-              color={activeTab === 'upcoming' ? '#FFFFFF' : '#6B7280'} 
+              color={activeTab === 'upcoming' ? '#FFFFFF' : '#1A2533'} 
             />
             <Text style={[styles.modernTabText, activeTab === 'upcoming' && styles.modernActiveTabText]}>
               Upcoming
@@ -863,7 +863,7 @@ const BookingsScreen = () => {
             <Ionicons 
               name="time" 
               size={20} 
-              color={activeTab === 'history' ? '#FFFFFF' : '#6B7280'} 
+              color={activeTab === 'history' ? '#FFFFFF' : '#1A2533'} 
             />
             <Text style={[styles.modernTabText, activeTab === 'history' && styles.modernActiveTabText]}>
               History
@@ -883,8 +883,8 @@ const BookingsScreen = () => {
           <RefreshControl 
             refreshing={isLoading && (upcomingBookings.length > 0 || pastBookings.length > 0)} 
             onRefresh={fetchBookings}
-            colors={['#00C9A7']}
-            tintColor="#00C9A7"
+            colors={['#1A2533']}
+            tintColor="#1A2533"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -905,7 +905,7 @@ const BookingsScreen = () => {
           </View>
         ) : isLoading && upcomingBookings.length === 0 && pastBookings.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00C9A7" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading your bookings...</Text>
           </View>
         ) : activeTab === 'upcoming' ? (
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     textShadowColor: 'rgba(255, 255, 255, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1018,8 +1018,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   modernActiveTab: {
-    backgroundColor: '#00C9A7',
-    shadowColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
   modernTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   modernActiveTabText: {
     color: '#FAFAFA',
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBadgeText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1099,12 +1099,12 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
   },
   salonName: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
   },
   existingRatingText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   priceContainer: {
@@ -1124,11 +1124,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   currency: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   bookingDetails: {
@@ -1143,7 +1143,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     flex: 1,
   },
   cardFooter: {
@@ -1195,10 +1195,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   reviewButtonText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1276,7 +1276,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   modalHeaderGradient: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingTop: 16,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -1349,24 +1349,24 @@ const styles = StyleSheet.create({
   modernServiceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 6,
   },
   modernServiceProvider: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 3,
     fontWeight: '500',
   },
   modernServiceLocation: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 3,
     fontWeight: '500',
   },
   modernServiceDate: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
 
@@ -1378,7 +1378,7 @@ const styles = StyleSheet.create({
   modernSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1448,7 +1448,7 @@ const styles = StyleSheet.create({
   modernRatingLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     flex: 1,
   },
 
@@ -1468,7 +1468,7 @@ const styles = StyleSheet.create({
   modernTextInput: {
     padding: 16,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     minHeight: 120,
     textAlignVertical: 'top',
     lineHeight: 24,
@@ -1530,7 +1530,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   errorContainer: {
@@ -1550,14 +1550,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1579,26 +1579,26 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 32,
   },
   exploreButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1621,12 +1621,12 @@ const styles = StyleSheet.create({
   loginPromptTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 8,
   },
   loginPromptText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
   },

@@ -70,7 +70,7 @@ const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({ navigatio
           last_updated: '2025-01-15T00:00:00Z',
           version: '2.1',
           icon: 'document-text',
-          color: '#00C9A7',
+          color: '#1A2533',
           description: 'Agreement between you and our platform',
           summary: 'Key rules and guidelines for using our service marketplace platform safely and effectively.',
           content: `# Terms of Service
@@ -172,7 +172,7 @@ We may update these terms occasionally. You'll be notified of any important chan
           last_updated: '2025-01-10T00:00:00Z',
           version: '1.8',
           icon: 'shield-checkmark',
-          color: '#10B981',
+          color: '#1A2533',
           description: 'How we protect your personal information',
           summary: 'Clear explanation of how we collect, use, and protect your data with your privacy as our priority.',
           content: `# Privacy Policy
@@ -365,7 +365,7 @@ We only work with reputable companies that follow strict privacy standards:
           last_updated: '2025-01-05T00:00:00Z',
           version: '1.5',
           icon: 'people',
-          color: '#F97316',
+          color: '#1A2533',
           description: 'How to be an awesome community member',
           summary: 'Simple guidelines for creating a positive, safe, and respectful environment for everyone.',
           content: `# Community Guidelines
@@ -847,7 +847,7 @@ We're committed to helping you build a thriving business on our platform. With t
         <View style={styles.loadingContainer}>
           <View style={styles.loadingCard}>
             <Text style={styles.loadingEmoji}>📄</Text>
-            <ActivityIndicator size="large" color="#00C9A7" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading Documents</Text>
             <Text style={styles.loadingSubtext}>Getting everything ready for you...</Text>
           </View>
@@ -880,7 +880,7 @@ We're committed to helping you build a thriving business on our platform. With t
               style={styles.detailExportButton}
               onPress={() => handleExportDocument(currentDocument)}
             >
-              <Ionicons name="download-outline" size={20} color="#00C9A7" />
+              <Ionicons name="download-outline" size={20} color="#1A2533" />
             </TouchableOpacity>
           </View>
         </View>
@@ -962,7 +962,7 @@ We're committed to helping you build a thriving business on our platform. With t
             onPress={handleContactLegal}
           >
             <View style={styles.quickActionIcon}>
-              <Ionicons name="mail-outline" size={20} color="#00C9A7" />
+              <Ionicons name="mail-outline" size={20} color="#1A2533" />
             </View>
             <View style={styles.quickActionContent}>
               <Text style={styles.quickActionTitle}>Contact Legal Team</Text>
@@ -978,7 +978,7 @@ We're committed to helping you build a thriving business on our platform. With t
             onPress={() => navigation.navigate('HelpCenter')}
           >
             <View style={styles.quickActionIcon}>
-              <Ionicons name="help-circle-outline" size={20} color="#10B981" />
+              <Ionicons name="help-circle-outline" size={20} color="#1A2533" />
             </View>
             <View style={styles.quickActionContent}>
               <Text style={styles.quickActionTitle}>Help Center</Text>
@@ -1306,7 +1306,7 @@ const styles = StyleSheet.create({
   },
   listBullet: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '700',
     marginRight: 12,
     marginTop: 2,
@@ -1449,11 +1449,11 @@ const styles = StyleSheet.create({
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

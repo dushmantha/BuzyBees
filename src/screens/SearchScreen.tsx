@@ -262,7 +262,7 @@ const SearchScreen = () => {
       onPress={() => handleItemPress('category', item)}
       activeOpacity={0.8}
     >
-      <View style={[styles.categoryIcon, { backgroundColor: item.color || '#00C9A7' }]}>
+      <View style={[styles.categoryIcon, { backgroundColor: item.color || '#1A2533' }]}>
         <Ionicons name="grid-outline" size={24} color="#FFFFFF" />
       </View>
       <View style={styles.resultContent}>
@@ -314,7 +314,7 @@ const SearchScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color="#1A2533" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Search Results</Text>
         <View style={styles.headerRight}>
@@ -325,7 +325,7 @@ const SearchScreen = () => {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color="#1A2533" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search services, categories, professionals..."
@@ -343,7 +343,7 @@ const SearchScreen = () => {
                 setSearchResults({ services: [], categories: [], professionals: [] });
               }}
             >
-              <Ionicons name="close-circle" size={20} color="#6B7280" />
+              <Ionicons name="close-circle" size={20} color="#1A2533" />
             </TouchableOpacity>
           )}
         </View>
@@ -384,15 +384,15 @@ const SearchScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#00C9A7"
-            colors={['#00C9A7']}
+            tintColor="#1A2533"
+            colors={['#1A2533']}
           />
         }
         showsVerticalScrollIndicator={false}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00C9A7" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Searching...</Text>
           </View>
         ) : (
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 16,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   searchContainer: {
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   clearButton: {
     padding: 4,
@@ -549,13 +549,13 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   activeFilterTab: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   filterTabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   activeFilterTabText: {
     color: '#FFFFFF',
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   section: {
     marginBottom: 24,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginHorizontal: 16,
     marginBottom: 12,
   },
@@ -620,12 +620,12 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
   },
   resultSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 6,
   },
   resultMeta: {
@@ -641,30 +641,30 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginRight: 4,
   },
   stars: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontSize: 12,
     marginRight: 4,
   },
   reviews: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   price: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   location: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   description: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     lineHeight: 18,
   },
   noResultsContainer: {
@@ -675,14 +675,14 @@ const styles = StyleSheet.create({
   noResultsTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   noResultsText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -694,14 +694,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
   },

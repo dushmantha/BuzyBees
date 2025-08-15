@@ -186,9 +186,9 @@ const DAYS_OF_WEEK = [
 // Special day types
 const SPECIAL_DAY_TYPES = [
   { id: 'holiday', name: 'Public Holiday', icon: 'calendar-outline', color: '#EF4444' },
-  { id: 'special_hours', name: 'Special Hours', icon: 'time-outline', color: '#00B4A6' },
-  { id: 'closed', name: 'Closed', icon: 'close-circle-outline', color: '#6B7280' },
-  { id: 'event', name: 'Special Event', icon: 'star-outline', color: '#8B5CF6' }
+  { id: 'special_hours', name: 'Special Hours', icon: 'time-outline', color: '#1A2533' },
+  { id: 'closed', name: 'Closed', icon: 'close-circle-outline', color: '#1A2533' },
+  { id: 'event', name: 'Special Event', icon: 'star-outline', color: '#1A2533' }
 ];
 
 // Recurring options
@@ -215,7 +215,7 @@ const ShopDetailsScreen: React.FC = () => {
     navigation.setOptions({
       title: existingShop ? 'Edit Shop' : 'Create Shop',
       headerStyle: { backgroundColor: '#F0FFFE' },
-      headerTintColor: '#1F2937',
+      headerTintColor: '#1A2533',
       headerTitleStyle: { fontWeight: '600' },
       headerRight: () => (
         <TouchableOpacity
@@ -2949,7 +2949,7 @@ const ShopDetailsScreen: React.FC = () => {
             onPress={() => setShowCategoryModal(true)}
           >
             <Text style={styles.selectInputText}>{shop.category}</Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            <Ionicons name="chevron-down" size={20} color="#1A2533" />
           </TouchableOpacity>
         </View>
 
@@ -3066,7 +3066,7 @@ const ShopDetailsScreen: React.FC = () => {
                         style={styles.modalSuggestionItem}
                         onPress={() => selectAddress(suggestion)}
                       >
-                        <Ionicons name="location-outline" size={16} color="#6B7280" />
+                        <Ionicons name="location-outline" size={16} color="#1A2533" />
                         <Text style={styles.modalSuggestionText} numberOfLines={2}>
                           {suggestion.description}
                         </Text>
@@ -3086,7 +3086,7 @@ const ShopDetailsScreen: React.FC = () => {
             {/* Loading indicator */}
             {isSearchingAddress && (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#00B4A6" />
+                <ActivityIndicator size="small" color="#1A2533" />
                 <Text style={styles.loadingText}>Searching addresses...</Text>
               </View>
             )}
@@ -3181,7 +3181,7 @@ const ShopDetailsScreen: React.FC = () => {
                   style={styles.timeButton}
                   onPress={() => openTimePicker(hours.day, 'open')}
                 >
-                  <Ionicons name="time-outline" size={16} color="#6B7280" />
+                  <Ionicons name="time-outline" size={16} color="#1A2533" />
                   <Text style={styles.timeText}>{formatTimeDisplay(hours.openTime)}</Text>
                 </TouchableOpacity>
                 
@@ -3191,7 +3191,7 @@ const ShopDetailsScreen: React.FC = () => {
                   style={styles.timeButton}
                   onPress={() => openTimePicker(hours.day, 'close')}
                 >
-                  <Ionicons name="time-outline" size={16} color="#6B7280" />
+                  <Ionicons name="time-outline" size={16} color="#1A2533" />
                   <Text style={styles.timeText}>{formatTimeDisplay(hours.closeTime)}</Text>
                 </TouchableOpacity>
               </View>
@@ -3246,7 +3246,7 @@ const ShopDetailsScreen: React.FC = () => {
                         style={styles.actionButton}
                         onPress={() => openSpecialDayModal(item)}
                       >
-                        <Ionicons name="create-outline" size={18} color="#00B4A6" />
+                        <Ionicons name="create-outline" size={18} color="#1A2533" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.actionButton}
@@ -3259,7 +3259,7 @@ const ShopDetailsScreen: React.FC = () => {
                   
                   {item.isOpen && item.openTime && item.closeTime && (
                     <View style={styles.specialDayHours}>
-                      <Ionicons name="time-outline" size={14} color="#6B7280" />
+                      <Ionicons name="time-outline" size={14} color="#1A2533" />
                       <Text style={styles.specialDayHoursText}>
                         {formatTimeDisplay(item.openTime || '')} - {formatTimeDisplay(item.closeTime || '')}
                       </Text>
@@ -3293,7 +3293,7 @@ const ShopDetailsScreen: React.FC = () => {
           onPress={() => setShowTimezoneModal(true)}
         >
           <Text style={styles.selectInputText}>{shop.timezone}</Text>
-          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+          <Ionicons name="chevron-down" size={20} color="#1A2533" />
         </TouchableOpacity>
       </View>
     </View>
@@ -3316,7 +3316,7 @@ const ShopDetailsScreen: React.FC = () => {
 
       {isRefreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00B4A6" />
+          <ActivityIndicator size="small" color="#1A2533" />
           <Text style={styles.loadingText}>Loading services...</Text>
         </View>
       ) : shop.services && shop.services.length > 0 ? (
@@ -3353,7 +3353,7 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.actionButton}
                     onPress={() => openServiceModal(item)}
                   >
-                    <Ionicons name="create-outline" size={18} color="#00B4A6" />
+                    <Ionicons name="create-outline" size={18} color="#1A2533" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -3372,7 +3372,7 @@ const ShopDetailsScreen: React.FC = () => {
                   <Text style={styles.serviceDetailText}>${item.price || 0}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
-                  <Ionicons name="time-outline" size={16} color="#6B7280" />
+                  <Ionicons name="time-outline" size={16} color="#1A2533" />
                   <Text style={styles.serviceDetailText}>{item.duration || item.duration_minutes || 0} min</Text>
                 </View>
                 <View style={styles.serviceDetail}>
@@ -3388,7 +3388,7 @@ const ShopDetailsScreen: React.FC = () => {
               
               {item.discount && (
                 <View style={styles.discountBadge}>
-                  <Ionicons name="pricetag" size={14} color="#00B4A6" />
+                  <Ionicons name="pricetag" size={14} color="#1A2533" />
                   <Text style={styles.discountText}>{item.discount.description}</Text>
                 </View>
               )}
@@ -3440,7 +3440,7 @@ const ShopDetailsScreen: React.FC = () => {
 
           {isRefreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#00B4A6" />
+              <ActivityIndicator size="small" color="#1A2533" />
               <Text style={styles.loadingText}>Loading staff...</Text>
             </View>
           ) : shop.staff && shop.staff.length > 0 ? (
@@ -3470,7 +3470,7 @@ const ShopDetailsScreen: React.FC = () => {
                             onLoad={() => console.log('✅ Staff avatar loaded:', item.name)}
                           />
                         ) : (
-                          <Ionicons name="person" size={24} color="#6B7280" />
+                          <Ionicons name="person" size={24} color="#1A2533" />
                         )}
                       </View>
                       <View style={styles.staffInfo}>
@@ -3483,7 +3483,7 @@ const ShopDetailsScreen: React.FC = () => {
                           style={styles.actionButton}
                           onPress={() => openStaffModal(item)}
                         >
-                          <Ionicons name="create-outline" size={18} color="#00B4A6" />
+                          <Ionicons name="create-outline" size={18} color="#1A2533" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.actionButton}
@@ -3515,7 +3515,7 @@ const ShopDetailsScreen: React.FC = () => {
                     <View style={styles.staffDetails}>
                       {item.experience_years && Number(item.experience_years) > 0 && (
                         <View style={styles.staffDetail}>
-                          <Ionicons name="star-outline" size={16} color="#00B4A6" />
+                          <Ionicons name="star-outline" size={16} color="#1A2533" />
                           <Text style={styles.staffDetailText}>{Number(item.experience_years)} years exp.</Text>
                         </View>
                       )}
@@ -3620,7 +3620,7 @@ const ShopDetailsScreen: React.FC = () => {
               }
             }}
             trackColor={{ false: '#E5E7EB', true: '#10B981' }}
-            thumbColor={shop.first_time_discount_active ?? true ? '#059669' : '#9CA3AF'}
+            thumbColor={shop.first_time_discount_active ?? true ? '#10B981' : '#9CA3AF'}
           />
         </View>
         <View style={styles.firstTimeDiscountBenefits}>
@@ -3641,7 +3641,7 @@ const ShopDetailsScreen: React.FC = () => {
 
       {isRefreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00B4A6" />
+          <ActivityIndicator size="small" color="#1A2533" />
           <Text style={styles.loadingText}>Loading discounts...</Text>
         </View>
       ) : shop.discounts && shop.discounts.length > 0 ? (
@@ -3655,7 +3655,7 @@ const ShopDetailsScreen: React.FC = () => {
                   <Ionicons 
                     name={DISCOUNT_TYPES.find(t => t.id === item.type)?.icon as any || 'pricetag'} 
                     size={20} 
-                    color="#00B4A6" 
+                    color="#1A2533" 
                   />
                 </View>
                 <View style={styles.discountInfo}>
@@ -3669,7 +3669,7 @@ const ShopDetailsScreen: React.FC = () => {
                     style={styles.actionButton}
                     onPress={() => openDiscountModal(item)}
                   >
-                    <Ionicons name="create-outline" size={18} color="#00B4A6" />
+                    <Ionicons name="create-outline" size={18} color="#1A2533" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -3829,7 +3829,7 @@ const ShopDetailsScreen: React.FC = () => {
                 {editingSpecialDay ? 'Edit Special Day' : 'Add Special Day'}
               </Text>
               <TouchableOpacity onPress={() => setShowSpecialDayModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#1A2533" />
               </TouchableOpacity>
             </View>
             
@@ -4178,7 +4178,7 @@ const ShopDetailsScreen: React.FC = () => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Category</Text>
             <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           
@@ -4203,7 +4203,7 @@ const ShopDetailsScreen: React.FC = () => {
                   {item}
                 </Text>
                 {shop.category === item && (
-                  <Ionicons name="checkmark" size={20} color="#00B4A6" />
+                  <Ionicons name="checkmark" size={20} color="#1A2533" />
                 )}
               </TouchableOpacity>
             )}
@@ -4225,7 +4225,7 @@ const ShopDetailsScreen: React.FC = () => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Timezone</Text>
             <TouchableOpacity onPress={() => setShowTimezoneModal(false)}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           
@@ -4250,7 +4250,7 @@ const ShopDetailsScreen: React.FC = () => {
                   {item}
                 </Text>
                 {shop.timezone === item && (
-                  <Ionicons name="checkmark" size={20} color="#00B4A6" />
+                  <Ionicons name="checkmark" size={20} color="#1A2533" />
                 )}
               </TouchableOpacity>
             )}
@@ -4278,7 +4278,7 @@ const ShopDetailsScreen: React.FC = () => {
                 {editingService ? 'Edit Service' : 'Add Service'}
               </Text>
               <TouchableOpacity onPress={() => setShowServiceModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#1A2533" />
               </TouchableOpacity>
             </View>
             
@@ -4438,7 +4438,7 @@ const ShopDetailsScreen: React.FC = () => {
                           <Text style={styles.staffOptionRole}>{staff.role}</Text>
                         </View>
                         {serviceForm.assigned_staff?.includes(staff.id) && (
-                          <Ionicons name="checkmark-circle" size={20} color="#00B4A6" />
+                          <Ionicons name="checkmark-circle" size={20} color="#1A2533" />
                         )}
                       </TouchableOpacity>
                     ))
@@ -4460,7 +4460,7 @@ const ShopDetailsScreen: React.FC = () => {
                       style={styles.addOptionButton}
                       onPress={addServiceOption}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#00B4A6" />
+                      <Ionicons name="add-circle-outline" size={18} color="#1A2533" />
                       <Text style={styles.addOptionText}>Add</Text>
                     </TouchableOpacity>
                   </View>
@@ -4632,7 +4632,7 @@ const ShopDetailsScreen: React.FC = () => {
                 {editingDiscount ? 'Edit Discount' : 'Add Discount'}
               </Text>
               <TouchableOpacity onPress={() => setShowDiscountModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#1A2533" />
               </TouchableOpacity>
             </View>
             
@@ -4784,7 +4784,7 @@ const ShopDetailsScreen: React.FC = () => {
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
               </Text>
               <TouchableOpacity onPress={closeStaffModal}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#1A2533" />
               </TouchableOpacity>
             </View>
             
@@ -5201,7 +5201,7 @@ const ShopDetailsScreen: React.FC = () => {
               {/* Leave & Special Days - Always Expanded */}
               <View style={styles.inputGroup}>
                 <View style={styles.leaveHeaderFixed}>
-                  <Ionicons name="calendar-outline" size={20} color="#00B4A6" />
+                  <Ionicons name="calendar-outline" size={20} color="#1A2533" />
                   <View style={styles.leaveHeaderTextContainer}>
                     <Text style={styles.label}>Leave & Special Days</Text>
                     <Text style={styles.inputHint}>Tap dates to select leave periods (drag between dates for ranges)</Text>
@@ -5551,14 +5551,14 @@ const ShopDetailsScreen: React.FC = () => {
           <View style={styles.leaveCalendarModal}>
               <View style={styles.leaveCalendarHeader}>
                 <View style={styles.leaveCalendarTitleContainer}>
-                  <Ionicons name="calendar" size={24} color="#00B4A6" />
+                  <Ionicons name="calendar" size={24} color="#1A2533" />
                   <Text style={styles.leaveCalendarTitle}>Staff Leave Calendar</Text>
                 </View>
                 <TouchableOpacity 
                   onPress={() => setShowStaffLeaveCalendar(false)}
                   style={styles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#6B7280" />
+                  <Ionicons name="close" size={24} color="#1A2533" />
                 </TouchableOpacity>
               </View>
 
@@ -5673,7 +5673,7 @@ const ShopDetailsScreen: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading shop details...</Text>
         </View>
       </SafeAreaView>
@@ -5923,7 +5923,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: '#3B82F6',
+    borderLeftColor: '#1A2533',
   },
   infoText: {
     fontSize: 13,
@@ -5947,7 +5947,7 @@ const styles = StyleSheet.create({
   optionNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
   },
   deleteButton: {
     padding: 4,
@@ -5959,13 +5959,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     borderRadius: 12,
     borderStyle: 'dashed',
     backgroundColor: '#FFE4E1',
   },
   addButtonText: {
-    color: '#00B4A6',
+    color: '#1A2533',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
@@ -5993,7 +5993,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     fontSize: 14,
   },
   // Service Options List Styles
@@ -6008,7 +6008,7 @@ const styles = StyleSheet.create({
   optionsListTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   optionListItem: {
@@ -6025,7 +6025,7 @@ const styles = StyleSheet.create({
   optionListName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   optionListDetails: {
@@ -6034,12 +6034,12 @@ const styles = StyleSheet.create({
   },
   optionListPrice: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '600',
   },
   optionListDuration: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 4,
   },
   activeIndicator: {
@@ -6071,7 +6071,7 @@ const styles = StyleSheet.create({
   
   // Header Save Button
   headerSaveButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -6112,8 +6112,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 1,
   },
   activeTabItem: {
-    backgroundColor: '#00B4A6',
-    shadowColor: '#00B4A6',
+    backgroundColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -6122,7 +6122,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 9,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 3,
     textAlign: 'center',
   },
@@ -6163,7 +6163,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 20,
     letterSpacing: -0.5,
   },
@@ -6186,7 +6186,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   input: {
@@ -6197,7 +6197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -6207,7 +6207,7 @@ const styles = StyleSheet.create({
   },
   inputText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   placeholderText: {
     fontSize: 16,
@@ -6243,7 +6243,7 @@ const styles = StyleSheet.create({
   modalHeader: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     padding: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
@@ -6258,7 +6258,7 @@ const styles = StyleSheet.create({
   },
   modalSuggestionText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
@@ -6272,7 +6272,7 @@ const styles = StyleSheet.create({
   },
   modalDismissText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -6288,7 +6288,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 8,
   },
   webPickerContainer: {
@@ -6312,7 +6312,7 @@ const styles = StyleSheet.create({
   },
   webPickerButtonText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     fontWeight: '500',
   },
   textArea: {
@@ -6337,11 +6337,11 @@ const styles = StyleSheet.create({
   },
   selectInputText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   inputHint: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 4,
   },
   row: {
@@ -6373,11 +6373,11 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   switchDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
 
@@ -6430,7 +6430,7 @@ const styles = StyleSheet.create({
   imageLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   imagePlaceholder: {
@@ -6477,7 +6477,7 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   timeRow: {
     flexDirection: 'row',
@@ -6500,12 +6500,12 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     letterSpacing: 0.3,
   },
   timeSeparator: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   closedText: {
@@ -6548,11 +6548,11 @@ const styles = StyleSheet.create({
   specialDayName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   specialDayDate: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   specialDayType: {
@@ -6571,11 +6571,11 @@ const styles = StyleSheet.create({
   },
   specialDayHoursText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   specialDayDescription: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     fontStyle: 'italic',
   },
 
@@ -6597,13 +6597,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   selectedSpecialDayType: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
   },
   specialDayTypeName: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
   },
   recurringOption: {
@@ -6618,7 +6618,7 @@ const styles = StyleSheet.create({
   },
   recurringOptionText: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     fontWeight: '500',
   },
   selectedRecurringOptionText: {
@@ -6630,11 +6630,11 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 16,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -6688,11 +6688,11 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   serviceCategory: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   serviceActions: {
@@ -6700,7 +6700,7 @@ const styles = StyleSheet.create({
   },
   serviceDescription: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#1A2533',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -6717,7 +6717,7 @@ const styles = StyleSheet.create({
   serviceDetailText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   statusDot: {
     width: 6,
@@ -6775,11 +6775,11 @@ const styles = StyleSheet.create({
   discountTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   discountType: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   discountActions: {
@@ -6797,11 +6797,11 @@ const styles = StyleSheet.create({
   discountValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   discountLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   discountPeriod: {
@@ -6811,7 +6811,7 @@ const styles = StyleSheet.create({
   },
   discountPeriodText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   
   // First-Time Discount Feature Styles
@@ -6875,13 +6875,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -6923,7 +6923,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   modalBody: {
     flex: 1,
@@ -6946,11 +6946,11 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#1A2533',
   },
   saveModalButton: {
     flex: 1,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -6976,7 +6976,7 @@ const styles = StyleSheet.create({
   },
   categoryOptionText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedCategoryOptionText: {
     fontWeight: '600',
@@ -7001,13 +7001,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   selectedDiscountType: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
   },
   discountTypeName: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
   },
   selectedDiscountTypeName: {
@@ -7016,7 +7016,7 @@ const styles = StyleSheet.create({
   },
   discountTypeDesc: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
 
@@ -7059,17 +7059,17 @@ const styles = StyleSheet.create({
   staffName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   staffRole: {
     fontSize: 13,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '500',
     marginTop: 2,
   },
   staffContact: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 1,
   },
   staffActions: {
@@ -7081,7 +7081,7 @@ const styles = StyleSheet.create({
   specialtiesLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 6,
   },
   specialtyTags: {
@@ -7102,7 +7102,7 @@ const styles = StyleSheet.create({
   },
   staffBio: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#1A2533',
     lineHeight: 18,
     marginBottom: 12,
     fontStyle: 'italic',
@@ -7120,7 +7120,7 @@ const styles = StyleSheet.create({
   staffDetailText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
   },
 
   // Staff Selection in Service Modal
@@ -7131,7 +7131,7 @@ const styles = StyleSheet.create({
   // Service Options
   optionsDescription: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -7141,14 +7141,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#FFE4E1',
     borderWidth: 1,
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     borderRadius: 12,
     padding: 16,
   },
   manageOptionsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     flex: 1,
     marginLeft: 12,
   },
@@ -7162,7 +7162,7 @@ const styles = StyleSheet.create({
   },
   optionsInfoText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     flex: 1,
     marginLeft: 12,
     lineHeight: 20,
@@ -7178,7 +7178,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   selectedStaffOption: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
   },
   staffOptionContent: {
@@ -7187,7 +7187,7 @@ const styles = StyleSheet.create({
   staffOptionName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedStaffOptionText: {
     color: '#92400E',
@@ -7195,12 +7195,12 @@ const styles = StyleSheet.create({
   },
   staffOptionRole: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   noStaffText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontStyle: 'italic',
     textAlign: 'center',
     padding: 20,
@@ -7232,13 +7232,13 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   selectedTimeSlot: {
-    backgroundColor: '#00B4A6',
-    borderColor: '#00B4A6',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   timeSlotText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#374151',
+    color: '#1A2533',
   },
   selectedTimeSlotText: {
     color: '#FFFFFF',
@@ -7287,7 +7287,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addSpecialtyButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -7300,7 +7300,7 @@ const styles = StyleSheet.create({
   currentSpecialtiesLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   specialtyTagWithRemove: {
@@ -7322,7 +7322,7 @@ const styles = StyleSheet.create({
   },
   suggestionLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 6,
   },
   suggestionTags: {
@@ -7340,7 +7340,7 @@ const styles = StyleSheet.create({
   },
   suggestionTagText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
 
@@ -7352,7 +7352,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
   },
 
@@ -7388,7 +7388,7 @@ const styles = StyleSheet.create({
   addOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   noOptionsContainer: {
     alignItems: 'center',
@@ -7402,7 +7402,7 @@ const styles = StyleSheet.create({
   noOptionsText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 8,
     marginBottom: 4,
   },
@@ -7432,7 +7432,7 @@ const styles = StyleSheet.create({
   optionNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     backgroundColor: '#FFE4E1',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -7459,7 +7459,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 6,
   },
   optionInput: {
@@ -7470,7 +7470,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     backgroundColor: '#FFFFFF',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   optionTextArea: {
     height: 60,
@@ -7485,7 +7485,7 @@ const styles = StyleSheet.create({
   },
   optionStatusDescription: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   optionPreview: {
@@ -7522,7 +7522,7 @@ const styles = StyleSheet.create({
   uploadProgressContainer: {
     backgroundColor: '#F0F9FF',
     borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
+    borderLeftColor: '#1A2533',
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -7547,7 +7547,7 @@ const styles = StyleSheet.create({
   },
   uploadProgressMessage: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     fontStyle: 'italic',
   },
   progressBarContainer: {
@@ -7559,13 +7559,13 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#1A2533',
     borderRadius: 4,
     transition: 'width 0.3s ease',
   },
   currentImageText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -7586,20 +7586,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedLocationType: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
   },
   locationTypeTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedLocationTypeTitle: {
     color: '#92400E',
   },
   locationTypeDesc: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 16,
   },
@@ -7619,7 +7619,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   inactiveServiceName: {
-    color: '#6B7280',
+    color: '#1A2533',
   },
   inactiveServiceCategory: {
     color: '#9CA3AF',
@@ -7633,7 +7633,7 @@ const styles = StyleSheet.create({
   inactiveBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
 
   // Inline Date Picker Styles  
@@ -7662,7 +7662,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 8,
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     backgroundColor: '#FFFFFF',
   },
 
@@ -7694,7 +7694,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 8,
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     backgroundColor: '#FFFFFF',
     width: '100%',
   },
@@ -7741,7 +7741,7 @@ const styles = StyleSheet.create({
   specialDaySectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 16,
     letterSpacing: -0.3,
   },
@@ -7761,7 +7761,7 @@ const styles = StyleSheet.create({
   inputWithIconText: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   datePickerButton: {
     flexDirection: 'row',
@@ -7776,7 +7776,7 @@ const styles = StyleSheet.create({
   },
   datePickerText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '500',
   },
   datePickerPlaceholder: {
@@ -7797,9 +7797,9 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   selectedSpecialDayTypeCard: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -7815,7 +7815,7 @@ const styles = StyleSheet.create({
   specialDayTypeTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#4B5563',
+    color: '#1A2533',
     textAlign: 'center',
   },
   openStatusCard: {
@@ -7848,12 +7848,12 @@ const styles = StyleSheet.create({
   openStatusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 2,
   },
   openStatusDescription: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   timePickerSection: {
     marginTop: 16,
@@ -7868,7 +7868,7 @@ const styles = StyleSheet.create({
   timePickerLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   timePickerButton: {
@@ -7888,7 +7888,7 @@ const styles = StyleSheet.create({
   timePickerText: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '500',
   },
   timePickerPlaceholder: {
@@ -7914,7 +7914,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   selectedRecurringCard: {
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     backgroundColor: '#FFE4E1',
   },
   recurringIconContainer: {
@@ -7931,7 +7931,7 @@ const styles = StyleSheet.create({
   recurringOptionTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#4B5563',
+    color: '#1A2533',
     flex: 1,
   },
   selectedRecurringTitle: {
@@ -7955,7 +7955,7 @@ const styles = StyleSheet.create({
   textAreaWithIcon: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     minHeight: 60,
     textAlignVertical: 'top',
   },
@@ -7979,18 +7979,18 @@ const styles = StyleSheet.create({
   specialDayCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   specialDaySaveButton: {
     flex: 2,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingVertical: 14,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -8034,7 +8034,7 @@ const styles = StyleSheet.create({
   dayScheduleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   daySwitch: {
     transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
@@ -8060,11 +8060,11 @@ const styles = StyleSheet.create({
   timeSlotText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   timeToText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
 
@@ -8077,7 +8077,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#00B4A6',
+    borderColor: '#1A2533',
     marginTop: 8,
   },
   addLeaveButtonText: {
@@ -8098,7 +8098,7 @@ const styles = StyleSheet.create({
   leaveDaysTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 12,
   },
   leaveDaysList: {
@@ -8120,11 +8120,11 @@ const styles = StyleSheet.create({
   leaveDayTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   leaveDayDates: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   removeLeaveDayButton: {
@@ -8164,7 +8164,7 @@ const styles = StyleSheet.create({
   leaveCalendarTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   leaveCalendarBody: {
     flex: 1,
@@ -8172,7 +8172,7 @@ const styles = StyleSheet.create({
   },
   leaveCalendarInstructions: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
@@ -8191,7 +8191,7 @@ const styles = StyleSheet.create({
   calendarMonthYear: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   calendarDayNames: {
     flexDirection: 'row',
@@ -8202,7 +8202,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     paddingVertical: 8,
   },
   calendarWeek: {
@@ -8229,7 +8229,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE4E1',
   },
   calendarDaySelected: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
   },
   calendarDayOnLeave: {
     backgroundColor: '#FEE2E2',
@@ -8239,7 +8239,7 @@ const styles = StyleSheet.create({
   calendarDayText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   calendarDayTextOther: {
     color: '#9CA3AF',
@@ -8295,18 +8295,18 @@ const styles = StyleSheet.create({
   leaveCalendarCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   leaveCalendarSaveButton: {
     flex: 2,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingVertical: 14,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -8358,7 +8358,7 @@ const styles = StyleSheet.create({
   inlineCalendarMonthYear: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   inlineCalendarDayNames: {
     flexDirection: 'row',
@@ -8369,7 +8369,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#1A2533',
     paddingVertical: 8,
   },
   inlineCalendarWeek: {
@@ -8396,7 +8396,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE4E1',
   },
   inlineCalendarDaySelected: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
   },
   inlineCalendarDayOnLeave: {
     backgroundColor: '#FEE2E2',
@@ -8406,7 +8406,7 @@ const styles = StyleSheet.create({
   inlineCalendarDayText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: '#1A2533',
   },
   inlineCalendarDayTextOther: {
     color: '#9CA3AF',
@@ -8465,7 +8465,7 @@ const styles = StyleSheet.create({
   currentLeaveDatesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 12,
   },
 });

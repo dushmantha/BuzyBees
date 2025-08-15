@@ -1212,7 +1212,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 style={styles.verifyButton}
                 onPress={handleVerificationPress}
               >
-                <Ionicons name="shield-checkmark-outline" size={16} color="#00C9A7" />
+                <Ionicons name="shield-checkmark-outline" size={16} color="#1A2533" />
                 <Text style={styles.verifyButtonText}>Verify to change</Text>
               </TouchableOpacity>
             )}
@@ -1319,7 +1319,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               style={styles.closeButton}
               onPress={() => setShowAccountSwitchModal(false)}
             >
-              <Ionicons name="close" size={24} color="#1F2937" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           
@@ -1336,7 +1336,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 <Ionicons 
                   name="person-outline" 
                   size={24} 
-                  color={accountType === 'consumer' ? '#00C9A7' : '#1F2937'} 
+                  color={accountType === 'consumer' ? '#1A2533' : '#1A2533'} 
                 />
               </View>
               <View style={styles.accountOptionContent}>
@@ -1351,7 +1351,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 </Text>
               </View>
               {accountType === 'consumer' && (
-                <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
+                <Ionicons name="checkmark-circle" size={24} color="#1A2533" />
               )}
             </TouchableOpacity>
 
@@ -1367,7 +1367,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 <Ionicons 
                   name="briefcase-outline" 
                   size={24} 
-                  color={accountType === 'provider' ? '#00C9A7' : '#1F2937'} 
+                  color={accountType === 'provider' ? '#1A2533' : '#1A2533'} 
                 />
               </View>
               <View style={styles.accountOptionContent}>
@@ -1382,19 +1382,19 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 </Text>
               </View>
               {accountType === 'provider' && (
-                <Ionicons name="checkmark-circle" size={24} color="#00C9A7" />
+                <Ionicons name="checkmark-circle" size={24} color="#1A2533" />
               )}
             </TouchableOpacity>
 
             {accountSwitchLoading && (
               <View style={styles.switchingIndicator}>
-                <ActivityIndicator size="small" color="#00C9A7" />
+                <ActivityIndicator size="small" color="#1A2533" />
                 <Text style={styles.switchingText}>Switching account mode...</Text>
               </View>
             )}
 
             <View style={styles.switchNote}>
-              <Ionicons name="information-circle-outline" size={16} color="#1F2937" />
+              <Ionicons name="information-circle-outline" size={16} color="#1A2533" />
               <Text style={styles.switchNoteText}>
                 Switching account mode will update your entire app experience and navigation.
               </Text>
@@ -1438,7 +1438,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         >
           <View style={styles.upgradePromptContent}>
             <View style={styles.upgradePromptIcon}>
-              <Ionicons name="star" size={20} color="#00C9A7" />
+              <Ionicons name="star" size={20} color="#1A2533" />
             </View>
             <View style={styles.upgradePromptText}>
               <Text style={styles.upgradePromptTitle}>
@@ -1448,7 +1448,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 Unlock unlimited features and premium tools
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#00C9A7" />
+            <Ionicons name="chevron-forward" size={20} color="#1A2533" />
           </View>
         </TouchableOpacity>
       );
@@ -1461,7 +1461,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         <View style={styles.premiumStatusCard}>
           <View style={styles.premiumStatusHeader}>
             <View style={styles.premiumStatusIcon}>
-              <Ionicons name="star" size={20} color="#00C9A7" />
+              <Ionicons name="star" size={20} color="#1A2533" />
             </View>
             <View style={styles.premiumStatusText}>
               <Text style={styles.premiumStatusTitle}>Premium Active</Text>
@@ -1566,7 +1566,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="#F0FFFE" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Switching account mode...</Text>
         </View>
       </SafeAreaView>
@@ -1581,7 +1581,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.headerTitle}>My Profile</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -1628,7 +1628,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name="swap-horizontal-outline" 
             size={20} 
-            color="#00C9A7"
+            color="#1A2533"
           />
           <Text style={[
             styles.switchAccountText,
@@ -1648,7 +1648,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={accountType === 'provider' ? 'briefcase' : 'person'} 
             size={16} 
-            color="#00C9A7"
+            color="#1A2533"
           />
           <Text style={[
             styles.accountTypeText,
@@ -1658,7 +1658,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           </Text>
           {isPremium && (
             <View style={styles.premiumBadge}>
-              <Ionicons name="star" size={12} color="#00C9A7" />
+              <Ionicons name="star" size={12} color="#1A2533" />
               <Text style={styles.premiumText}>PRO</Text>
             </View>
           )}
@@ -1669,7 +1669,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       {/* Content */}
       <ScrollView style={styles.content}>
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: '#00C9A7', justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[styles.avatar, { backgroundColor: '#1A2533', justifyContent: 'center', alignItems: 'center' }]}>
               {currentProfile?.avatar_url && !profileImageError ? (
                 <Image 
                   source={{ uri: currentProfile.avatar_url }} 
@@ -1712,7 +1712,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <View style={styles.uploadProgressContainer}>
                 <Text style={[
                   styles.uploadProgressText,
-                  { color: uploadProgress.message.includes('✅') ? '#00C9A7' : 
+                  { color: uploadProgress.message.includes('✅') ? '#1A2533' : 
                            uploadProgress.message.includes('⚠️') ? '#FFA500' : '#333' }
                 ]}>
                   {uploadProgress.message}
@@ -1759,12 +1759,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     style={styles.addButton}
                     onPress={() => setShowSkillModal(true)}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#00C9A7" />
+                    <Ionicons name="add-circle-outline" size={20} color="#1A2533" />
                     <Text style={styles.addButtonText}>Add Skill</Text>
                   </TouchableOpacity>
                 </View>
                 {isLoadingSkills ? (
-                  <ActivityIndicator size="small" color="#00C9A7" />
+                  <ActivityIndicator size="small" color="#1A2533" />
                 ) : providerSkills.length > 0 ? (
                   <View style={styles.skillsList}>
                     {providerSkills.map((skill, index) => (
@@ -1798,12 +1798,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     style={styles.addButton}
                     onPress={() => setShowCertModal(true)}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#00C9A7" />
+                    <Ionicons name="add-circle-outline" size={20} color="#1A2533" />
                     <Text style={styles.addButtonText}>Add Certification</Text>
                   </TouchableOpacity>
                 </View>
                 {isLoadingCerts ? (
-                  <ActivityIndicator size="small" color="#00C9A7" />
+                  <ActivityIndicator size="small" color="#1A2533" />
                 ) : providerCertifications.length > 0 ? (
                   <View style={styles.certsList}>
                     {providerCertifications.map((cert, index) => (
@@ -1917,7 +1917,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Preferences</Text>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleNotificationsPress}>
-              <Ionicons name="notifications-outline" size={20} color="#1F2937" />
+              <Ionicons name="notifications-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Notifications</Text>
               {notificationCount > 0 && (
                 <View style={styles.preferenceNotificationBadge}>
@@ -1927,12 +1927,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handlePaymentMethodsPress}>
-              <Ionicons name="card-outline" size={20} color="#1F2937" />
+              <Ionicons name="card-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Payment Methods</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handlePrivacyPress}>
-              <Ionicons name="lock-closed-outline" size={20} color="#1F2937" />
+              <Ionicons name="lock-closed-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Privacy</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
@@ -1942,12 +1942,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Support</Text>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleHelpCenterPress}>
-              <Ionicons name="help-circle-outline" size={20} color="#1F2937" />
+              <Ionicons name="help-circle-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Help Center</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.preferenceItem} onPress={handleTermsConditionsPress}>
-              <Ionicons name="document-text-outline" size={20} color="#1F2937" />
+              <Ionicons name="document-text-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Terms & Conditions</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
@@ -2014,7 +2014,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         features={[
           {
             icon: 'card-outline',
-            iconColor: '#00C9A7',
+            iconColor: '#1A2533',
             title: 'Unlimited Payment History',
             description: 'View all your payments and earnings without any restrictions'
           },
@@ -2026,7 +2026,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           },
           {
             icon: 'document-text-outline',
-            iconColor: '#3B82F6',
+            iconColor: '#1A2533',
             title: 'Professional Invoices',
             description: 'Custom branded invoices with digital signatures and templates'
           },
@@ -2061,7 +2061,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 });
               }}
             >
-              <Ionicons name="close" size={24} color="#1F2937" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
@@ -2194,7 +2194,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                 });
               }}
             >
-              <Ionicons name="close" size={24} color="#1F2937" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
@@ -2337,7 +2337,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   switchAccountButton: {
     flexDirection: 'row',
@@ -2355,12 +2355,12 @@ const styles = StyleSheet.create({
   },
   switchAccountText: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 6,
   },
   providerSwitchText: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   accountTypeIndicator: {
     backgroundColor: '#F0FFFE', // Changed from white to app background
@@ -2385,17 +2385,17 @@ const styles = StyleSheet.create({
   },
   accountTypeText: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 8,
   },
   providerBadgeText: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -2423,7 +2423,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#00C9A7',
+    borderBottomColor: '#1A2533',
   },
   tabIconContainer: {
     position: 'relative',
@@ -2431,11 +2431,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 8,
   },
   activeTabText: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
   },
   notificationBadge: {
@@ -2467,7 +2467,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     textAlign: 'center',
   },
   errorContainer: {
@@ -2484,7 +2484,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -2511,7 +2511,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: '35%',
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -2539,19 +2539,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 6,
   },
   value: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#FFE4E1',
   },
   input: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 12,
@@ -2586,13 +2586,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 16,
   },
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 20,
     marginBottom: 12,
   },
@@ -2605,13 +2605,13 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
     marginLeft: 6,
   },
   ratingSubText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 8,
   },
   preferenceItem: {
@@ -2624,7 +2624,7 @@ const styles = StyleSheet.create({
   preferenceText: {
     flex: 1,
     fontSize: 15,
-    color: '#00C9A7',
+    color: '#1A2533',
     marginLeft: 12,
   },
   preferenceNotificationBadge: {
@@ -2686,7 +2686,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   closeButton: {
     padding: 4,
@@ -2704,7 +2704,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   selectedAccountOption: {
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
     backgroundColor: '#F0FFFE',
   },
   accountOptionIcon: {
@@ -2722,18 +2722,18 @@ const styles = StyleSheet.create({
   accountOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 4,
   },
   selectedAccountOptionTitle: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   selectedProviderOptionTitle: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   accountOptionDescription: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     lineHeight: 20,
   },
   switchingIndicator: {
@@ -2747,7 +2747,7 @@ const styles = StyleSheet.create({
   },
   switchingText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 8,
   },
   switchNote: {
@@ -2760,7 +2760,7 @@ const styles = StyleSheet.create({
   },
   switchNoteText: {
     fontSize: 12,
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
@@ -2791,7 +2791,7 @@ const styles = StyleSheet.create({
   },
   newInvoiceItem: {
     borderLeftWidth: 4,
-    borderLeftColor: '#00C9A7',
+    borderLeftColor: '#1A2533',
   },
   invoiceHeader: {
     flexDirection: 'row',
@@ -2805,11 +2805,11 @@ const styles = StyleSheet.create({
   invoiceNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   invoiceDate: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 2,
   },
   invoiceActions: {
@@ -2820,7 +2820,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     marginRight: 8,
   },
   moreButton: {
@@ -2828,7 +2828,7 @@ const styles = StyleSheet.create({
   },
   invoiceDescription: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 12,
   },
   invoiceFooter: {
@@ -2839,7 +2839,7 @@ const styles = StyleSheet.create({
   invoiceAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -2875,8 +2875,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#00C9A7',
-    shadowColor: '#00C9A7',
+    borderColor: '#1A2533',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -2901,12 +2901,12 @@ const styles = StyleSheet.create({
   upgradePromptTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 2,
   },
   upgradePromptSubtitle: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   // Empty State Styles
   emptyContainer: {
@@ -2919,14 +2919,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -2949,12 +2949,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
   },
   modalActions: {
@@ -2982,14 +2982,14 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginLeft: 8,
   },
   paidButtonText: {
     color: '#FFFFFF',
   },
   contactButtonText: {
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   // Bottom Action Buttons
   editButton: {
@@ -2997,7 +2997,7 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 16,
     right: 16,
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -3010,7 +3010,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   providerEditButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
   },
   editButtonText: {
     color: '#FFFFFF',
@@ -3041,11 +3041,11 @@ const styles = StyleSheet.create({
     borderColor: '#FFE4E1',
   },
   saveButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     marginLeft: 8,
   },
   providerSaveButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
   },
   disabledButton: {
     opacity: 0.6,
@@ -3056,7 +3056,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cancelButtonText: {
-    color: '#1F2937',
+    color: '#1A2533',
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -3069,7 +3069,7 @@ const styles = StyleSheet.create({
   },
   readOnlyValue: {
     flex: 1,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   verifyButton: {
     flexDirection: 'row',
@@ -3084,7 +3084,7 @@ const styles = StyleSheet.create({
   },
   verifyButtonText: {
     fontSize: 12,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -3106,12 +3106,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkboxChecked: {
-    backgroundColor: '#00C9A7',
-    borderColor: '#00C9A7',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   checkboxLabel: {
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
   },
   // Skills and Certifications Management Styles
@@ -3133,7 +3133,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -3157,11 +3157,11 @@ const styles = StyleSheet.create({
   skillName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   skillLevel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   deleteButton: {
@@ -3187,11 +3187,11 @@ const styles = StyleSheet.create({
   certName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   certDetails: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 2,
   },
   // Form styles for modals
@@ -3201,7 +3201,7 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 8,
   },
   formInput: {
@@ -3212,7 +3212,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#00C9A7',
+    color: '#1A2533',
   },
   pickerContainer: {
     flexDirection: 'row',
@@ -3229,15 +3229,15 @@ const styles = StyleSheet.create({
   },
   pickerOptionSelected: {
     backgroundColor: '#F0FFFE',
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   pickerText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   pickerTextSelected: {
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '600',
   },
   // Modal action buttons
@@ -3247,12 +3247,12 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   addActionButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   cancelActionText: {
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '600',
   },
   addActionText: {
@@ -3287,7 +3287,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#00C9A7',
+    borderColor: '#1A2533',
   },
   premiumStatusHeader: {
     flexDirection: 'row',
@@ -3309,12 +3309,12 @@ const styles = StyleSheet.create({
   premiumStatusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7',
+    color: '#1A2533',
     marginBottom: 2,
   },
   premiumStatusSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   subscriptionDetails: {
     backgroundColor: '#F0FFFE',
@@ -3324,7 +3324,7 @@ const styles = StyleSheet.create({
   },
   subscriptionDetailText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   cancelSubscriptionButton: {
     flexDirection: 'row',
@@ -3366,14 +3366,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginHorizontal: 16,
     marginBottom: 12,
     gap: 8,
-    shadowColor: '#00C9A7',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

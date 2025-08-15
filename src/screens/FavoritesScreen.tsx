@@ -149,7 +149,7 @@ const FavoritesScreen = () => {
           )}
           
           <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={16} color="#6B7280" />
+            <Ionicons name="location-outline" size={16} color="#1A2533" />
             <Text style={styles.location} numberOfLines={1}>
               {item.shop_city}, {item.shop_country}
             </Text>
@@ -237,7 +237,7 @@ const FavoritesScreen = () => {
           <Text style={styles.headerTitle}>My Favorites</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Checking authentication...</Text>
         </View>
       </SafeAreaView>
@@ -272,7 +272,7 @@ const FavoritesScreen = () => {
           <Text style={styles.headerTitle}>My Favorites</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading favorites...</Text>
         </View>
       </SafeAreaView>
@@ -298,8 +298,8 @@ const FavoritesScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#00C9A7"
-            colors={['#00C9A7']}
+            tintColor="#1A2533"
+            colors={['#1A2533']}
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -324,11 +324,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   headerCount: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   shopName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A2533',
     flex: 1,
     marginRight: 8,
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 14,
-    color: '#00C9A7',
+    color: '#1A2533',
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginLeft: 4,
   },
   locationContainer: {
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     marginLeft: 4,
     flex: 1,
   },
@@ -450,18 +450,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 24,
   },
   browseButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

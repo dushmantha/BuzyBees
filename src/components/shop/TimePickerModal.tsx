@@ -110,7 +110,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+              <Ionicons name="close" size={24} color="#1A2533" />
             </TouchableOpacity>
           </View>
 
@@ -121,10 +121,10 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
               style={styles.currentTimeButton}
               onPress={() => Platform.OS === 'android' ? setShowPicker(true) : null}
             >
-              <Ionicons name="time-outline" size={24} color="#F59E0B" />
+              <Ionicons name="time-outline" size={24} color="#1A2533" />
               <Text style={styles.currentTimeText}>{formatTime(selectedDate)}</Text>
               {Platform.OS === 'android' && (
-                <Ionicons name="create-outline" size={20} color="#6B7280" />
+                <Ionicons name="create-outline" size={20} color="#1A2533" />
               )}
             </TouchableOpacity>
           </View>
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   currentTimeLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#1A2533',
     gap: 12,
   },
   currentTimeText: {
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   presetsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginTop: 16,
     marginBottom: 12,
   },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   presetLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     marginBottom: 8,
   },
   presetTimesRow: {
@@ -302,15 +302,15 @@ const styles = StyleSheet.create({
   },
   presetTimeButtonSelected: {
     backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    borderColor: '#1A2533',
   },
   presetTimeText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#1A2533',
     fontWeight: '500',
   },
   presetTimeTextSelected: {
-    color: '#F59E0B',
+    color: '#1A2533',
   },
   actions: {
     flexDirection: 'row',
@@ -331,12 +331,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   confirmButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#1A2533',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
   },
   confirmButtonText: {
     fontSize: 16,

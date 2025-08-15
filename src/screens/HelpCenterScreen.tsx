@@ -441,7 +441,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       case 'open':
         return '#3B82F6'; // Info blue
       case 'pending':
-        return '#00C9A7'; // Primary Vibrant Teal
+        return '#1A2533'; // Primary Navy Blue
       case 'resolved':
         return '#10B981'; // Success emerald green
       case 'closed':
@@ -671,7 +671,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C9A7" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading help center...</Text>
         </View>
       </SafeAreaView>
@@ -690,7 +690,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={activeTab === 'faq' ? 'help-circle' : 'help-circle-outline'} 
             size={20} 
-            color={activeTab === 'faq' ? '#00C9A7' : '#6B7280'} 
+            color={activeTab === 'faq' ? '#1A2533' : '#6B7280'} 
           />
           <Text style={[
             styles.tabText, 
@@ -707,7 +707,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           <Ionicons 
             name={activeTab === 'contact' ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} 
             size={20} 
-            color={activeTab === 'contact' ? '#00C9A7' : '#6B7280'} 
+            color={activeTab === 'contact' ? '#1A2533' : '#6B7280'} 
           />
           <Text style={[
             styles.tabText, 
@@ -725,7 +725,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
             <Ionicons 
               name={activeTab === 'tickets' ? 'ticket' : 'ticket-outline'} 
               size={20} 
-              color={activeTab === 'tickets' ? '#00C9A7' : '#6B7280'} 
+              color={activeTab === 'tickets' ? '#1A2533' : '#6B7280'} 
             />
             {supportTickets.filter(t => t.status === 'open' || t.status === 'pending').length > 0 && (
               <View style={styles.notificationBadge}>
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
   },
   tabContainer: {
     flexDirection: 'row',
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#00C9A7', // Primary Vibrant Teal
+    borderBottomColor: '#1A2533', // Primary Navy Blue
   },
   tabIconContainer: {
     position: 'relative',
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   activeTabText: {
-    color: '#00C9A7', // Primary Vibrant Teal
+    color: '#1A2533', // Primary Navy Blue
     fontWeight: '600',
   },
   notificationBadge: {
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     marginLeft: 8,
     paddingVertical: 4,
   },
@@ -968,8 +968,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedCategory: {
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
-    borderColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
+    borderColor: '#1A2533', // Primary Navy Blue
   },
   categoryText: {
     fontSize: 14,
@@ -988,13 +988,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#00C9A7', // Primary Vibrant Teal
+    shadowColor: '#1A2533', // Primary Navy Blue
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     borderLeftWidth: 3,
-    borderLeftColor: '#00C9A7', // Primary Vibrant Teal
+    borderLeftColor: '#1A2533', // Primary Navy Blue
   },
   faqHeader: {
     flexDirection: 'row',
@@ -1005,7 +1005,7 @@ const styles = StyleSheet.create({
   faqQuestion: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     flex: 1,
     marginRight: 12,
   },
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
   },
   helpfulText: {
     fontSize: 12,
-    color: '#00C9A7', // Primary Vibrant Teal
+    color: '#1A2533', // Primary Navy Blue
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -1189,7 +1189,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00C9A7', // Dark accent
+    color: '#1A2533', // Dark accent
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   createTicketButton: {
-    backgroundColor: '#00C9A7', // Primary Vibrant Teal
+    backgroundColor: '#1A2533', // Primary Navy Blue
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1318,13 +1318,13 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   submitButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
   providerSubmitButton: {
-    backgroundColor: '#00C9A7',
+    backgroundColor: '#1A2533',
   },
   submitButtonText: {
     fontSize: 16,

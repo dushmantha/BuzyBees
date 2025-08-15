@@ -730,8 +730,8 @@ const ConsumerTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#00C9A7',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: '#1A2533',
+        tabBarInactiveTintColor: '#1A2533',
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -828,8 +828,8 @@ const ProviderTabs = () => {
             </View>
           );
         },
-        tabBarActiveTintColor: '#00C9A7',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: '#1A2533',
+        tabBarInactiveTintColor: '#1A2533',
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -896,7 +896,7 @@ const AccountSwitchLoader = () => {
       <Text style={{
         marginTop: 16,
         fontSize: 16,
-        color: '#6B7280',
+        color: '#1A2533',
         textAlign: 'center',
       }}>
         Loading your profile...

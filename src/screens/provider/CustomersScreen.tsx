@@ -538,7 +538,7 @@ const CustomersScreen: React.FC = () => {
               <Text style={[styles.customerName, isSelected && styles.selectedCustomerName]}>{item.name}</Text>
               <View style={styles.selectionButton}>
                 {isSelected ? (
-                  <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={28} color="#059669" />
                 ) : (
                   <View style={styles.unselectedCircle} />
                 )}
@@ -560,11 +560,11 @@ const CustomersScreen: React.FC = () => {
         {/* Contact Information */}
         <View style={styles.contactSection}>
           <View style={styles.contactItem}>
-            <Ionicons name="mail" size={16} color="#6B7280" />
+            <Ionicons name="mail" size={16} color="#1A2533" />
             <Text style={styles.contactText}>{item.email}</Text>
           </View>
           <View style={styles.contactItem}>
-            <Ionicons name="call" size={16} color="#6B7280" />
+            <Ionicons name="call" size={16} color="#1A2533" />
             <Text style={styles.contactText}>{item.phone}</Text>
           </View>
         </View>
@@ -573,7 +573,7 @@ const CustomersScreen: React.FC = () => {
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
             <View style={styles.statHeader}>
-              <Ionicons name="calendar" size={14} color="#3B82F6" />
+              <Ionicons name="calendar" size={14} color="#1A2533" />
               <Text style={styles.statLabel}>Bookings</Text>
             </View>
             <Text style={styles.statValue}>{item.totalBookings}</Text>
@@ -581,7 +581,7 @@ const CustomersScreen: React.FC = () => {
           
           <View style={styles.statBox}>
             <View style={styles.statHeader}>
-              <Ionicons name="cash" size={14} color="#10B981" />
+              <Ionicons name="cash" size={14} color="#059669" />
               <Text style={styles.statLabel}>Total Spent</Text>
             </View>
             <Text style={styles.statValue}>{formatCurrency(item.totalSpent)}</Text>
@@ -589,7 +589,7 @@ const CustomersScreen: React.FC = () => {
           
           <View style={styles.statBox}>
             <View style={styles.statHeader}>
-              <Ionicons name="time" size={14} color="#00B4A6" />
+              <Ionicons name="time" size={14} color="#1A2533" />
               <Text style={styles.statLabel}>Last Booking</Text>
             </View>
             <Text style={styles.statValue}>{formatDate(item.lastBooking)}</Text>
@@ -597,7 +597,7 @@ const CustomersScreen: React.FC = () => {
           
           <View style={styles.statBox}>
             <View style={styles.statHeader}>
-              <Ionicons name="person" size={14} color="#8B5CF6" />
+              <Ionicons name="person" size={14} color="#1A2533" />
               <Text style={styles.statLabel}>Joined</Text>
             </View>
             <Text style={styles.statValue}>{formatDate(item.joinDate)}</Text>
@@ -617,7 +617,7 @@ const CustomersScreen: React.FC = () => {
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setShowAddCustomerModal(false)}>
-            <Ionicons name="close" size={24} color="#1F2937" />
+            <Ionicons name="close" size={24} color="#1A2533" />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Add New Customer</Text>
           <TouchableOpacity
@@ -691,7 +691,7 @@ const CustomersScreen: React.FC = () => {
         
         {isCreatingCustomer && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Creating customer...</Text>
           </View>
         )}
@@ -709,7 +709,7 @@ const CustomersScreen: React.FC = () => {
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setShowPromotionModal(false)}>
-            <Ionicons name="close" size={24} color="#1F2937" />
+            <Ionicons name="close" size={24} color="#1A2533" />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Send Promotion</Text>
           <TouchableOpacity
@@ -733,7 +733,7 @@ const CustomersScreen: React.FC = () => {
                 onPress={() => setPromotionData(prev => ({ ...prev, type: 'email' }))}
               >
                 <Ionicons name="mail" size={20} color={
-                  promotionData.type === 'email' ? '#FFFFFF' : '#6B7280'
+                  promotionData.type === 'email' ? '#FFFFFF' : '#1A2533'
                 } />
                 <Text style={[styles.typeButtonText,
                   promotionData.type === 'email' && styles.activeTypeButtonText
@@ -749,7 +749,7 @@ const CustomersScreen: React.FC = () => {
                 onPress={() => setPromotionData(prev => ({ ...prev, type: 'sms' }))}
               >
                 <Ionicons name="chatbubble" size={20} color={
-                  promotionData.type === 'sms' ? '#FFFFFF' : '#6B7280'
+                  promotionData.type === 'sms' ? '#FFFFFF' : '#1A2533'
                 } />
                 <Text style={[styles.typeButtonText,
                   promotionData.type === 'sms' && styles.activeTypeButtonText
@@ -823,7 +823,7 @@ const CustomersScreen: React.FC = () => {
         
         {isSendingPromotion && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Sending promotion...</Text>
           </View>
         )}
@@ -837,7 +837,7 @@ const CustomersScreen: React.FC = () => {
         <SafeAreaView style={styles.safeArea}>
           <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading customers...</Text>
           </View>
         </SafeAreaView>
@@ -853,14 +853,14 @@ const CustomersScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color="#1A2533" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Customers</Text>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={handleAddCustomer}
           >
-            <Ionicons name="add" size={24} color="#00B4A6" />
+            <Ionicons name="add" size={24} color="#1A2533" />
           </TouchableOpacity>
         </View>
       
@@ -909,7 +909,7 @@ const CustomersScreen: React.FC = () => {
             <Ionicons 
               name={selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0 ? "checkmark-circle" : "checkbox"} 
               size={16} 
-              color={filteredCustomers.length === 0 ? "#9CA3AF" : "#10B981"} 
+              color={filteredCustomers.length === 0 ? "#9CA3AF" : "#059669"} 
             />
             <Text style={[
               styles.selectButtonText, 
@@ -940,8 +940,8 @@ const CustomersScreen: React.FC = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={['#00B4A6']}
-            tintColor="#00B4A6"
+            colors={['#1A2533']}
+            tintColor="#1A2533"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   header: {
     flexDirection: 'row',
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   addButton: {
     width: 40,
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE4E1',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectionControls: {
     flexDirection: 'row',
@@ -1046,7 +1046,7 @@ const styles = StyleSheet.create({
   },
   selectionText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#1A2533',
     fontWeight: '500',
   },
   selectionButtons: {
@@ -1065,7 +1065,7 @@ const styles = StyleSheet.create({
   selectAllButton: {
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: '#059669',
   },
   clearButton: {
     backgroundColor: '#FEF2F2',
@@ -1078,11 +1078,11 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: '#1A2533',
     fontWeight: '600',
   },
   selectAllText: {
-    color: '#10B981',
+    color: '#059669',
   },
   clearText: {
     color: '#EF4444',
@@ -1116,9 +1116,9 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   selectedCustomerCard: {
-    borderColor: '#10B981',
+    borderColor: '#059669',
     backgroundColor: '#F0FDF4',
-    shadowColor: '#10B981',
+    shadowColor: '#059669',
     shadowOpacity: 0.2,
     transform: [{ scale: 1.02 }],
   },
@@ -1137,19 +1137,19 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
   selectedAvatar: {
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
+    backgroundColor: '#059669',
+    shadowColor: '#059669',
     transform: [{ scale: 1.05 }],
   },
   customerAvatarText: {
@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1A2533',
     flex: 1,
   },
   selectedCustomerName: {
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginLeft: 12,
     flex: 1,
   },
@@ -1265,13 +1265,13 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     textAlign: 'center',
   },
   statValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1A2533',
     textAlign: 'center',
   },
   promotionButtonContainer: {
@@ -1283,11 +1283,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1315,12 +1315,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   sendButton: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   disabledButton: {
     opacity: 0.5,
@@ -1335,7 +1335,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
     marginBottom: 12,
   },
   typeButtons: {
@@ -1353,13 +1353,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   activeTypeButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
   },
   typeButtonText: {
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
   },
   activeTypeButtonText: {
     color: '#FFFFFF',
@@ -1370,7 +1370,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A2533',
     marginBottom: 8,
   },
   textInput: {
@@ -1380,7 +1380,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A2533',
     backgroundColor: '#FFFFFF',
   },
   messageInput: {
@@ -1420,7 +1420,7 @@ const styles = StyleSheet.create({
   noSelectionText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#1A2533',
     marginTop: 12,
     textAlign: 'center',
   },
@@ -1433,11 +1433,11 @@ const styles = StyleSheet.create({
   selectedCustomerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A2533',
   },
   selectedCustomerEmail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -1455,7 +1455,7 @@ const styles = StyleSheet.create({
   },
   formNoteText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#1A2533',
     fontStyle: 'italic',
   },
 });

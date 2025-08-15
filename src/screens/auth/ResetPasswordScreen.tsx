@@ -194,7 +194,7 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Ionicons
                     name={showNewPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#999"
+                    color="#1A2533"
                   />
                 </TouchableOpacity>
               </View>
@@ -244,7 +244,7 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#999"
+                    color="#1A2533"
                   />
                 </TouchableOpacity>
               </View>
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 16,
-    color: '#666',
+    color: '#1A2533',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   requirementsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#1A2533',
     marginBottom: 8,
   },
   requirementItem: {
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   },
   securityText: {
     fontSize: 14,
-    color: '#065F46',
+    color: '#1A2533',
     marginLeft: 8,
     textAlign: 'center',
     flex: 1,
