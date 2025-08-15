@@ -774,7 +774,7 @@ const ProviderHomeScreen: React.FC = () => {
       subtitle: 'Track income',
       icon: 'trending-up-outline',
       color: '#1A2533',
-      backgroundColor: '#FFE4E1',
+      backgroundColor: '#F5F5E9',
       action: () => {
         navigation.navigate('ProviderTabs', { screen: 'EarningsTab' });
       },
@@ -1703,7 +1703,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1816,7 +1816,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1856,7 +1856,7 @@ const styles = StyleSheet.create({
   proButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -2082,7 +2082,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2197,10 +2197,10 @@ const styles = StyleSheet.create({
   // Upgrade Prompt
   upgradePrompt: {
     marginTop: 16,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     padding: 16,
   },
   upgradePromptContent: {
@@ -2279,9 +2279,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryReviewCard: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   reviewStatHeader: {
     flexDirection: 'row',

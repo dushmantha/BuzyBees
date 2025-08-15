@@ -3170,8 +3170,8 @@ const ShopDetailsScreen: React.FC = () => {
               <Switch
                 value={hours.isOpen}
                 onValueChange={(value) => updateBusinessHours(hours.day, 'isOpen', value)}
-                trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                thumbColor={hours.isOpen ? '#00B4A6' : '#9CA3AF'}
+                trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                thumbColor={hours.isOpen ? '#1A2533' : '#9CA3AF'}
               />
             </View>
             
@@ -3792,8 +3792,8 @@ const ShopDetailsScreen: React.FC = () => {
           <Switch
             value={shop.auto_approval}
             onValueChange={(value) => setShop(prev => ({ ...prev, auto_approval: value }))}
-            trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-            thumbColor={shop.auto_approval ? '#00B4A6' : '#9CA3AF'}
+            trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+            thumbColor={shop.auto_approval ? '#1A2533' : '#9CA3AF'}
           />
         </View>
 
@@ -3807,8 +3807,8 @@ const ShopDetailsScreen: React.FC = () => {
           <Switch
             value={shop.is_active}
             onValueChange={(value) => setShop(prev => ({ ...prev, is_active: value }))}
-            trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-            thumbColor={shop.is_active ? '#00B4A6' : '#9CA3AF'}
+            trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+            thumbColor={shop.is_active ? '#1A2533' : '#9CA3AF'}
           />
         </View>
       </View>
@@ -3941,8 +3941,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={specialDayForm.isOpen}
                   onValueChange={(value) => setSpecialDayForm(prev => ({ ...prev, isOpen: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                  thumbColor={specialDayForm.isOpen ? '#00B4A6' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                  thumbColor={specialDayForm.isOpen ? '#1A2533' : '#9CA3AF'}
                 />
               </View>
 
@@ -4105,7 +4105,7 @@ const ShopDetailsScreen: React.FC = () => {
                                item.id === 'weekly' ? 'repeat-outline' :
                                item.id === 'monthly' ? 'calendar-clear-outline' : 'infinite-outline'} 
                           size={20} 
-                          color={specialDayForm.recurring === item.id ? '#00B4A6' : '#6B7280'} 
+                          color={specialDayForm.recurring === item.id ? '#1A2533' : '#6B7280'} 
                         />
                       </View>
                       <Text style={[
@@ -4551,8 +4551,8 @@ const ShopDetailsScreen: React.FC = () => {
                             <Switch
                               value={option.is_active}
                               onValueChange={(value) => updateServiceOption(option.id, 'is_active', value)}
-                              trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                              thumbColor={option.is_active ? '#00B4A6' : '#9CA3AF'}
+                              trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                              thumbColor={option.is_active ? '#1A2533' : '#9CA3AF'}
                             />
                           </View>
 
@@ -4586,8 +4586,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={serviceForm.is_active}
                   onValueChange={(value) => setServiceForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                  thumbColor={serviceForm.is_active ? '#00B4A6' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                  thumbColor={serviceForm.is_active ? '#1A2533' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -4663,7 +4663,7 @@ const ShopDetailsScreen: React.FC = () => {
                       <Ionicons 
                         name={type.icon as any} 
                         size={20} 
-                        color={discountForm.type === type.id ? '#00B4A6' : '#6B7280'} 
+                        color={discountForm.type === type.id ? '#1A2533' : '#6B7280'} 
                       />
                       <Text style={[
                         styles.discountTypeName,
@@ -4743,8 +4743,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={discountForm.is_active}
                   onValueChange={(value) => setDiscountForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                  thumbColor={discountForm.is_active ? '#00B4A6' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                  thumbColor={discountForm.is_active ? '#1A2533' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -5385,7 +5385,7 @@ const ShopDetailsScreen: React.FC = () => {
                               <Ionicons 
                                 name={new Date(leave.endDate) < new Date() ? "checkmark-circle" : "time-outline"} 
                                 size={16} 
-                                color={new Date(leave.endDate) < new Date() ? "#10B981" : "#00B4A6"} 
+                                color={new Date(leave.endDate) < new Date() ? "#10B981" : "#1A2533"} 
                               />
                             </View>
                             <View style={styles.leaveDayInfo}>
@@ -5425,8 +5425,8 @@ const ShopDetailsScreen: React.FC = () => {
                 <Switch
                   value={staffForm.is_active}
                   onValueChange={(value) => setStaffForm(prev => ({ ...prev, is_active: value }))}
-                  trackColor={{ false: '#E5E7EB', true: '#FFE4E1' }}
-                  thumbColor={staffForm.is_active ? '#00B4A6' : '#9CA3AF'}
+                  trackColor={{ false: '#E5E7EB', true: '#F5F5E9' }}
+                  thumbColor={staffForm.is_active ? '#1A2533' : '#9CA3AF'}
                 />
               </View>
             </ScrollView>
@@ -5962,7 +5962,7 @@ const styles = StyleSheet.create({
     borderColor: '#1A2533',
     borderRadius: 12,
     borderStyle: 'dashed',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   addButtonText: {
     color: '#1A2533',
@@ -5971,7 +5971,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   exampleSection: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
@@ -6598,7 +6598,7 @@ const styles = StyleSheet.create({
   },
   selectedSpecialDayType: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   specialDayTypeName: {
     fontSize: 12,
@@ -6614,7 +6614,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   selectedRecurringOption: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   recurringOptionText: {
     fontSize: 13,
@@ -6727,7 +6727,7 @@ const styles = StyleSheet.create({
   discountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -6764,7 +6764,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -6972,7 +6972,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   selectedCategoryOption: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   categoryOptionText: {
     fontSize: 16,
@@ -7002,7 +7002,7 @@ const styles = StyleSheet.create({
   },
   selectedDiscountType: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   discountTypeName: {
     fontSize: 12,
@@ -7090,7 +7090,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   specialtyTag: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -7139,7 +7139,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderWidth: 1,
     borderColor: '#1A2533',
     borderRadius: 12,
@@ -7179,7 +7179,7 @@ const styles = StyleSheet.create({
   },
   selectedStaffOption: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   staffOptionContent: {
     flex: 1,
@@ -7306,7 +7306,7 @@ const styles = StyleSheet.create({
   specialtyTagWithRemove: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
@@ -7375,12 +7375,12 @@ const styles = StyleSheet.create({
   addOptionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     gap: 4,
     minWidth: 70,
     justifyContent: 'center',
@@ -7433,7 +7433,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -7587,7 +7587,7 @@ const styles = StyleSheet.create({
   },
   selectedLocationType: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   locationTypeTitle: {
     fontSize: 14,
@@ -7718,7 +7718,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -7798,7 +7798,7 @@ const styles = StyleSheet.create({
   },
   selectedSpecialDayTypeCard: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -7915,7 +7915,7 @@ const styles = StyleSheet.create({
   },
   selectedRecurringCard: {
     borderColor: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   recurringIconContainer: {
     width: 32,
@@ -7926,7 +7926,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedRecurringIcon: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   recurringOptionTitle: {
     fontSize: 14,
@@ -8073,7 +8073,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -8226,7 +8226,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   calendarDayInRange: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   calendarDaySelected: {
     backgroundColor: '#1A2533',
@@ -8393,7 +8393,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   inlineCalendarDayInRange: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   inlineCalendarDaySelected: {
     backgroundColor: '#1A2533',

@@ -425,7 +425,7 @@ const QuickBookingModal = ({
             disabled: true,
             disableTouchEvent: true,
             customStyles: {
-              container: { backgroundColor: '#FFE4E1' },
+              container: { backgroundColor: '#F5F5E9' },
               text: { color: '#D97706', fontWeight: 'bold' }
             }
           };
@@ -1638,7 +1638,7 @@ const ServiceManagementScreen = ({ navigation }) => {
 
   const ListEmptyComponent = useMemo(() => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="construct-outline" size={64} color="#FFE4E1" />
+      <Ionicons name="construct-outline" size={64} color="#F5F5E9" />
       <Text style={styles.emptyTitle}>No services found</Text>
       <Text style={styles.emptyDescription}>
         {selectedShop ? `Add services to ${selectedShop.name}` : 'Select a shop to view services'}
@@ -1668,7 +1668,7 @@ const ServiceManagementScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Ionicons name="person-outline" size={64} color="#FFE4E1" />
+          <Ionicons name="person-outline" size={64} color="#F5F5E9" />
           <Text style={styles.emptyTitle}>Not Authenticated</Text>
           <Text style={styles.emptyDescription}>
             Please login to manage services{'\n'}
@@ -1695,7 +1695,7 @@ const ServiceManagementScreen = ({ navigation }) => {
   //   return (
   //     <SafeAreaView style={styles.container}>
   //       <View style={styles.loadingContainer}>
-  //         <Ionicons name="business-outline" size={64} color="#FFE4E1" />
+  //         <Ionicons name="business-outline" size={64} color="#F5F5E9" />
   //         <Text style={styles.emptyTitle}>Provider Access Required</Text>
   //         <Text style={styles.emptyDescription}>Only providers can manage services. Current account: {user.account_type}</Text>
   //       </View>
@@ -1918,13 +1918,13 @@ const styles = StyleSheet.create({
   serviceCategory: {
     fontSize: 12,
     color: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   serviceToggle: {
     marginLeft: 12,
@@ -2017,8 +2017,8 @@ const styles = StyleSheet.create({
     borderColor: '#D1FAE5',
   },
   inactiveStatus: {
-    backgroundColor: '#FFE4E1',
-    borderColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
+    borderColor: '#F5F5E9',
   },
   statusText: {
     fontSize: 12,
@@ -2073,7 +2073,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   selectedShopItem: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   shopItemInfo: {
     flex: 1,
@@ -2092,7 +2092,7 @@ const styles = StyleSheet.create({
   shopItemCategory: {
     fontSize: 12,
     color: '#1A2533',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -2243,12 +2243,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   toggleCalendarButton: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   toggleCalendarText: {
     fontSize: 12,
@@ -2263,12 +2263,12 @@ const styles = StyleSheet.create({
   selectedDateTimeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   selectedDateTimeText: {
     fontSize: 12,
@@ -2282,7 +2282,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -2399,10 +2399,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   cancelButtonText: {
     fontSize: 16,
@@ -2418,7 +2418,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   disabledButton: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     opacity: 0.6,
   },
   createButtonText: {
@@ -2554,13 +2554,13 @@ const styles = StyleSheet.create({
   staffAvailabilityHint: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   staffAvailabilityHintText: {
     fontSize: 12,

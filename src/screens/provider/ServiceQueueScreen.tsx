@@ -174,7 +174,7 @@ const ServiceQueueScreen = ({ navigation }) => {
     },
     {
       icon: 'analytics-outline',
-      iconColor: '#00B4A6',
+      iconColor: '#1A2533',
       title: 'Booking Analytics',
       description: 'Track booking trends, peak times, customer patterns, and service performance'
     },
@@ -916,7 +916,7 @@ const ServiceQueueScreen = ({ navigation }) => {
       return (
         <View style={styles.queueActions}>
           <View style={styles.loadingAction}>
-            <ActivityIndicator size="small" color="#00B4A6" />
+            <ActivityIndicator size="small" color="#1A2533" />
             <Text style={styles.loadingText}>Processing...</Text>
           </View>
         </View>
@@ -981,7 +981,7 @@ const ServiceQueueScreen = ({ navigation }) => {
                 style={styles.invoiceButton}
                 onPress={() => handleGenerateInvoice(item)}
               >
-                <Ionicons name="document-text" size={16} color="#00B4A6" />
+                <Ionicons name="document-text" size={16} color="#1A2533" />
                 <Text style={styles.invoiceButtonText}>Generate Invoice</Text>
               </TouchableOpacity>
               
@@ -1085,7 +1085,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           
           {/* Time Row */}
           <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={14} color="#00B4A6" />
+            <Ionicons name="time-outline" size={14} color="#1A2533" />
             <Text style={styles.queueTime}>{item.time}</Text>
             <Text style={styles.duration}>({item.duration})</Text>
           </View>
@@ -1105,7 +1105,7 @@ const ServiceQueueScreen = ({ navigation }) => {
             )}
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="cash-outline" size={14} color="#00B4A6" />
+            <Ionicons name="cash-outline" size={14} color="#1A2533" />
             <Text style={styles.queuePrice}>${item.price}</Text>
           </View>
         </View>
@@ -1152,7 +1152,7 @@ const ServiceQueueScreen = ({ navigation }) => {
                   <Ionicons 
                     name={filter.icon} 
                     size={16} 
-                    color={isSelected ? '#FFFFFF' : isLocked ? '#9CA3AF' : '#00B4A6'} 
+                    color={isSelected ? '#FFFFFF' : isLocked ? '#9CA3AF' : '#1A2533'} 
                   />
                   <Text style={[
                     styles.filterChipText,
@@ -1201,7 +1201,7 @@ const ServiceQueueScreen = ({ navigation }) => {
     return (
       <View style={styles.restrictionNotice}>
         <View style={styles.restrictionContent}>
-          <Ionicons name="filter-outline" size={16} color="#00B4A6" />
+          <Ionicons name="filter-outline" size={16} color="#1A2533" />
           <Text style={styles.restrictionText}>
             Status filtering is available with Premium
           </Text>
@@ -1223,7 +1223,7 @@ const ServiceQueueScreen = ({ navigation }) => {
     return (
       <View style={styles.premiumPrompt}>
         <View style={styles.premiumPromptContent}>
-          <Ionicons name="lock-closed" size={20} color="#00B4A6" />
+          <Ionicons name="lock-closed" size={20} color="#1A2533" />
           <Text style={styles.premiumPromptText}>
             {hiddenItemsCount} more booking{hiddenItemsCount !== 1 ? 's' : ''} available
           </Text>
@@ -1353,7 +1353,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           <Ionicons 
             name={activeTab === 'queue' ? 'list' : 'list-outline'} 
             size={20} 
-            color={activeTab === 'queue' ? '#00B4A6' : '#6B7280'} 
+            color={activeTab === 'queue' ? '#1A2533' : '#6B7280'} 
           />
           <Text style={[
             styles.mainTabText,
@@ -1377,7 +1377,7 @@ const ServiceQueueScreen = ({ navigation }) => {
           <Ionicons 
             name={activeTab === 'payments' ? 'card' : 'card-outline'} 
             size={20} 
-            color={activeTab === 'payments' ? '#00B4A6' : '#6B7280'} 
+            color={activeTab === 'payments' ? '#1A2533' : '#6B7280'} 
           />
           <Text style={[
             styles.mainTabText,
@@ -1409,12 +1409,12 @@ const ServiceQueueScreen = ({ navigation }) => {
         <View style={styles.headerRight}>
           {isPremium && (
             <View style={styles.premiumBadge}>
-              <Ionicons name="star" size={12} color="#00B4A6" />
+              <Ionicons name="star" size={12} color="#1A2533" />
               <Text style={styles.premiumBadgeText}>Premium</Text>
             </View>
           )}
           <TouchableOpacity onPress={handleRefresh}>
-            <Ionicons name="refresh" size={24} color="#00B4A6" />
+            <Ionicons name="refresh" size={24} color="#1A2533" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1468,7 +1468,7 @@ const ServiceQueueScreen = ({ navigation }) => {
         // Queue List
         isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading your bookings...</Text>
           </View>
         ) : (
@@ -1481,8 +1481,8 @@ const ServiceQueueScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={handleRefresh}
-                colors={['#00B4A6']}
-                tintColor="#00B4A6"
+                colors={['#1A2533']}
+                tintColor="#1A2533"
               />
             }
             ListEmptyComponent={renderEmptyState}
@@ -1493,7 +1493,7 @@ const ServiceQueueScreen = ({ navigation }) => {
         // Payment List
         isLoadingPayments ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00B4A6" />
+            <ActivityIndicator size="large" color="#1A2533" />
             <Text style={styles.loadingText}>Loading payments...</Text>
           </View>
         ) : (
@@ -1506,8 +1506,8 @@ const ServiceQueueScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={handleRefresh}
-                colors={['#00B4A6']}
-                tintColor="#00B4A6"
+                colors={['#1A2533']}
+                tintColor="#1A2533"
               />
             }
             ListEmptyComponent={renderEmptyPayments}
@@ -1557,7 +1557,7 @@ const styles = StyleSheet.create({
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1566,7 +1566,7 @@ const styles = StyleSheet.create({
   premiumBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
 
   // Main Tab Styles
@@ -1590,7 +1590,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   activeMainTab: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   mainTabContent: {
     flexDirection: 'row',
@@ -1604,11 +1604,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   activeMainTabText: {
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '600',
   },
   mainTabBadge: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1651,7 +1651,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   activeSubTabText: {
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '600',
   },
   
@@ -1666,16 +1666,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   filterChipSelected: {
-    backgroundColor: '#00B4A6',
-    borderColor: '#00B4A6',
+    backgroundColor: '#1A2533',
+    borderColor: '#1A2533',
   },
   filterChipLocked: {
     backgroundColor: '#F9FAFB',
@@ -1699,7 +1699,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   filterChipBadge: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1718,7 +1718,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   filterChipBadgeTextSelected: {
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   filterChipBadgeTextLocked: {
     color: '#9CA3AF',
@@ -1729,13 +1729,13 @@ const styles = StyleSheet.create({
 
   // Premium Prompt
   premiumPrompt: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   premiumPromptContent: {
     flexDirection: 'row',
@@ -1749,7 +1749,7 @@ const styles = StyleSheet.create({
     color: '#92400E',
   },
   upgradeButton: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -1803,7 +1803,7 @@ const styles = StyleSheet.create({
   serviceOptionTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1831,7 +1831,7 @@ const styles = StyleSheet.create({
   },
   
   // Status Badge Styles with Honey Theme
-  pendingBadge: { backgroundColor: '#FFE4E1' },
+  pendingBadge: { backgroundColor: '#F5F5E9' },
   pendingText: { color: '#92400E' },
   confirmedBadge: { backgroundColor: '#EFF6FF' },
   confirmedText: { color: '#2563EB' },
@@ -1900,7 +1900,7 @@ const styles = StyleSheet.create({
   },
   queueTime: {
     fontSize: 14,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: '500',
   },
   duration: {
@@ -1913,7 +1913,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationBadge: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
@@ -1927,7 +1927,7 @@ const styles = StyleSheet.create({
   queuePrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   notesContainer: {
     backgroundColor: '#F0FFFE',
@@ -1958,7 +1958,7 @@ const styles = StyleSheet.create({
   communicationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -1990,7 +1990,7 @@ const styles = StyleSheet.create({
   acceptButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2017,7 +2017,7 @@ const styles = StyleSheet.create({
   completeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2032,7 +2032,7 @@ const styles = StyleSheet.create({
   invoiceButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2041,7 +2041,7 @@ const styles = StyleSheet.create({
   invoiceButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   sendInvoiceButton: {
     flexDirection: 'row',
@@ -2072,7 +2072,7 @@ const styles = StyleSheet.create({
     color: '#059669',
   },
   statusIndicatorButton: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2093,7 +2093,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   invoiceSentIndicator: {
     flexDirection: 'row',
@@ -2135,12 +2135,12 @@ const styles = StyleSheet.create({
 
   // Filter Restriction Notice Styles
   restrictionNotice: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   restrictionContent: {
     flexDirection: 'row',
@@ -2157,7 +2157,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   upgradeButtonSmall: {
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 6,
@@ -2242,7 +2242,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   paymentStatusBadge: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,

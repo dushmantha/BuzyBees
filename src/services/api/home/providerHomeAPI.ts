@@ -53,7 +53,7 @@ const apiRequest = async (endpoint: string, options = {}) => {
               id: shop.category.toLowerCase().replace(/\s+/g, '-'),
               name: shop.category,
               service_count: 0,
-              color: '#FFE4E1', // Default color
+              color: '#F5F5E9', // Default color
               image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
               description: `${shop.category} services`
             });
@@ -89,7 +89,7 @@ const apiRequest = async (endpoint: string, options = {}) => {
             id: 'beauty-wellness',
             name: 'Beauty & Wellness',
             service_count: 5,
-            color: '#FFE4E1',
+            color: '#F5F5E9',
             image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
             description: 'Beauty and wellness services'
           },
@@ -228,7 +228,7 @@ const apiRequest = async (endpoint: string, options = {}) => {
           id: category.toLowerCase().replace(/\s+/g, '-'),
           name: category,
           service_count: 1,
-          color: '#FFE4E1',
+          color: '#F5F5E9',
           image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
           description: `${category} services`
         }));
@@ -243,7 +243,7 @@ const apiRequest = async (endpoint: string, options = {}) => {
         
         // Mock categories for search
         const mockCategories = [
-          { id: 'beauty-wellness', name: 'Beauty & Wellness', service_count: 5, color: '#FFE4E1', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop', description: 'Beauty and wellness services' },
+          { id: 'beauty-wellness', name: 'Beauty & Wellness', service_count: 5, color: '#F5F5E9', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop', description: 'Beauty and wellness services' },
           { id: 'cleaning', name: 'Cleaning', service_count: 3, color: '#E1F5FE', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop', description: 'Professional cleaning services' },
           { id: 'home-services', name: 'Home Services', service_count: 4, color: '#F3E5F5', image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=200&fit=crop', description: 'Home maintenance and repair services' },
           { id: 'fitness-health', name: 'Fitness & Health', service_count: 6, color: '#E8F5E8', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop', description: 'Fitness and health services' },

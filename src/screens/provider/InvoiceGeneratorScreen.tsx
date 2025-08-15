@@ -529,20 +529,20 @@ Thank you for choosing our services.`,
             border-radius: 16px;
             padding: 40px;
             box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1);
-            border: 1px solid #FFE4E1;
+            border: 1px solid #F5F5E9;
         }
         .header { 
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start; 
             margin-bottom: 40px; 
-            border-bottom: 3px solid #00B4A6; 
+            border-bottom: 3px solid #1A2533; 
             padding-bottom: 30px; 
         }
         .company-logo { 
             width: 80px; 
             height: 80px; 
-            background: linear-gradient(135deg, #00B4A6, #EAB308); 
+            background: linear-gradient(135deg, #1A2533, #EAB308); 
             border-radius: 50%; 
             display: flex; 
             align-items: center; 
@@ -566,7 +566,7 @@ Thank you for choosing our services.`,
         .company-name { 
             font-size: 24px; 
             font-weight: bold; 
-            color: #00B4A6; 
+            color: #1A2533; 
             margin-bottom: 8px; 
         }
         .company-details {
@@ -583,11 +583,11 @@ Thank you for choosing our services.`,
             letter-spacing: 2px;
         }
         .invoice-meta { 
-            background: linear-gradient(135deg, #FFE4E1, #FDE68A); 
+            background: linear-gradient(135deg, #F5F5E9, #FDE68A); 
             padding: 25px; 
             border-radius: 12px; 
             margin-bottom: 40px; 
-            border-left: 4px solid #00B4A6;
+            border-left: 4px solid #1A2533;
         }
         .meta-grid {
             display: grid;
@@ -626,9 +626,9 @@ Thank you for choosing our services.`,
         .billing-title { 
             font-size: 18px; 
             font-weight: bold; 
-            color: #00B4A6; 
+            color: #1A2533; 
             margin-bottom: 15px; 
-            border-bottom: 2px solid #FFE4E1; 
+            border-bottom: 2px solid #F5F5E9; 
             padding-bottom: 8px; 
         }
         .billing-content {
@@ -650,7 +650,7 @@ Thank you for choosing our services.`,
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         .services-table th { 
-            background: linear-gradient(135deg, #00B4A6, #EAB308); 
+            background: linear-gradient(135deg, #1A2533, #EAB308); 
             color: white; 
             font-weight: bold; 
             padding: 20px 16px;
@@ -702,10 +702,10 @@ Thank you for choosing our services.`,
         .grand-total { 
             font-size: 24px; 
             font-weight: bold; 
-            border-top: 2px solid #00B4A6; 
+            border-top: 2px solid #1A2533; 
             padding-top: 20px; 
             margin-top: 20px; 
-            color: #00B4A6; 
+            color: #1A2533; 
         }
         .notes-section {
             background: #F0F9FF;
@@ -721,16 +721,16 @@ Thank you for choosing our services.`,
             margin-bottom: 15px;
         }
         .terms-section { 
-            background: #FFE4E1; 
+            background: #F5F5E9; 
             padding: 25px; 
             border-radius: 12px; 
-            border-left: 4px solid #00B4A6; 
+            border-left: 4px solid #1A2533; 
             margin: 30px 0;
         }
         .terms-title {
             font-size: 18px;
             font-weight: bold;
-            color: #00B4A6;
+            color: #1A2533;
             margin-bottom: 15px;
         }
         .terms-content {
@@ -749,7 +749,7 @@ Thank you for choosing our services.`,
         .footer-message {
             font-size: 18px;
             font-weight: 600;
-            color: #00B4A6;
+            color: #1A2533;
             margin-bottom: 10px;
         }
         .payment-link { 
@@ -799,16 +799,16 @@ Thank you for choosing our services.`,
                 <div class="company-name">${invoiceData.companyName}</div>
                 <div class="company-details">
                     ${invoiceData.companyAddress}<br>
-                    <span style="color: #00B4A6;">📞</span> ${invoiceData.companyPhone}<br>
-                    <span style="color: #00B4A6;">✉️</span> ${invoiceData.companyEmail}
-                    ${invoiceData.companyWebsite ? `<br><span style="color: #00B4A6;">🌐</span> ${invoiceData.companyWebsite}` : ''}
+                    <span style="color: #1A2533;">📞</span> ${invoiceData.companyPhone}<br>
+                    <span style="color: #1A2533;">✉️</span> ${invoiceData.companyEmail}
+                    ${invoiceData.companyWebsite ? `<br><span style="color: #1A2533;">🌐</span> ${invoiceData.companyWebsite}` : ''}
                 </div>
             </div>
         </div>
 
         <div class="invoice-title">
             <span style="font-size: 48px;">INVOICE</span>
-            <div style="width: 100px; height: 4px; background: #00B4A6; margin: 10px auto 0;"></div>
+            <div style="width: 100px; height: 4px; background: #1A2533; margin: 10px auto 0;"></div>
         </div>
 
         <div class="invoice-meta">
@@ -856,7 +856,7 @@ Thank you for choosing our services.`,
 
         <div style="margin: 30px 0;">
             <h2 style="color: #1F2937; font-size: 22px; margin-bottom: 20px; display: flex; align-items: center;">
-                <span style="color: #00B4A6; margin-right: 10px;">▎</span>
+                <span style="color: #1A2533; margin-right: 10px;">▎</span>
                 Services Provided
             </h2>
         </div>
@@ -937,15 +937,15 @@ Thank you for choosing our services.`,
                             <strong style="color: #1F2937; font-size: 16px;">${invoiceData.companyName}</strong><br>
                             <div style="margin-top: 5px; line-height: 1.5;">
                                 ${invoiceData.companyAddress}<br>
-                                <span style="color: #00B4A6;">📞</span> ${invoiceData.companyPhone}<br>
-                                <span style="color: #00B4A6;">✉️</span> ${invoiceData.companyEmail}
-                                ${invoiceData.companyWebsite ? `<br><span style="color: #00B4A6;">🌐</span> ${invoiceData.companyWebsite}` : ''}
+                                <span style="color: #1A2533;">📞</span> ${invoiceData.companyPhone}<br>
+                                <span style="color: #1A2533;">✉️</span> ${invoiceData.companyEmail}
+                                ${invoiceData.companyWebsite ? `<br><span style="color: #1A2533;">🌐</span> ${invoiceData.companyWebsite}` : ''}
                             </div>
                         </td>
                         <td style="text-align: right; vertical-align: top;">
                             <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #E5E7EB;">
                                 <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 5px;">INVOICE NUMBER</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #00B4A6;">${invoiceData.invoiceNumber}</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #1A2533;">${invoiceData.invoiceNumber}</div>
                                 <div style="font-size: 12px; color: #6B7280; margin-top: 10px;">Generated on<br>${formatDate(new Date())}</div>
                             </div>
                         </td>
@@ -1223,7 +1223,7 @@ Thank you for choosing our services.`,
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00B4A6" />
+          <ActivityIndicator size="large" color="#1A2533" />
           <Text style={styles.loadingText}>Loading invoice data...</Text>
         </View>
       </View>
@@ -1255,7 +1255,7 @@ Thank you for choosing our services.`,
                 'Fill in the details to generate a professional invoice.\n\n• Complete company information first\n• Verify client details\n• Review pricing and terms\n• Use the share button to send with secure payment link\n\nYour customers will receive a professional invoice with online payment options.'
               )}
             >
-              <Ionicons name="help-circle-outline" size={20} color="#00B4A6" />
+              <Ionicons name="help-circle-outline" size={20} color="#1A2533" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.headerShareButton, (isLoading || isSaving) && styles.headerButtonDisabled]}
@@ -1263,9 +1263,9 @@ Thank you for choosing our services.`,
               disabled={isLoading || isSaving}
             >
               {(isLoading || isSaving) ? (
-                <ActivityIndicator size="small" color="#00B4A6" />
+                <ActivityIndicator size="small" color="#1A2533" />
               ) : (
-                <Ionicons name="share-outline" size={24} color="#00B4A6" />
+                <Ionicons name="share-outline" size={24} color="#1A2533" />
               )}
             </TouchableOpacity>
           </View>
@@ -1276,7 +1276,7 @@ Thank you for choosing our services.`,
           {bookingData && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="briefcase" size={20} color="#00B4A6" />
+                <Ionicons name="briefcase" size={20} color="#1A2533" />
                 <Text style={styles.sectionTitle}>Service Information</Text>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>From Booking</Text>
@@ -1309,14 +1309,14 @@ Thank you for choosing our services.`,
           {/* Company Information Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="business" size={20} color="#00B4A6" />
+              <Ionicons name="business" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Company Information</Text>
               <TouchableOpacity 
                 style={styles.editButton}
                 onPress={() => setShowCompanySetup(true)}
                 disabled={isLoading || isSaving}
               >
-                <Ionicons name="pencil" size={16} color="#00B4A6" />
+                <Ionicons name="pencil" size={16} color="#1A2533" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -1351,7 +1351,7 @@ Thank you for choosing our services.`,
           {/* Invoice Details */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document" size={20} color="#00B4A6" />
+              <Ionicons name="document" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Invoice Details</Text>
             </View>
             
@@ -1406,7 +1406,7 @@ Thank you for choosing our services.`,
           {/* Client Information */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="person" size={20} color="#00B4A6" />
+              <Ionicons name="person" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Client Information</Text>
             </View>
             
@@ -1467,7 +1467,7 @@ Thank you for choosing our services.`,
           {/* Service Pricing */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="calculator" size={20} color="#00B4A6" />
+              <Ionicons name="calculator" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Pricing Details</Text>
             </View>
             
@@ -1520,7 +1520,7 @@ Thank you for choosing our services.`,
                   style={styles.addFeeButton}
                   disabled={isLoading || isSaving}
                 >
-                  <Ionicons name="add-circle" size={20} color="#00B4A6" />
+                  <Ionicons name="add-circle" size={20} color="#1A2533" />
                   <Text style={styles.addFeeText}>Add Fee</Text>
                 </TouchableOpacity>
               </View>
@@ -1599,7 +1599,7 @@ Thank you for choosing our services.`,
           {/* Invoice Totals */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="receipt" size={20} color="#00B4A6" />
+              <Ionicons name="receipt" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Invoice Summary</Text>
             </View>
             <View style={styles.totalsCard}>
@@ -1629,7 +1629,7 @@ Thank you for choosing our services.`,
           {/* Notes */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="chatbox" size={20} color="#00B4A6" />
+              <Ionicons name="chatbox" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Additional Notes</Text>
             </View>
             <TextInput
@@ -1647,7 +1647,7 @@ Thank you for choosing our services.`,
           {/* Terms and Conditions */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document-text" size={20} color="#00B4A6" />
+              <Ionicons name="document-text" size={20} color="#1A2533" />
               <Text style={styles.sectionTitle}>Terms & Conditions</Text>
             </View>
             <TextInput
@@ -1703,7 +1703,7 @@ Thank you for choosing our services.`,
             onPress={() => setShowInvoicePreview(true)}
             disabled={isLoading || isSaving}
           >
-            <Ionicons name="eye" size={20} color="#00B4A6" />
+            <Ionicons name="eye" size={20} color="#1A2533" />
             <Text style={styles.previewButtonText}>Preview</Text>
           </TouchableOpacity>
 
@@ -1825,7 +1825,7 @@ const CompanySetupModal: React.FC<CompanySetupModalProps> = ({
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="business" size={20} color="#00B4A6" />
+                <Ionicons name="business" size={20} color="#1A2533" />
                 <Text style={styles.sectionTitle}>Basic Information</Text>
               </View>
               
@@ -1898,7 +1898,7 @@ const CompanySetupModal: React.FC<CompanySetupModalProps> = ({
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="document-text" size={20} color="#00B4A6" />
+                <Ionicons name="document-text" size={20} color="#1A2533" />
                 <Text style={styles.sectionTitle}>Legal Information</Text>
               </View>
               
@@ -2008,9 +2008,9 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#00B4A6" />
+              <ActivityIndicator size="small" color="#1A2533" />
             ) : (
-              <Ionicons name="share-outline" size={20} color="#00B4A6" />
+              <Ionicons name="share-outline" size={20} color="#1A2533" />
             )}
           </TouchableOpacity>
         </View>
@@ -2018,7 +2018,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
         <ScrollView style={styles.previewContent} showsVerticalScrollIndicator={false}>
           <View style={styles.previewCard}>
             <View style={styles.previewHeader}>
-              <Ionicons name="document-text" size={24} color="#00B4A6" />
+              <Ionicons name="document-text" size={24} color="#1A2533" />
               <View style={styles.previewInfo}>
                 <Text style={styles.previewTitle}>Invoice {invoiceNumber}</Text>
                 <Text style={styles.previewNote}>
@@ -2039,7 +2039,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     <View style={styles.companyLogoSection}>
                       {invoiceData.companyLogo ? (
                         <View style={styles.logoPlaceholder}>
-                          <Ionicons name="image" size={35} color="#00B4A6" />
+                          <Ionicons name="image" size={35} color="#1A2533" />
                         </View>
                       ) : (
                         <View style={styles.logoInitial}>
@@ -2052,15 +2052,15 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     <View style={styles.companyInfoSection}>
                       <Text style={styles.companyNamePreview}>{invoiceData.companyName}</Text>
                       <View style={styles.companyAddressLine}>
-                        <Ionicons name="location-outline" size={12} color="#00B4A6" style={styles.contactIcon} />
+                        <Ionicons name="location-outline" size={12} color="#1A2533" style={styles.contactIcon} />
                         <Text style={styles.companyDetailPreview}>{invoiceData.companyAddress}</Text>
                       </View>
                       <View style={styles.companyAddressLine}>
-                        <Ionicons name="call-outline" size={12} color="#00B4A6" style={styles.contactIcon} />
+                        <Ionicons name="call-outline" size={12} color="#1A2533" style={styles.contactIcon} />
                         <Text style={styles.companyDetailPreview}>{invoiceData.companyPhone}</Text>
                       </View>
                       <View style={styles.companyAddressLine}>
-                        <Ionicons name="mail-outline" size={12} color="#00B4A6" style={styles.contactIcon} />
+                        <Ionicons name="mail-outline" size={12} color="#1A2533" style={styles.contactIcon} />
                         <Text style={styles.companyDetailPreview}>{invoiceData.companyEmail}</Text>
                       </View>
                     </View>
@@ -2087,7 +2087,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   {/* Client Info */}
                   <View style={styles.clientSection}>
                     <View style={styles.sectionHeaderPreview}>
-                      <Ionicons name="person-outline" size={16} color="#00B4A6" />
+                      <Ionicons name="person-outline" size={16} color="#1A2533" />
                       <Text style={styles.sectionTitlePreview}>Bill To</Text>
                     </View>
                     <Text style={styles.clientNamePreview}>{invoiceData.clientName}</Text>
@@ -2108,7 +2108,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   {/* Services */}
                   <View style={styles.servicesSection}>
                     <View style={styles.sectionHeaderPreview}>
-                      <Ionicons name="briefcase-outline" size={16} color="#00B4A6" />
+                      <Ionicons name="briefcase-outline" size={16} color="#1A2533" />
                       <Text style={styles.sectionTitlePreview}>Services</Text>
                     </View>
                     <View style={styles.serviceItem}>
@@ -2253,8 +2253,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: '#F0FFFE',
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E1',
-    shadowColor: '#00B4A6',
+    borderBottomColor: '#F5F5E9',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -2263,7 +2263,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   headerTitle: {
     fontSize: 20,
@@ -2278,12 +2278,12 @@ const styles = StyleSheet.create({
   helpButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   headerShareButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     minWidth: 40,
     alignItems: 'center',
   },
@@ -2301,13 +2301,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -2379,11 +2379,11 @@ const styles = StyleSheet.create({
   
   // Company Card Styles
   companyCard: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   companyHeader: {
     flexDirection: 'row',
@@ -2394,7 +2394,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -2428,15 +2428,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginLeft: 4,
   },
   
@@ -2477,8 +2477,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   inputReadonly: {
-    backgroundColor: '#FFE4E1',
-    borderColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
+    borderColor: '#F5F5E9',
   },
   textArea: {
     minHeight: 80,
@@ -2594,15 +2594,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   addFeeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginLeft: 4,
   },
   feeRow: {
@@ -2719,7 +2719,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 2,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     marginVertical: 12,
   },
   grandTotalRow: {
@@ -2728,12 +2728,12 @@ const styles = StyleSheet.create({
   grandTotalLabel: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   grandTotalValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
   },
   totalNote: {
     fontSize: 12,
@@ -2778,25 +2778,25 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FFE4E1',
+    borderTopColor: '#F5F5E9',
     gap: 12,
   },
   previewButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     flex: 1,
   },
   previewButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginLeft: 8,
   },
   draftButton: {
@@ -2827,7 +2827,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E1',
+    borderBottomColor: '#F5F5E9',
   },
   modalCloseButton: {
     padding: 8,
@@ -2850,16 +2850,16 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#FFE4E1',
+    borderTopColor: '#F5F5E9',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     paddingVertical: 16,
     borderRadius: 12,
-    shadowColor: '#00B4A6',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2876,7 +2876,7 @@ const styles = StyleSheet.create({
   sharePreviewButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   previewContent: {
     flex: 1,
@@ -2887,8 +2887,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
-    shadowColor: '#00B4A6',
+    borderColor: '#F5F5E9',
+    shadowColor: '#1A2533',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -2901,7 +2901,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
     padding: 12,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
   },
   htmlPreview: {
@@ -2959,7 +2959,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 2,
-    borderBottomColor: '#00B4A6',
+    borderBottomColor: '#1A2533',
   },
   companyLogoSection: {
     marginRight: 15,
@@ -2967,7 +2967,7 @@ const styles = StyleSheet.create({
   logoPlaceholder: {
     width: 50,
     height: 50,
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -2975,7 +2975,7 @@ const styles = StyleSheet.create({
   logoInitial: {
     width: 50,
     height: 50,
-    backgroundColor: '#00B4A6',
+    backgroundColor: '#1A2533',
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
@@ -3007,7 +3007,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   invoiceNumberBox: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -3019,7 +3019,7 @@ const styles = StyleSheet.create({
   },
   invoiceNumberText: {
     fontSize: 16,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: 'bold',
   },
   invoiceDates: {
@@ -3076,7 +3076,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#00B4A6',
+    borderLeftColor: '#1A2533',
   },
   serviceInfo: {
     flex: 1,
@@ -3124,18 +3124,18 @@ const styles = StyleSheet.create({
   },
   grandTotalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#00B4A6',
+    borderTopColor: '#1A2533',
     paddingTop: 8,
     marginTop: 8,
   },
   grandTotalLabel: {
     fontSize: 14,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: 'bold',
   },
   grandTotalValue: {
     fontSize: 16,
-    color: '#00B4A6',
+    color: '#1A2533',
     fontWeight: 'bold',
   },
   invoiceFooter: {
@@ -3147,7 +3147,7 @@ const styles = StyleSheet.create({
   footerThankYou: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00B4A6',
+    color: '#1A2533',
     marginBottom: 5,
   },
   footerText: {
@@ -3197,7 +3197,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 2,
-    borderBottomColor: '#FFE4E1',
+    borderBottomColor: '#F5F5E9',
   },
 });
 

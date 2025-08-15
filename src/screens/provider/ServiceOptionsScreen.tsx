@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     borderColor: '#1A2533',
     borderRadius: 12,
     borderStyle: 'dashed',
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
   },
   addButtonText: {
     color: '#1A2533',
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   exampleSection: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,

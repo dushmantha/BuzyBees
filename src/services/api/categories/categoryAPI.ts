@@ -28,7 +28,7 @@ class CategoryAPI {
         name: 'Beauty & Wellness',
         description: 'Beauty and wellness services including hair, skincare, and spa treatments',
         image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
-        color: '#FFE4E1',
+        color: '#F5F5E9',
         service_count: 0,
         is_active: true,
         sort_order: 1

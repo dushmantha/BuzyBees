@@ -2347,11 +2347,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FFFE',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   providerSwitchButton: {
     backgroundColor: '#F0FFFE',
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   switchAccountText: {
     fontSize: 14,
@@ -2377,11 +2377,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   providerBadge: {
     backgroundColor: '#F0FFFE',
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   accountTypeText: {
     fontSize: 14,
@@ -2504,7 +2504,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     backgroundColor: '#F3F4F6',
   },
   editPhotoButton: {
@@ -2547,7 +2547,7 @@ const styles = StyleSheet.create({
     color: '#1A2533',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E1',
+    borderBottomColor: '#F5F5E9',
   },
   input: {
     fontSize: 16,
@@ -2556,7 +2556,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     ...Platform.select({
       ios: {
         paddingVertical: 12,
@@ -2601,7 +2601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E1',
+    borderBottomColor: '#F5F5E9',
   },
   ratingText: {
     fontSize: 16,
@@ -2673,7 +2673,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
     borderWidth: 2,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2681,7 +2681,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E1',
+    borderBottomColor: '#F5F5E9',
   },
   modalTitle: {
     fontSize: 20,
@@ -2700,7 +2700,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     marginBottom: 12,
   },
   selectedAccountOption: {
@@ -2969,7 +2969,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   paidButton: {
     backgroundColor: '#10B981',
@@ -2977,7 +2977,7 @@ const styles = StyleSheet.create({
   },
   contactButton: {
     backgroundColor: '#F0FFFE',
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   actionButtonText: {
     fontSize: 16,
@@ -3038,7 +3038,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FFFE',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   saveButton: {
     backgroundColor: '#1A2533',
@@ -3079,7 +3079,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
     marginLeft: 12,
   },
   verifyButtonText: {
@@ -3129,7 +3129,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   addButtonText: {
     fontSize: 14,

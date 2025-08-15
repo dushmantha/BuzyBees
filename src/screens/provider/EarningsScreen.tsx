@@ -971,12 +971,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   freeUserBadge: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   freeUserText: {
     fontSize: 12,
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   earningsSubtext: {
     fontSize: 14,
-    color: '#FFE4E1',
+    color: '#F5F5E9',
   },
   
   // Stats Container
@@ -1246,9 +1246,9 @@ const styles = StyleSheet.create({
     borderColor: '#D1FAE5',
   },
   pendingBadge: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   statusText: {
     fontSize: 10,
@@ -1280,12 +1280,12 @@ const styles = StyleSheet.create({
   
   // Premium Prompt
   premiumPrompt: {
-    backgroundColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#F5F5E9',
   },
   premiumPromptContent: {
     flexDirection: 'row',
@@ -1339,8 +1339,8 @@ const styles = StyleSheet.create({
     borderColor: '#1A2533',
   },
   lockedFilterOption: {
-    backgroundColor: '#FFE4E1',
-    borderColor: '#FFE4E1',
+    backgroundColor: '#F5F5E9',
+    borderColor: '#F5F5E9',
   },
   filterOptionContent: {
     flexDirection: 'row',
