@@ -23,7 +23,7 @@ import {
   StaffMember 
 } from '../utils/staffAvailability';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../navigation/AppNavigator';
 import { supabase } from '../lib/supabase';
 
 type RootStackParamList = {

@@ -16,15 +16,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { favoritesAPI, FavoriteShop } from '../services/api/favorites/favoritesAPI';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../navigation/AppNavigator';
+import { createFavoritesTable } from '../utils/createFavoritesTable';
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Favorites'>;
 
 const FavoritesScreen = () => {
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
-  const { user, isAuthenticated, isInitializing } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteShop[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Get user ID from auth context
@@ -33,18 +34,18 @@ const FavoritesScreen = () => {
   console.log('❤️ FavoritesScreen - User ID:', userId);
   console.log('❤️ FavoritesScreen - User object:', user);
   console.log('❤️ FavoritesScreen - isAuthenticated:', isAuthenticated);
-  console.log('❤️ FavoritesScreen - isInitializing:', isInitializing);
+  console.log('❤️ FavoritesScreen - isLoading (auth):', isLoading);
 
   const loadFavorites = useCallback(async (showLoader = true) => {
     if (!userId) {
       console.log('❤️ No user ID available, skipping favorites load');
-      setLoading(false);
+      setFavoritesLoading(false);
       setRefreshing(false);
       return;
     }
 
     try {
-      if (showLoader) setLoading(true);
+      if (showLoader) setFavoritesLoading(true);
       
       console.log('❤️ Loading favorites for user:', userId);
       const response = await favoritesAPI.getUserFavorites(userId);
@@ -59,7 +60,7 @@ const FavoritesScreen = () => {
       console.error('Error loading favorites:', error);
       Alert.alert('Error', 'Failed to load favorites');
     } finally {
-      setLoading(false);
+      setFavoritesLoading(false);
       setRefreshing(false);
     }
   }, [userId]);
@@ -177,16 +178,39 @@ const FavoritesScreen = () => {
         <Text style={styles.browseButtonText}>Browse Shops</Text>
       </TouchableOpacity>
       
-      {/* Debug button to test favorites */}
+      {/* Debug button to test table existence */}
       <TouchableOpacity
         style={[styles.browseButton, { backgroundColor: '#EF4444', marginTop: 10 }]}
         onPress={async () => {
-          if (!userId) return;
-          
-          console.log('🧪 Creating test favorite for user:', userId);
+          console.log('🧪 Testing database connection and table existence');
           
           try {
-            // Try to get any shop ID from provider_businesses
+            // Test 1: Check if user_favorites table exists
+            const { data: tableTest, error: tableError } = await require('../lib/supabase/normalized').supabase
+              .from('user_favorites')
+              .select('id')
+              .limit(1);
+              
+            console.log('🧪 Table test result:', tableTest);
+            console.log('🧪 Table test error:', tableError);
+            
+            if (tableError && tableError.message.includes('does not exist')) {
+              console.log('🔧 Table does not exist, attempting to create it...');
+              const createResult = await createFavoritesTable();
+              
+              if (!createResult.success) {
+                Alert.alert(
+                  'Database Setup Required', 
+                  'The favorites table needs to be created. Please run the SQL migration in your Supabase dashboard:\n\n' + 
+                  'supabase/migrations/0005_user_favorites_table.sql'
+                );
+                return;
+              } else {
+                Alert.alert('Success', 'Favorites table created! You can now use favorites.');
+              }
+            }
+            
+            // Test 2: Try to get shop data  
             const { data: shops } = await require('../lib/supabase/normalized').supabase
               .from('provider_businesses')
               .select('id, name')
@@ -194,29 +218,30 @@ const FavoritesScreen = () => {
               
             console.log('🧪 Available shops:', shops);
               
-            if (shops && shops.length > 0) {
+            if (shops && shops.length > 0 && userId) {
               const testShopId = shops[0].id;
-              console.log('🧪 Using shop:', shops[0].name, 'ID:', testShopId);
+              console.log('🧪 Creating test favorite for user:', userId, 'shop:', testShopId);
               
               // Create test favorite
               const response = await favoritesAPI.toggleFavorite(userId, testShopId);
               console.log('🧪 Toggle favorite result:', response);
               
               if (response.success) {
-                // Reload favorites
+                Alert.alert('Success', 'Test favorite created! Refreshing...');
                 loadFavorites();
+              } else {
+                Alert.alert('Error', response.error || 'Failed to create test favorite');
               }
             } else {
-              console.log('🧪 No shops found in database');
               Alert.alert('Debug', 'No shops found in provider_businesses table');
             }
           } catch (error) {
-            console.error('🧪 Test favorite error:', error);
-            Alert.alert('Debug Error', error.message);
+            console.error('🧪 Database test error:', error);
+            Alert.alert('Database Error', error.message);
           }
         }}
       >
-        <Text style={styles.browseButtonText}>🧪 Test Add Favorite</Text>
+        <Text style={styles.browseButtonText}>🧪 Test Database</Text>
       </TouchableOpacity>
     </View>
   );
@@ -230,7 +255,7 @@ const FavoritesScreen = () => {
   );
 
   // Show loading while auth is initializing
-  if (isInitializing) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -265,7 +290,7 @@ const FavoritesScreen = () => {
     );
   }
 
-  if (loading && !refreshing) {
+  if (favoritesLoading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>

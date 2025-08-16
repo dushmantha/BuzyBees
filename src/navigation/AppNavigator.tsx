@@ -126,9 +126,12 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔐 Auth state changed:', event, session?.user?.email || 'No user');
+        console.log('🔐 Session exists:', !!session);
+        console.log('🔐 Will set isAuthenticated to:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        console.log('🔐 Auth loading set to false');
       }
     );
 
@@ -171,17 +174,24 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
+  const authContextValue = {
+    user,
+    session,
+    isAuthenticated: !!session,
+    isLoading,
+    signOut,
+    refreshUser,
+  };
+
+  console.log('🔐 AuthContext providing values:', {
+    hasUser: !!user,
+    hasSession: !!session,
+    isAuthenticated: authContextValue.isAuthenticated,
+    isLoading: authContextValue.isLoading
+  });
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: !!session,
-        isLoading,
-        signOut,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -266,7 +276,15 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.log('📝 Loading user profile for:', user.id);
       setIsLoading(true);
       
-      const response = await authService.getUserProfile(user.id);
+      // Add timeout to prevent infinite loading
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile loading timeout')), 10000)
+      );
+      
+      const response = await Promise.race([
+        authService.getUserProfile(user.id),
+        timeout
+      ]);
       console.log('📝 Profile response:', response.success ? 'Success' : response.error);
       
       if (response.success && response.data) {
@@ -327,31 +345,54 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
       
-      // Create emergency fallback profile
-      const savedType = await AsyncStorage.getItem('accountType');
-      const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
-      
-      const emergencyProfile = {
-        id: user.id,
-        email: user.email || 'user@example.com',
-        first_name: 'User',
-        last_name: 'Name',
-        full_name: 'User Name',
-        phone: '',
-        account_type: finalType,
-        avatar_url: null,
-        is_premium: false,
-        email_verified: false,
-        phone_verified: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setUserProfile(emergencyProfile);
-      setAccountTypeState(finalType);
-      console.log('❌ Emergency profile created with account type:', finalType);
+      // Create emergency fallback profile - ensure this always completes
+      try {
+        const savedType = await AsyncStorage.getItem('accountType');
+        const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+        
+        const emergencyProfile = {
+          id: user.id,
+          email: user.email || 'user@example.com',
+          first_name: 'User',
+          last_name: 'Name',
+          full_name: 'User Name',
+          phone: '',
+          account_type: finalType,
+          avatar_url: null,
+          is_premium: false,
+          email_verified: false,
+          phone_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setUserProfile(emergencyProfile);
+        setAccountTypeState(finalType);
+        console.log('❌ Emergency profile created with account type:', finalType);
+      } catch (fallbackError) {
+        console.error('❌ Critical error in fallback profile creation:', fallbackError);
+        // Absolute fallback - just set consumer type to avoid infinite loading
+        setAccountTypeState('consumer');
+        setUserProfile({
+          id: user.id,
+          email: user.email || 'user@example.com',
+          first_name: 'User',
+          last_name: 'Name',
+          full_name: 'User Name',
+          phone: '',
+          account_type: 'consumer',
+          avatar_url: null,
+          is_premium: false,
+          email_verified: false,
+          phone_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
     } finally {
+      // Ensure loading state is ALWAYS cleared
       setIsLoading(false);
+      console.log('✅ Profile loading completed - isLoading set to false');
     }
   };
 
@@ -946,9 +987,14 @@ const AuthNavigator = () => {
 const AppNavigator = () => {
   const { accountType, isLoading } = useAccount();
 
+  console.log('🏠 AppNavigator render - accountType:', accountType, 'isLoading:', isLoading);
+
   if (isLoading) {
+    console.log('🏠 Showing AccountSwitchLoader due to account loading');
     return <AccountSwitchLoader />;
   }
+
+  console.log('🏠 Account loading complete, showing main app navigation');
 
   return (
     <RootStack.Navigator
@@ -1159,9 +1205,14 @@ const AppNavigator = () => {
 const RootNavigator = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
+  console.log('📱 RootNavigator render - isAuthenticated:', isAuthenticated, 'authLoading:', authLoading);
+
   if (authLoading) {
+    console.log('📱 Showing SplashScreen due to auth loading');
     return <SplashScreen />;
   }
+
+  console.log('📱 Auth loading complete, showing:', isAuthenticated ? 'AppNavigator (main app)' : 'AuthNavigator (login)');
 
   return (
     <AccountProvider>

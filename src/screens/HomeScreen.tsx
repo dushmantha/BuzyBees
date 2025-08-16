@@ -24,7 +24,7 @@ import Geolocation from '@react-native-community/geolocation';
 import api from '../services/api/home/providerHomeAPI';
 import { shopAPI } from '../services/api/shops/shopAPI';
 import { categoryAPI } from '../services/api/categories/categoryAPI';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../navigation/AppNavigator';
 import { usePremium } from '../contexts/PremiumContext';
 import { formatCurrency } from '../utils/currency';
 

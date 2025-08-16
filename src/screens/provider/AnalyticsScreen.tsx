@@ -20,7 +20,7 @@ import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { useAccount } from '../../navigation/AppNavigator';
 import { normalizedShopService } from '../../lib/supabase/normalized';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../navigation/AppNavigator';
 
 const { width } = Dimensions.get('window');
 const chartWidth = width - 52; // Optimized width for better chart positioning

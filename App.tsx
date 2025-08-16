@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StatusBar, LogBox, Text, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { AuthProvider } from './src/context/AuthContext';
+// AuthProvider is now handled in AppNavigator
 import { PremiumProvider } from './src/contexts/PremiumContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import integratedShopService from './src/lib/supabase/integrated';
@@ -78,23 +78,21 @@ function App(): React.JSX.Element {
   try {
     return (
       <ErrorBoundary>
-        <AuthProvider>
-          <PremiumProvider>
-            <SafeAreaProvider 
-              initialMetrics={initialWindowMetrics}
-              style={styles.safeArea}
-            >
-              <NavigationContainer theme={MyTheme}>
-                <StatusBar 
-                  barStyle="dark-content" 
-                  backgroundColor="transparent" 
-                  translucent
-                />
-                <AppNavigator />
-              </NavigationContainer>
-            </SafeAreaProvider>
-          </PremiumProvider>
-        </AuthProvider>
+        <PremiumProvider>
+          <SafeAreaProvider 
+            initialMetrics={initialWindowMetrics}
+            style={styles.safeArea}
+          >
+            <NavigationContainer theme={MyTheme}>
+              <StatusBar 
+                barStyle="dark-content" 
+                backgroundColor="transparent" 
+                translucent
+              />
+              <AppNavigator />
+            </NavigationContainer>
+          </SafeAreaProvider>
+        </PremiumProvider>
       </ErrorBoundary>
     );
   } catch (error) {

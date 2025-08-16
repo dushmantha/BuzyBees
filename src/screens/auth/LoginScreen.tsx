@@ -148,7 +148,16 @@ const LoginScreen = () => {
       const response = await authService.signIn(identifier, password);
       
       if (response.success) {
-        console.log('✅ Login successful');
+        console.log('✅ Login successful - user:', response.user?.email);
+        console.log('✅ Session exists:', !!response.session);
+        console.log('✅ Waiting for AuthContext to update and navigate...');
+        
+        // Add a timeout to prevent infinite loading in case navigation fails
+        setTimeout(() => {
+          console.warn('⚠️ Navigation timeout - AuthContext may not have updated properly');
+          console.warn('⚠️ If you see this message, the app should navigate automatically soon');
+        }, 5000);
+        
         // Navigation is handled by AuthContext state change in AppNavigator
       } else {
         setErrors({ 
