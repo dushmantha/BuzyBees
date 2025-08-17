@@ -1925,10 +1925,76 @@ class NormalizedShopService {
         
         // Handle missing column errors gracefully
         if (error.code === '42703' || error.message?.includes('does not exist')) {
-          console.warn('⚠️ Database schema issue - some columns may be missing');
+          console.warn('⚠️ Database schema issue - some columns may be missing, trying basic schema');
+          
+          // Try with most basic schema - only essential columns
+          const basicRecord = {
+            customer_id: user.id,
+            shop_id: bookingData.shop_id,
+            service_id: bookingData.service_id,
+            staff_id: bookingData.assigned_staff_id || null,
+            customer_name: bookingData.customer_name,
+            customer_phone: bookingData.customer_phone,
+            booking_date: bookingData.booking_date,
+            start_time: bookingData.start_time,
+            end_time: bookingData.end_time,
+            total_price: Number(bookingData.total_price || 0),
+            status: 'confirmed'
+          };
+
+          // Only add fields if they're provided and might exist in schema
+          if (bookingData.customer_email) {
+            basicRecord.customer_email = bookingData.customer_email;
+          }
+          if (bookingData.notes) {
+            basicRecord.notes = bookingData.notes;
+          }
+
+          const { data: basicData, error: basicError } = await this.client
+            .from('shop_bookings')
+            .insert(basicRecord)
+            .select()
+            .single();
+
+          if (basicError) {
+            console.error('❌ Basic booking creation also failed:', basicError);
+            
+            // Final ultra-minimal fallback
+            const ultraMinimalRecord = {
+              shop_id: bookingData.shop_id,
+              customer_name: bookingData.customer_name,
+              customer_phone: bookingData.customer_phone,
+              booking_date: bookingData.booking_date,
+              start_time: bookingData.start_time,
+              end_time: bookingData.end_time,
+              total_price: Number(bookingData.total_price || 0),
+              status: 'confirmed'
+            };
+
+            const { data: ultraData, error: ultraError } = await this.client
+              .from('shop_bookings')
+              .insert(ultraMinimalRecord)
+              .select()
+              .single();
+
+            if (ultraError) {
+              return {
+                success: false,
+                error: `Database schema incompatible. Error: ${ultraError.message}. Please ensure the shop_bookings table has the required columns.`
+              };
+            }
+
+            return {
+              success: true,
+              data: ultraData,
+              warning: 'Booking created with minimal data. Database schema should be updated for full functionality.'
+            };
+          }
+
           return {
-            success: false,
-            error: 'Database needs to be updated to support all booking features. Please contact support.'
+            success: true,
+            data: basicData,
+            warning: 'Booking created successfully. Consider updating the database schema for enhanced features.'
           };
         }
         

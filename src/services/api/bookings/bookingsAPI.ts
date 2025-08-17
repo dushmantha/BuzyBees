@@ -1,4 +1,8 @@
 import { normalizedShopService, supabase } from '../../../lib/supabase/normalized';
+import { bookingEmailService } from '../../bookingEmailService';
+import { directEmailService } from '../../directEmailService';
+import { emailJSService } from '../../emailJSService';
+import { directResendService } from '../../directResendService';
 
 export interface BookingService {
   id: string;
@@ -102,6 +106,113 @@ class BookingsAPI {
       }
 
       console.log('✅ Booking created successfully:', response.data);
+      
+      // Send booking confirmation email
+      try {
+        const booking = response.data;
+        
+        // Get customer details from authenticated user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const customer = user ? {
+          email: user.email,
+          first_name: user.user_metadata?.first_name || user.user_metadata?.firstName || 'Customer',
+          last_name: user.user_metadata?.last_name || user.user_metadata?.lastName || ''
+        } : null;
+        
+        // Get shop details
+        const { data: shop } = await supabase
+          .from('provider_businesses')
+          .select('name, address, phone, email')
+          .eq('id', bookingData.shop_id)
+          .single();
+        
+        // Get staff details if available
+        let staffName = '';
+        if (bookingData.staff_id) {
+          const { data: staff } = await supabase
+            .from('provider_staff')
+            .select('full_name')
+            .eq('id', bookingData.staff_id)
+            .single();
+          staffName = staff?.full_name || '';
+        }
+        
+        if (customer?.email) {
+          console.log('📧 Preparing to send confirmation email to:', customer.email);
+          console.log('🏪 Shop details:', shop?.name);
+          console.log('🛎️ Service details:', firstService?.name);
+          
+          const emailData = {
+            to_email: customer.email,
+            customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer',
+            shop_name: shop?.name || 'Shop',
+            service_name: firstService?.name || 'Service',
+            booking_date: bookingData.booking_date,
+            booking_time: bookingData.start_time,
+            duration: totalDuration,
+            price: bookingData.total_price,
+            staff_name: staffName,
+            shop_address: shop?.address,
+            shop_phone: shop?.phone,
+            booking_id: booking?.id,
+            notes: bookingData.notes
+          };
+          
+          console.log('📧 Email data prepared:', emailData);
+          
+          // Send confirmation email using direct Resend service (fallback while Edge Function is being fixed)
+          console.log('📧 Sending customer confirmation email via DirectResend...');
+          const confirmationResult = await directResendService.sendBookingConfirmation(emailData);
+          console.log('📧 Customer email result:', confirmationResult);
+          
+          // Schedule reminder for 6 hours before
+          const reminderResult = await bookingEmailService.scheduleReminder(emailData);
+          console.log('⏰ Reminder scheduling result:', reminderResult);
+          
+          console.log('📧 Customer email processing completed for:', customer.email);
+          
+          // Send business notification email if business email is available
+          if (shop?.email) {
+            console.log('🏪 Preparing to send business notification email to:', shop.email);
+            
+            const businessNotificationData = {
+              business_email: shop.email,
+              business_name: shop?.name || 'Business',
+              customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer',
+              customer_phone: user?.phone || undefined,
+              customer_email: customer.email,
+              service_name: firstService?.name || 'Service',
+              booking_date: bookingData.booking_date,
+              booking_time: bookingData.start_time,
+              duration: totalDuration,
+              price: bookingData.total_price,
+              staff_name: staffName,
+              booking_id: booking?.id,
+              notes: bookingData.notes
+            };
+            
+            console.log('🏪 Business notification data prepared:', businessNotificationData);
+            
+            // Send business notification using direct Resend service (fallback while Edge Function is being fixed)
+            console.log('🏪 Sending business notification email via DirectResend...');
+            const businessResult = await directResendService.sendBusinessNotification(businessNotificationData);
+            console.log('🏪 Business email result:', businessResult);
+            
+            console.log('🏪 Business email processing completed for:', shop.email);
+          } else {
+            console.warn('⚠️ No business email available for booking notification');
+            console.warn('⚠️ Shop data:', shop);
+          }
+        } else {
+          console.warn('⚠️ No customer email available for booking confirmation');
+          console.warn('⚠️ User data:', user);
+          console.warn('⚠️ Customer object:', customer);
+        }
+      } catch (emailError) {
+        console.error('Failed to send booking email:', emailError);
+        // Don't fail the booking if email fails
+      }
+      
       return {
         data: response.data,
         error: null,

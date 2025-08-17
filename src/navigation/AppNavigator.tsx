@@ -45,6 +45,8 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import HelpCenterScreen from '../screens/HelpCenterScreen';
 import TermsConditionsScreen from '../screens/TermsConditionsScreen';
+import RefundPolicyScreen from '../screens/RefundPolicyScreen';
+import BusinessSignupScreen from '../screens/BusinessSignupScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -665,9 +667,11 @@ export type RootStackParamList = {
   // Profile Related Screens
   Notifications: undefined;
   Privacy: undefined;
-  PaymentMethods: undefined;
+  // PaymentMethods: undefined; // Removed as requested
   HelpCenter: undefined;
   TermsConditions: undefined;
+  RefundPolicy: undefined;
+  // BusinessSignup: undefined; // Removed as requested
   
   // Search Screen (optional)
   Search?: { 
@@ -1170,7 +1174,8 @@ const AppNavigator = () => {
           ...getHeaderStyle(),
         }}
       />
-      <RootStack.Screen 
+      {/* Payment Methods screen removed as requested */}
+      {/* <RootStack.Screen 
         name="PaymentMethods" 
         component={PaymentMethodsScreen}
         options={{
@@ -1178,7 +1183,7 @@ const AppNavigator = () => {
           headerShown: true,
           ...getHeaderStyle(),
         }}
-      />
+      /> */}
       <RootStack.Screen 
         name="HelpCenter" 
         component={HelpCenterScreen}
@@ -1197,6 +1202,25 @@ const AppNavigator = () => {
           ...getHeaderStyle(),
         }}
       />
+      <RootStack.Screen 
+        name="RefundPolicy" 
+        component={RefundPolicyScreen}
+        options={{
+          title: 'Refund Policy',
+          headerShown: false,
+          ...getHeaderStyle(),
+        }}
+      />
+      {/* Business Signup screen removed as requested */}
+      {/* <RootStack.Screen 
+        name="BusinessSignup" 
+        component={BusinessSignupScreen}
+        options={{
+          title: 'Join as Provider',
+          headerShown: false,
+          ...getHeaderStyle(),
+        }}
+      /> */}
     </RootStack.Navigator>
   );
 };

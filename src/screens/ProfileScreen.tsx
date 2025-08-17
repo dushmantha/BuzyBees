@@ -816,6 +816,38 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     }
   };
 
+  // Navigation handlers
+  const handleNotificationsPress = () => {
+    navigation.navigate('Notifications');
+  };
+
+  const handlePrivacyPress = () => {
+    navigation.navigate('Privacy');
+  };
+
+  const handleHelpCenterPress = () => {
+    navigation.navigate('HelpCenter');
+  };
+
+  const handleTermsConditionsPress = () => {
+    navigation.navigate('TermsConditions');
+  };
+
+  const handleRefundPolicyPress = () => {
+    navigation.navigate('RefundPolicy');
+  };
+
+  // handleBusinessSignupPress removed as Business Signup option was removed
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
+  };
+
   const handleEdit = useCallback(() => {
     console.log('🔧 Starting edit mode, current profile:', JSON.stringify(profile, null, 2));
     
@@ -1086,72 +1118,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
 
 
-  // Fixed navigation handlers
-  const handleNotificationsPress = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('Notifications');
-    } else {
-      Alert.alert('Navigation', 'Navigate to Notifications screen');
-    }
-  };
 
-  const handlePaymentMethodsPress = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('PaymentMethods');
-    } else {
-      Alert.alert('Navigation', 'Navigate to Payment Methods screen');
-    }
-  };
-
-  const handlePrivacyPress = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('Privacy');
-    } else {
-      Alert.alert('Navigation', 'Navigate to Privacy screen');
-    }
-  };
-
-  const handleHelpCenterPress = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('HelpCenter');
-    } else {
-      Alert.alert('Navigation', 'Navigate to Help Center screen');
-    }
-  };
-
-  const handleTermsConditionsPress = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('TermsConditions');
-    } else {
-      Alert.alert('Navigation', 'Navigate to Terms & Conditions screen');
-    }
-  };
-
-  const handleLogout = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              // No manual navigation needed - auth state change will handle redirect
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const renderField = (label: string, field: keyof ProfileData, isTextArea = false, isReadOnly = false) => {
     const currentProfile = isEditing ? tempProfile : profile;
@@ -1926,11 +1893,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               )}
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.preferenceItem} onPress={handlePaymentMethodsPress}>
-              <Ionicons name="card-outline" size={20} color="#1A2533" />
-              <Text style={styles.preferenceText}>Payment Methods</Text>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
-            </TouchableOpacity>
+            {/* Payment Methods removed as requested */}
             <TouchableOpacity style={styles.preferenceItem} onPress={handlePrivacyPress}>
               <Ionicons name="lock-closed-outline" size={20} color="#1A2533" />
               <Text style={styles.preferenceText}>Privacy</Text>
@@ -1951,6 +1914,12 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
               <Text style={styles.preferenceText}>Terms & Conditions</Text>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.preferenceItem} onPress={handleRefundPolicyPress}>
+              <Ionicons name="card-outline" size={20} color="#1A2533" />
+              <Text style={styles.preferenceText}>Refund Policy</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.chevron} />
+            </TouchableOpacity>
+            {/* Business Signup removed as requested */}
           </View>
 
           {/* Subscription Section */}

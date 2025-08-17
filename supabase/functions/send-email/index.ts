@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
@@ -13,129 +14,30 @@ serve(async (req) => {
   }
 
   try {
-    const { customers, subject, message, providerInfo } = await req.json()
-
-    // Validate input
-    if (!customers || !Array.isArray(customers) || customers.length === 0) {
-      throw new Error('No customers provided')
-    }
-
-    if (!subject || !message) {
-      throw new Error('Subject and message are required')
-    }
-
-    console.log(`📧 Sending email to ${customers.length} customers`)
-
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    )
-
-    // For this example, we'll use Resend API for email sending
-    // You can replace this with your preferred email service
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    const requestBody = await req.json()
+    console.log('📧 Edge Function received payload:', {
+      hasTo: !!requestBody.to,
+      hasSubject: !!requestBody.subject,
+      hasHtml: !!requestBody.html,
+      hasText: !!requestBody.text,
+      type: requestBody.type,
+      keys: Object.keys(requestBody)
+    })
     
-    if (!RESEND_API_KEY) {
-      throw new Error('Email service not configured')
+    // Validate required fields for appointment emails
+    if (!requestBody.to || !requestBody.subject || !requestBody.html) {
+      const missingFields = []
+      if (!requestBody.to) missingFields.push('to')
+      if (!requestBody.subject) missingFields.push('subject')
+      if (!requestBody.html) missingFields.push('html')
+      
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}. Received: ${Object.keys(requestBody).join(', ')}`)
     }
-
-    const results = []
-    const errors = []
-
-    // Send emails to each customer
-    for (const customer of customers) {
-      try {
-        console.log(`📧 Sending email to ${customer.email}`)
-
-        const emailData = {
-          from: 'BuzyBees <noreply@buzybees.com>', // Replace with your domain
-          to: [customer.email],
-          subject: subject,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #F59E0B;">Hello ${customer.name}!</h2>
-              <div style="margin: 20px 0; line-height: 1.6;">
-                ${message.replace(/\n/g, '<br>')}
-              </div>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-              <p style="color: #6B7280; font-size: 14px;">
-                Best regards,<br>
-                ${providerInfo?.name || 'BuzyBees Team'}
-                ${providerInfo?.phone ? `<br>Phone: ${providerInfo.phone}` : ''}
-                ${providerInfo?.email ? `<br>Email: ${providerInfo.email}` : ''}
-              </p>
-            </div>
-          `
-        }
-
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailData),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.text()
-          throw new Error(`Email API error: ${errorData}`)
-        }
-
-        const result = await response.json()
-        results.push({
-          customer: customer.email,
-          success: true,
-          messageId: result.id
-        })
-
-        console.log(`✅ Email sent successfully to ${customer.email}`)
-
-        // Optional: Log the email send to database
-        await supabaseClient.from('email_logs').insert({
-          recipient_email: customer.email,
-          recipient_name: customer.name,
-          subject: subject,
-          message: message,
-          status: 'sent',
-          provider_id: providerInfo?.id,
-          sent_at: new Date().toISOString()
-        })
-
-      } catch (error) {
-        console.error(`❌ Failed to send email to ${customer.email}:`, error.message)
-        errors.push({
-          customer: customer.email,
-          error: error.message
-        })
-      }
-    }
-
-    // Return results
-    const response = {
-      success: true,
-      totalSent: results.length,
-      totalFailed: errors.length,
-      results: results,
-      errors: errors,
-      message: `Successfully sent ${results.length} emails, ${errors.length} failed`
-    }
-
-    console.log('📧 Email sending completed:', response)
-
-    return new Response(
-      JSON.stringify(response),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    )
+    
+    return await handleAppointmentEmail(requestBody)
 
   } catch (error) {
-    console.error('❌ Email sending error:', error.message)
+    console.error('❌ Email function error:', error.message)
     
     return new Response(
       JSON.stringify({ 
@@ -152,3 +54,109 @@ serve(async (req) => {
     )
   }
 })
+
+// Handle appointment email (for both customer and business owner notifications)
+async function handleAppointmentEmail(requestBody: any) {
+  const { to, subject, html, text, type } = requestBody
+
+  console.log(`📧 Sending appointment ${type || 'notification'} email to:`, to)
+
+  // Get Resend API key from environment
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+  
+  console.log('🔍 Debug - RESEND_API_KEY value:', RESEND_API_KEY ? `${RESEND_API_KEY.substring(0, 10)}...` : 'null/undefined')
+  console.log('🔍 Debug - RESEND_API_KEY length:', RESEND_API_KEY?.length || 0)
+  console.log('🔍 Debug - RESEND_API_KEY type:', typeof RESEND_API_KEY)
+  
+  if (!RESEND_API_KEY || RESEND_API_KEY.trim() === '') {
+    console.error('❌ RESEND_API_KEY not configured or empty in environment variables')
+    console.log('ℹ️ Available environment variables:', Object.keys(Deno.env.toObject()))
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'RESEND_API_KEY not configured or empty in environment variables',
+        message: 'Email service not configured - please set RESEND_API_KEY in Supabase secrets',
+        availableEnvVars: Object.keys(Deno.env.toObject()),
+        keyValue: RESEND_API_KEY ? `${RESEND_API_KEY.substring(0, 10)}...` : 'null/undefined',
+        keyLength: RESEND_API_KEY?.length || 0
+      }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
+  }
+
+  // Determine the sender based on email type
+  const fromAddress = type === 'business_notification' 
+    ? 'Qwiken Business Portal <onboarding@resend.dev>'
+    : 'Qwiken Bookings <onboarding@resend.dev>'
+
+  // Prepare email data for Resend
+  const emailData = {
+    from: fromAddress,
+    to: [to],
+    subject: subject,
+    html: html,
+    text: text || subject.replace(/<[^>]*>/g, '') // Strip HTML tags for text version
+  }
+
+  console.log('📧 Sending via Resend API...')
+
+  try {
+    // Send email via Resend
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Resend API error:', errorText)
+      throw new Error(`Resend API error: ${response.status} - ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Email sent successfully via Resend:', result.id)
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        messageId: result.id,
+        message: 'Appointment email sent successfully',
+        to: to,
+        subject: subject
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
+  } catch (error) {
+    console.error('❌ Appointment email error:', error.message)
+    
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        message: 'Failed to send appointment email'
+      }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
+  }
+}
