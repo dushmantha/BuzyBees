@@ -54,226 +54,26 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Mock API service for notifications with full details
-  const mockNotificationAPI = {
+  // API service for notifications (using real backend)
+  const notificationAPI = {
     async getNotifications(userId: string, accountType: 'provider' | 'consumer'): Promise<NotificationsResponse> {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (accountType === 'provider') {
-        return {
-          data: [
-            {
-              id: '1',
-              title: 'New Booking Request',
-              message: 'Sarah Wilson requested a manicure service for tomorrow at 2:00 PM',
-              type: 'booking_request',
-              is_read: false,
-              created_at: '2025-07-17T10:30:00Z',
-              action_data: { booking_id: 'book_123' },
-              full_details: {
-                description: 'A new booking request has been received for your manicure service. The customer is looking for a professional gel manicure with nail art.',
-                additional_info: [
-                  'Customer: Sarah Wilson',
-                  'Service: Gel Manicure with Nail Art',
-                  'Preferred Date: July 18, 2025',
-                  'Preferred Time: 2:00 PM - 3:30 PM',
-                  'Location: Your salon',
-                  'Special Requests: French tips with glitter accent',
-                  'Customer Notes: First time customer, prefers natural colors'
-                ],
-                action_required: true,
-                action_text: 'Accept or Decline Booking',
-                priority: 'high',
-                related_items: [
-                  { type: 'customer_profile', id: 'cust_456' },
-                  { type: 'service_details', id: 'serv_789' }
-                ]
-              }
-            },
-            {
-              id: '2',
-              title: 'Payment Received',
-              message: 'Payment of $450 received from John Doe for electrical installation',
-              type: 'payment',
-              is_read: false,
-              created_at: '2025-07-17T09:15:00Z',
-              action_data: { payment_id: 'pay_456' },
-              full_details: {
-                description: 'Payment has been successfully processed and deposited into your account.',
-                additional_info: [
-                  'Amount: $450.00',
-                  'Customer: John Doe',
-                  'Service: Electrical Installation',
-                  'Your Earnings: $382.50'
-                ],
-                action_required: false,
-                priority: 'normal'
-              }
-            },
-            {
-              id: '3',
-              title: 'Review Posted',
-              message: 'Emma Thompson left a 5-star review: "Excellent service, very professional!"',
-              type: 'review',
-              is_read: true,
-              created_at: '2025-07-16T16:45:00Z',
-              action_data: { review_id: 'rev_789' },
-              full_details: {
-                description: 'You received a new 5-star review from a satisfied customer.',
-                additional_info: [
-                  'Rating: ⭐⭐⭐⭐⭐ (5/5)',
-                  'Customer: Emma Thompson',
-                  'Service: Deep House Cleaning',
-                  'Review: "Excellent service, very professional!"'
-                ],
-                action_required: false,
-                priority: 'normal'
-              }
-            },
-            {
-              id: '4',
-              title: 'Booking Cancelled',
-              message: 'Mike Chen cancelled his plumbing appointment scheduled for today',
-              type: 'system',
-              is_read: true,
-              created_at: '2025-07-16T14:20:00Z',
-              action_data: { booking_id: 'book_101' }
-            },
-            {
-              id: '5',
-              title: 'New Message',
-              message: 'You have a new message from Lisa Brown regarding carpet cleaning',
-              type: 'system',
-              is_read: false,
-              created_at: '2025-07-16T11:30:00Z',
-              action_data: { message_id: 'msg_202' }
-            },
-            {
-              id: '6',
-              title: 'Weekly Report Ready',
-              message: 'Your weekly performance report is now available for review',
-              type: 'system',
-              is_read: false,
-              created_at: '2025-07-15T08:00:00Z',
-              action_data: { report_id: 'rep_101' }
-            },
-            {
-              id: '7',
-              title: 'Profile Update Required',
-              message: 'Please update your business hours for the holiday season',
-              type: 'system',
-              is_read: false,
-              created_at: '2025-07-14T15:30:00Z',
-              action_data: { profile_section: 'hours' }
-            },
-          ],
-          unread_count: 5,
-        };
-      } else {
-        return {
-          data: [
-            {
-              id: '1',
-              title: 'Booking Confirmed',
-              message: 'Your hair appointment with Style Studio is confirmed for tomorrow at 3:00 PM',
-              type: 'booking_confirmed',
-              is_read: false,
-              created_at: '2025-07-17T10:30:00Z',
-              action_data: { booking_id: 'book_567' },
-              full_details: {
-                description: 'Your appointment has been confirmed!',
-                additional_info: [
-                  'Service: Haircut & Styling',
-                  'Date: July 18, 2025 (Tomorrow)',
-                  'Time: 3:00 PM - 4:30 PM',
-                  'Provider: Style Studio',
-                  'Total Cost: $85.00'
-                ],
-                action_required: false,
-                priority: 'normal'
-              }
-            },
-            {
-              id: '2',
-              title: 'Service Reminder',
-              message: 'Your manicure appointment is in 2 hours. Address: 123 Beauty St, Auckland',
-              type: 'reminder',
-              is_read: false,
-              created_at: '2025-07-17T09:15:00Z',
-              action_data: { booking_id: 'book_568' },
-              full_details: {
-                description: 'This is a friendly reminder about your upcoming appointment.',
-                additional_info: [
-                  'Service: Gel Manicure',
-                  'Time: 11:15 AM (in 2 hours)',
-                  'Provider: Beauty and Me',
-                  'Address: 123 Beauty St, Auckland'
-                ],
-                action_required: false,
-                priority: 'high'
-              }
-            },
-            {
-              id: '3',
-              title: 'New Service Available',
-              message: 'Check out our new spa treatments! Get 20% off your first spa session.',
-              type: 'promotion',
-              is_read: false,
-              created_at: '2025-07-16T16:45:00Z',
-              action_data: { promo_id: 'promo_123' }
-            },
-            {
-              id: '4',
-              title: 'Payment Receipt',
-              message: 'Payment of $85 for cleaning service has been processed successfully',
-              type: 'payment',
-              is_read: true,
-              created_at: '2025-07-16T14:20:00Z',
-              action_data: { payment_id: 'pay_789' }
-            },
-            {
-              id: '5',
-              title: 'Booking Reminder',
-              message: 'Don\'t forget your garden maintenance appointment tomorrow at 10:00 AM',
-              type: 'reminder',
-              is_read: true,
-              created_at: '2025-07-15T18:00:00Z',
-              action_data: { booking_id: 'book_569' }
-            },
-            {
-              id: '6',
-              title: 'Special Offer',
-              message: 'Limited time: 30% off all home cleaning services this weekend',
-              type: 'promotion',
-              is_read: false,
-              created_at: '2025-07-15T10:00:00Z',
-              action_data: { promo_id: 'promo_124' }
-            },
-          ],
-          unread_count: 4,
-        };
-      }
+      // TODO: Replace with real API call to Supabase
+      return { data: [], unread_count: 0 };
     },
-
     async markAsRead(notificationId: string): Promise<{ success: boolean }> {
-      await new Promise(resolve => setTimeout(resolve, 300));
       return { success: true };
     },
-
     async markAllAsRead(userId: string): Promise<{ success: boolean }> {
-      await new Promise(resolve => setTimeout(resolve, 500));
       return { success: true };
     },
-
     async deleteNotification(notificationId: string): Promise<{ success: boolean }> {
-      await new Promise(resolve => setTimeout(resolve, 300));
       return { success: true };
     },
   };
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await mockNotificationAPI.getNotifications('user-123', accountType);
+      const response = await notificationAPI.getNotifications('user-123', accountType);
       setNotifications(response.data);
       setNotificationCount(response.unread_count);
     } catch (error) {
@@ -301,7 +101,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      const response = await mockNotificationAPI.markAsRead(notificationId);
+      const response = await notificationAPI.markAsRead(notificationId);
       if (response.success) {
         setNotifications(prev => prev.map(notification => 
           notification.id === notificationId 
@@ -319,7 +119,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const response = await mockNotificationAPI.markAllAsRead('user-123');
+      const response = await notificationAPI.markAllAsRead('user-123');
       if (response.success) {
         setNotifications(prev => prev.map(notification => ({ ...notification, is_read: true })));
         setNotificationCount(0);
@@ -333,7 +133,7 @@ const NotificationsScreen = ({ navigation }: { navigation: any }) => {
 
   const handleDeleteNotification = async (notificationId: string) => {
     try {
-      const response = await mockNotificationAPI.deleteNotification(notificationId);
+      const response = await notificationAPI.deleteNotification(notificationId);
       if (response.success) {
         const deletedNotification = notifications.find(n => n.id === notificationId);
         setNotifications(prev => prev.filter(notification => notification.id !== notificationId));

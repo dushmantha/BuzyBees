@@ -19,7 +19,6 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import useImagePicker from '../hooks/useImagePicker';
-import mockService from '../services/api/mock/index';
 import UpgradeModal from '../components/UpgradeModal';
 import { authService } from '../lib/supabase/index';
 import { normalizedShopService } from '../lib/supabase/normalized';

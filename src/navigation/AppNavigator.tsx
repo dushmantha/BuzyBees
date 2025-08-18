@@ -75,6 +75,7 @@ interface AuthContextType {
   isLoading: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  forceCheckSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -84,6 +85,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   signOut: async () => {},
   refreshUser: async () => {},
+  forceCheckSession: async () => {},
 });
 
 export const useAuth = () => {
@@ -130,10 +132,18 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         console.log('🔐 Auth state changed:', event, session?.user?.email || 'No user');
         console.log('🔐 Session exists:', !!session);
         console.log('🔐 Will set isAuthenticated to:', !!session);
+        
+        // Additional debugging
+        if (event === 'SIGNED_IN' && session) {
+          console.log('🔐 SIGNED_IN event detected with session');
+          console.log('🔐 Session user ID:', session.user?.id);
+          console.log('🔐 Session access token exists:', !!session.access_token);
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
-        console.log('🔐 Auth loading set to false');
+        console.log('🔐 Auth loading set to false, isAuthenticated will be:', !!session);
       }
     );
 
@@ -176,6 +186,25 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
+  const forceCheckSession = async () => {
+    try {
+      console.log('🔄 Force checking session...');
+      setIsLoading(true);
+      
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('🔍 Force session check result:', currentSession?.user?.email || 'No session');
+      
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      setIsLoading(false);
+      
+      console.log('🔍 After force check - isAuthenticated:', !!currentSession);
+    } catch (error) {
+      console.error('❌ Error in force session check:', error);
+      setIsLoading(false);
+    }
+  };
+
   const authContextValue = {
     user,
     session,
@@ -183,6 +212,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     isLoading,
     signOut,
     refreshUser,
+    forceCheckSession,
   };
 
   console.log('🔐 AuthContext providing values:', {
@@ -278,9 +308,21 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.log('📝 Loading user profile for:', user.id);
       setIsLoading(true);
       
-      // Add timeout to prevent infinite loading
+      // Check cache first to avoid network calls
+      const cachedProfile = await AsyncStorage.getItem(`profile_${user.id}`);
+      if (cachedProfile) {
+        try {
+          const parsed = JSON.parse(cachedProfile);
+          setUserProfile(parsed);
+          console.log('📝 Loaded cached profile');
+        } catch (e) {
+          console.warn('📝 Failed to parse cached profile');
+        }
+      }
+      
+      // Reduce timeout and add exponential backoff
       const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile loading timeout')), 10000)
+        setTimeout(() => reject(new Error('Profile loading timeout')), 5000)
       );
       
       const response = await Promise.race([
@@ -291,6 +333,14 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (response.success && response.data) {
         setUserProfile(response.data);
+        
+        // Cache the profile for next time
+        try {
+          await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(response.data));
+          console.log('📝 Cached user profile');
+        } catch (e) {
+          console.warn('📝 Failed to cache profile');
+        }
         
         // Priority: Database account_type > AsyncStorage > default 'consumer'
         const dbAccountType = response.data.account_type;

@@ -19,7 +19,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList, ConsumerTabParamList } from '../navigation/AppNavigator';
-import mockService from '../services/api/mock/index';
 import { useAuth } from '../navigation/AppNavigator';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
 import { reviewsAPI } from '../services/api/reviews/reviewsAPI';

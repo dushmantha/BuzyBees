@@ -720,45 +720,6 @@ class AuthServiceClass {
     }
   }
 
-  /**
-   * Create test users - For development only
-   */
-  async createTestUsers(): Promise<void> {
-    try {
-      console.log('🧪 Creating test users...');
-      
-      const testUsers = [
-        { email: 'demo.admin@buzybees.com', password: 'Demo123!@#', role: 'admin' },
-        { email: 'demo.consumer@buzybees.com', password: 'Demo123!@#', role: 'consumer' },
-        { email: 'demo.provider@buzybees.com', password: 'Demo123!@#', role: 'provider' },
-        { email: 'test.user@buzybees.com', password: 'Test123!@#', role: 'consumer' },
-      ];
-
-      for (const testUser of testUsers) {
-        console.log(`Creating test user: ${testUser.email}`);
-        
-        const { data, error } = await supabase.auth.signUp({
-          email: testUser.email,
-          password: testUser.password,
-          options: {
-            data: {
-              first_name: 'Test',
-              last_name: 'User',
-              account_type: testUser.role,
-            },
-          },
-        });
-
-        if (error) {
-          console.warn(`⚠️ Could not create ${testUser.email}:`, error.message);
-        } else {
-          console.log(`✅ Created test user: ${testUser.email}`);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error creating test users:', error);
-    }
-  }
 
   /**
    * Check if user exists in auth.users table
@@ -976,7 +937,7 @@ class AuthServiceClass {
         state: businessData.state || '',
         country: businessData.country || 'Sweden',
         phone: businessData.phone || '1234567890',
-        email: businessData.email || 'test@test.com'
+        email: businessData.email || 'shop@example.com'
       };
       
       console.log('🏪 Testing minimal insert with data:', minimalData);
@@ -2082,7 +2043,7 @@ class AuthServiceClass {
           city: 'Test City',
           country: 'Sweden',
           phone: '1234567890',
-          email: 'test@verify.com'
+          email: 'verify@example.com'
         };
         
         const { data: insertData, error: insertError } = await supabase

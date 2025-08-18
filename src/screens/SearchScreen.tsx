@@ -17,7 +17,6 @@ import {
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import mockService from '../services/api/mock';
 import { formatCurrency } from '../utils/currency';
 
 // Types
@@ -108,14 +107,12 @@ const SearchScreen = () => {
     try {
       if (showLoader) setIsLoading(true);
 
-      // Call multiple APIs in parallel
-      const [servicesResponse, categoriesResponse] = await Promise.all([
-        mockService.searchServices(query, { limit: 20 }),
-        mockService.searchCategories ? mockService.searchCategories(query) : Promise.resolve({ data: { categories: [] } })
-      ]);
-
-      const services = servicesResponse.data?.services || [];
-      const categories = categoriesResponse.data?.categories || [];
+      // TODO: Replace with real API calls to Supabase
+      console.log('TODO: Implement search for query:', query);
+      
+      // Return empty results for now
+      const services = [];
+      const categories = [];
 
       // Extract professionals from services
       const professionals = services.map(service => ({

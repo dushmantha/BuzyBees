@@ -785,16 +785,30 @@ const RegisterScreen = () => {
         // Navigation is handled by AuthContext state change in AppNavigator
       } else {
         console.error('❌ Google Sign-In failed:', result.error);
-        setErrors({ 
-          general: result.error || 'Google sign-in failed. Please try again.' 
-        });
+        
+        // Show user-friendly error message for module not available
+        if (result.error?.includes('Google Sign-In is not available')) {
+          Alert.alert(
+            'Google Sign-In Setup Required',
+            'Google Sign-In needs to be configured. Please rebuild the app or complete registration with email/password.',
+            [
+              { text: 'OK', style: 'default' }
+            ]
+          );
+        } else {
+          setErrors({ 
+            general: result.error || 'Google sign-in failed. Please try again.' 
+          });
+        }
       }
       
     } catch (error: any) {
       console.error('❌ Google Sign-In error:', error);
-      setErrors({ 
-        general: error.message || 'An error occurred during Google sign-in. Please try again.' 
-      });
+      Alert.alert(
+        'Sign-In Error',
+        'Unable to complete Google sign-in. Please try completing registration with email/password instead.',
+        [{ text: 'OK', style: 'default' }]
+      );
     } finally {
       setGoogleLoading(false);
     }
@@ -1298,23 +1312,25 @@ const RegisterScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
-              onPress={handleAppleSignIn}
-              disabled={loading || googleLoading || appleLoading}
-            >
-              {appleLoading ? (
-                <View style={styles.socialButtonContent}>
-                  <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
-                  <Text style={styles.socialButtonText}>Creating account...</Text>
-                </View>
-              ) : (
-                <View style={styles.socialButtonContent}>
-                  <Ionicons name="logo-apple" size={20} color={colors.gray900} />
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity 
+                style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
+                onPress={handleAppleSignIn}
+                disabled={loading || googleLoading || appleLoading}
+              >
+                {appleLoading ? (
+                  <View style={styles.socialButtonContent}>
+                    <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
+                    <Text style={styles.socialButtonText}>Creating account...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.socialButtonContent}>
+                    <Ionicons name="logo-apple" size={20} color={colors.gray900} />
+                    <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
 
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>

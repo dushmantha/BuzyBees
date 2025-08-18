@@ -1,6 +1,5 @@
 // src/services/serviceUtils.ts
 import React from 'react';
-import mockService from './api/mock/index';
 import { ServiceOption, ServiceOptionState, ApiResponse } from '../types/service';
 import { serviceOptionsAPI, ServiceOption as APIServiceOption } from './api/serviceOptions/serviceOptionsAPI';
 import { formatCurrency, CURRENCY } from '../utils/currency';
@@ -80,30 +79,13 @@ export class ServiceUtils {
    */
   static async fetchServiceWithOptions(serviceId: string) {
     try {
-      const response = await mockService.getServiceWithOptions(serviceId);
+      // TODO: Replace with real API call to Supabase
+      console.log('TODO: Implement fetchServiceWithOptions for service:', serviceId);
       
-      if (response.error) {
-        return {
-          service: null,
-          options: [],
-          error: response.error
-        };
-      }
-
-      const service = response.data;
-      const transformedOptions: ServiceOptionState[] = service.options.map((apiOption: ServiceOption, index: number) => ({
-        id: apiOption.id,
-        name: apiOption.name,
-        description: apiOption.description,
-        duration: `${apiOption.duration} min`,
-        price: formatCurrency(apiOption.price),
-        selected: apiOption.is_default || (index === 0 && !service.options.some(opt => opt.is_default)),
-      }));
-
       return {
-        service: service,
-        options: transformedOptions,
-        error: null
+        service: null,
+        options: [],
+        error: 'Service not found - mock data removed'
       };
     } catch (error) {
       console.error('Error in fetchServiceWithOptions:', error);

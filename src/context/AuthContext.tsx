@@ -84,49 +84,6 @@ interface AuthProviderProps {
 const AUTH_TOKEN_KEY = '@auth_token';
 const USER_DATA_KEY = '@user';
 
-// Demo users for testing - using proper UUIDs
-const DEMO_USERS = {
-  'admin@example.com': {
-    id: '550e8400-e29b-41d4-a716-446655440000',
-    email: 'admin@example.com',
-    full_name: 'Demo Admin',
-    phone: '+1234567890',
-    avatar_url: '',
-    role: 'Admin',
-    account_type: 'provider' as const,
-    created_at: new Date().toISOString(),
-  },
-  'consumer@example.com': {
-    id: '797445af-97d4-4c03-8088-747628282993',
-    email: 'consumer@example.com',
-    full_name: 'Demo Consumer',
-    phone: '+1234567891',
-    avatar_url: '',
-    role: 'Consumer',
-    account_type: 'consumer' as const,
-    created_at: new Date().toISOString(),
-  },
-  'provider@example.com': {
-    id: '664d9c32-ec81-4a00-afd1-f9903db141a',
-    email: 'provider@example.com',
-    full_name: 'Demo Provider',
-    phone: '+1234567892',
-    avatar_url: '',
-    role: 'Provider',
-    account_type: 'provider' as const,
-    created_at: new Date().toISOString(),
-  },
-  'test@example.com': {
-    id: '550e8400-e29b-41d4-a716-446655440003',
-    email: 'test@example.com',
-    full_name: 'Demo Tester',
-    phone: '+1234567893',
-    avatar_url: '',
-    role: 'Tester',
-    account_type: 'consumer' as const,
-    created_at: new Date().toISOString(),
-  },
-};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [data, setData] = useState<AuthState>({
@@ -500,42 +457,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setData(prev => ({ ...prev, isLoading: true }));
       console.log('🔄 Attempting sign in for:', email);
 
-      let user: User;
-      let token: string;
+      // Real API login
+      console.log('🌐 Using real API for:', email);
+      const { data: response, error } = await api.login(email, password);
 
-      // Check if it's a demo user first
-      const demoUser = DEMO_USERS[email.toLowerCase() as keyof typeof DEMO_USERS];
-      
-      if (demoUser) {
-        // Demo login
-        console.log('🎭 Using demo user for:', email);
-        user = transformUser(demoUser);
-        token = `demo-token-${Date.now()}-${user.id}`;
-        
-        // Simulate demo password validation
-        const validDemoPasswords = ['admin123', 'consumer123', 'provider123', 'test123'];
-        if (!validDemoPasswords.includes(password)) {
-          throw new Error('Invalid demo password');
-        }
-      } else {
-        // Real API login
-        console.log('🌐 Using real API for:', email);
-        const { data: response, error } = await api.login(email, password);
+      if (error) {
+        throw new Error(error.message || 'Failed to sign in');
+      }
 
-        if (error) {
-          throw new Error(error.message || 'Failed to sign in');
-        }
+      if (!response?.user) {
+        throw new Error('No user data received');
+      }
 
-        if (!response?.user) {
-          throw new Error('No user data received');
-        }
+      const user = transformUser(response.user);
+      const token = response.session?.access_token;
 
-        user = transformUser(response.user);
-        token = response.session?.access_token;
-
-        if (!token) {
-          throw new Error('No access token received');
-        }
+      if (!token) {
+        throw new Error('No access token received');
       }
 
       // Save token and user data to AsyncStorage
@@ -637,6 +575,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setData(prev => ({ ...prev, isLoading: true }));
       console.log('🔄 Signing out user');
+      
+      // Sign out from Google if the user signed in with Google
+      try {
+        const { googleSignInService } = require('../services/auth/googleSignIn');
+        await googleSignInService.signOut();
+        console.log('✅ Signed out from Google');
+      } catch (googleError) {
+        console.log('⚠️ Google sign-out skipped:', googleError);
+      }
       
       // Call API signOut method if available
       if (api.signOut) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -51,7 +51,17 @@ const LoginScreen = () => {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { forceCheckSession } = useAuth();
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Validation functions
   const validateIdentifier = (value: string): string | null => {
@@ -143,6 +153,11 @@ const LoginScreen = () => {
     }
 
     setLoading(true);
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
     try {
       const response = await authService.signIn(identifier, password);
@@ -150,19 +165,36 @@ const LoginScreen = () => {
       if (response.success) {
         console.log('✅ Login successful - user:', response.user?.email);
         console.log('✅ Session exists:', !!response.session);
-        console.log('✅ Waiting for AuthContext to update and navigate...');
+        console.log('✅ Auth service login completed, triggering session check...');
         
-        // Add a timeout to prevent infinite loading in case navigation fails
-        setTimeout(() => {
-          console.warn('⚠️ Navigation timeout - AuthContext may not have updated properly');
-          console.warn('⚠️ If you see this message, the app should navigate automatically soon');
-        }, 5000);
+        // Immediately trigger a session check to ensure auth state updates
+        setTimeout(async () => {
+          console.log('🔄 Immediate session check...');
+          await forceCheckSession();
+        }, 500); // Check after 500ms
         
-        // Navigation is handled by AuthContext state change in AppNavigator
+        // Additional fallback check
+        setTimeout(async () => {
+          console.log('🔄 Fallback session check...');
+          await forceCheckSession();
+        }, 3000); // Check after 3 seconds
+        
+        // Keep loading state active until AppNavigator's auth state changes
+        // Add a timeout as a safety measure
+        timeoutRef.current = setTimeout(() => {
+          console.warn('⚠️ Auth state change timeout - forcing loading off');
+          setLoading(false);
+          setErrors({ 
+            general: 'Login completed but navigation failed. Please restart the app.' 
+          });
+        }, 10000); // 10 second timeout
+        
+        // Don't set loading to false here - let the auth state change handle navigation
       } else {
         setErrors({ 
           general: response.error || 'Invalid credentials. Please try again.' 
         });
+        setLoading(false);
       }
       
     } catch (error: any) {
@@ -170,7 +202,6 @@ const LoginScreen = () => {
       setErrors({ 
         general: error.message || 'Network error. Please check your connection and try again.' 
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -184,8 +215,7 @@ const LoginScreen = () => {
       const result = await googleSignInService.signIn();
       
       if (result.success) {
-        console.log('✅ Google Sign-In successful');
-        // Navigation is handled by AuthContext state change in AppNavigator
+        console.log('✅ Google Sign-In successful, waiting for auth state change...');
         
         // Show welcome message for new users
         if (result.isNewUser) {
@@ -195,19 +225,44 @@ const LoginScreen = () => {
             [{ text: 'Get Started', style: 'default' }]
           );
         }
+        
+        // Keep loading until auth state changes, with timeout
+        setTimeout(() => {
+          console.warn('⚠️ Google auth state change timeout');
+          setGoogleLoading(false);
+          setErrors({ 
+            general: 'Sign-in completed but navigation failed. Please restart the app.' 
+          });
+        }, 8000);
+        
+        // Don't set loading to false here - let auth state change handle it
       } else {
         console.error('❌ Google Sign-In failed:', result.error);
-        setErrors({ 
-          general: result.error || 'Google sign-in failed. Please try again.' 
-        });
+        
+        // Show user-friendly error message for module not available
+        if (result.error?.includes('Google Sign-In is not available')) {
+          Alert.alert(
+            'Google Sign-In Setup Required',
+            'Google Sign-In needs to be configured. Please rebuild the app or use email/password login.',
+            [
+              { text: 'OK', style: 'default' }
+            ]
+          );
+        } else {
+          setErrors({ 
+            general: result.error || 'Google sign-in failed. Please try again.' 
+          });
+        }
+        setGoogleLoading(false);
       }
       
     } catch (error: any) {
       console.error('❌ Google Sign-In error:', error);
-      setErrors({ 
-        general: error.message || 'An error occurred during Google sign-in. Please try again.' 
-      });
-    } finally {
+      Alert.alert(
+        'Sign-In Error',
+        'Unable to complete Google sign-in. Please try using email/password instead.',
+        [{ text: 'OK', style: 'default' }]
+      );
       setGoogleLoading(false);
     }
   };
@@ -391,23 +446,25 @@ const LoginScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
-              onPress={handleAppleSignIn}
-              disabled={loading || googleLoading || appleLoading}
-            >
-              {appleLoading ? (
-                <View style={styles.socialButtonContent}>
-                  <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
-                  <Text style={styles.socialButtonText}>Signing in...</Text>
-                </View>
-              ) : (
-                <View style={styles.socialButtonContent}>
-                  <Ionicons name="logo-apple" size={20} color={colors.gray900} />
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity 
+                style={[styles.socialButtonSecondary, (loading || googleLoading || appleLoading) && styles.socialButtonDisabled]}
+                onPress={handleAppleSignIn}
+                disabled={loading || googleLoading || appleLoading}
+              >
+                {appleLoading ? (
+                  <View style={styles.socialButtonContent}>
+                    <ActivityIndicator size="small" color={colors.gray900} style={{ marginRight: 12 }} />
+                    <Text style={styles.socialButtonText}>Signing in...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.socialButtonContent}>
+                    <Ionicons name="logo-apple" size={20} color={colors.gray900} />
+                    <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
