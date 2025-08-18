@@ -159,15 +159,15 @@ const SERVICE_CATEGORIES = [
 
 // Common role suggestions (for placeholder/examples)
 const ROLE_SUGGESTIONS = [
-  'Manager', 'Technician', 'Specialist', 'Assistant', 'Consultant', 
-  'Cleaner', 'Supervisor', 'Coordinator', 'Expert', 'Professional'
+  'Manager', 'Stylist', 'Specialist', 'Assistant', 'Consultant', 
+  'Therapist', 'Supervisor', 'Coordinator', 'Expert', 'Professional'
 ];
 
 // Common specialty suggestions (for placeholder/examples)
 const SPECIALTY_SUGGESTIONS = [
-  'Deep Cleaning', 'Window Cleaning', 'Carpet Cleaning', 'Office Cleaning',
-  'Residential Cleaning', 'Commercial Cleaning', 'Maintenance', 'Repair Work',
-  'Installation', 'Consultation', 'Quality Control', 'Customer Service'
+  'Hair Cutting', 'Hair Coloring', 'Hair Styling', 'Manicure',
+  'Pedicure', 'Facial Treatment', 'Massage Therapy', 'Eyebrow Shaping',
+  'Makeup Application', 'Waxing', 'Personal Training', 'Yoga Instruction'
 ];
 
 // Discount types
@@ -4862,7 +4862,7 @@ const ShopDetailsScreen: React.FC = () => {
                   style={styles.input}
                   value={staffForm.role}
                   onChangeText={(text) => setStaffForm(prev => ({ ...prev, role: text }))}
-                  placeholder="e.g., Manager, Technician, Specialist, Cleaner"
+                  placeholder="e.g., Manager, Stylist, Specialist, Therapist"
                   placeholderTextColor="#9CA3AF"
                 />
                 <Text style={styles.inputHint}>Enter the job title or role for this staff member</Text>
@@ -4893,7 +4893,7 @@ const ShopDetailsScreen: React.FC = () => {
                     style={[styles.input, styles.specialtyInput]}
                     value={newSpecialty}
                     onChangeText={setNewSpecialty}
-                    placeholder="Enter specialty (e.g., Deep Cleaning, Repair Work)"
+                    placeholder="Enter specialty (e.g., Hair Cutting, Massage Therapy)"
                     placeholderTextColor="#9CA3AF"
                     onSubmitEditing={addSpecialty}
                   />

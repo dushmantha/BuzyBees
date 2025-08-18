@@ -18,6 +18,7 @@ import { Calendar } from 'react-native-calendars';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { 
   generateStaffTimeSlots, 
+  generateStaffTimeSlotsWithBookings,
   generateStaffCalendarMarks,
   getStaffAvailabilityForDate,
   StaffMember 
@@ -55,16 +56,94 @@ type RouteProp = RouteProp<RootStackParamList, 'BookingDateTimeEnhanced'>;
 
 const { width: windowWidth } = Dimensions.get('window');
 
-// Mock existing bookings for demo
-const mockBookedSlots = {
-  "2025-08-05": [
-    { start: "09:00", end: "10:00" },
-    { start: "14:00", end: "15:00" }
-  ],
-  "2025-08-06": [
-    { start: "11:00", end: "12:00" },
-    { start: "15:00", end: "16:30" }
-  ]
+// Function to check if a specific time slot has conflicts using the same logic as booking creation
+const checkTimeSlotConflict = async (shopId: string, staffId: string, date: string, startTime: string, endTime: string): Promise<boolean> => {
+  try {
+    // Use the exact same RPC function that booking creation uses
+    const { data: conflictCheck, error: conflictError } = await supabase
+      .rpc('check_booking_conflict', {
+        p_shop_id: shopId,
+        p_staff_id: staffId || null,
+        p_booking_date: date,
+        p_start_time: startTime,
+        p_end_time: endTime
+      });
+
+    if (conflictError) {
+      console.warn('⚠️ Conflict check failed:', conflictError.message);
+      // If the function doesn't exist, assume no conflict
+      if (conflictError.code === '42883' || conflictError.message?.includes('function') || conflictError.message?.includes('does not exist')) {
+        return false;
+      }
+      return false;
+    }
+
+    return conflictCheck === true;
+  } catch (error) {
+    console.warn('⚠️ Error checking time slot conflict:', error);
+    return false;
+  }
+};
+
+// Function to fetch real bookings from Supabase
+const getStaffBookingsForDate = async (staffId: string, date: string): Promise<Array<{ start: string; end: string }>> => {
+  try {
+    console.log('📅 Fetching bookings for staff:', staffId, 'on date:', date);
+    
+    // Try to get bookings from the bookings table first
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select('booking_date, booking_time, start_time, end_time, duration, status')
+      .eq('staff_id', staffId)
+      .eq('booking_date', date)
+      .in('status', ['confirmed', 'pending']); // Both confirmed and pending bookings block slots
+    
+    if (error) {
+      // Handle missing table gracefully
+      if (error.code === '42P01') {
+        console.warn('⚠️ Bookings table does not exist yet. Will use conflict check function instead.');
+        return [];
+      }
+      console.error('❌ Error fetching staff bookings:', error);
+      return [];
+    }
+    
+    // Convert bookings to start/end time format
+    const bookedSlots = (bookings || []).map(booking => {
+      // Handle both formats: start_time/end_time or booking_time/duration
+      let startTime, endTime;
+      
+      if (booking.start_time && booking.end_time) {
+        // Use explicit start and end times if available
+        startTime = booking.start_time;
+        endTime = booking.end_time;
+      } else if (booking.booking_time) {
+        // Calculate end time from booking_time and duration
+        startTime = booking.booking_time;
+        const duration = booking.duration || 60; // Default 60 minutes if no duration
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + duration;
+        const endHours = Math.floor(endMinutes / 60);
+        const endMins = endMinutes % 60;
+        endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+      } else {
+        // Skip this booking if no time info
+        return null;
+      }
+      
+      return {
+        start: startTime,
+        end: endTime
+      };
+    }).filter(slot => slot !== null); // Remove null entries
+    
+    console.log('✅ Found booked slots:', bookedSlots);
+    return bookedSlots;
+  } catch (error) {
+    console.error('❌ Error in getStaffBookingsForDate:', error);
+    return [];
+  }
 };
 
 const BookingDateTimeEnhancedScreen: React.FC = () => {
@@ -137,30 +216,70 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
 
   // Generate time slots when date changes
   useEffect(() => {
-    const fetchTimeSlots = () => {
+    const fetchTimeSlots = async () => {
       if (!selectedDate || !selectedStaff) {
         return;
       }
       
       setLoading(true);
       
-      // Get existing bookings for the date
-      const bookedSlots = mockBookedSlots[selectedDate] || [];
-      
-      // Generate time slots based on staff schedule
-      const slots = generateStaffTimeSlots(
-        selectedDate, 
-        selectedStaff, 
-        serviceDuration, 
-        bookedSlots
-      );
-      
-      setAvailableSlots(slots);
-      setLoading(false);
+      try {
+        // First generate basic time slots based on staff schedule
+        const slots = await generateStaffTimeSlotsWithBookings(
+          selectedDate, 
+          selectedStaff, 
+          serviceDuration, 
+          getStaffBookingsForDate
+        );
+        
+        // Then check each slot using the same conflict check as booking creation
+        const shopId = bookingDetails?.shopId || route.params?.bookingDetails?.shopId;
+        
+        if (shopId) {
+          // Check conflicts for each slot using the same RPC function
+          const checkedSlots = await Promise.all(
+            slots.map(async (slot) => {
+              const hasConflict = await checkTimeSlotConflict(
+                shopId,
+                selectedStaff.id,
+                selectedDate,
+                slot.startTime,
+                slot.endTime
+              );
+              
+              return {
+                ...slot,
+                available: slot.available && !hasConflict,
+                reason: hasConflict ? 'Time slot already booked' : slot.reason
+              };
+            })
+          );
+          
+          setAvailableSlots(checkedSlots);
+        } else {
+          // If no shopId, just use the basic availability
+          setAvailableSlots(slots);
+        }
+      } catch (error) {
+        console.error('❌ Error generating time slots:', error);
+        setAvailableSlots([]);
+      } finally {
+        setLoading(false);
+      }
     };
     
     fetchTimeSlots();
-  }, [selectedDate, selectedStaff, serviceDuration]);
+    
+    // Refresh slots every 30 seconds when on this screen to catch new bookings
+    const refreshInterval = setInterval(() => {
+      if (selectedDate && selectedStaff) {
+        console.log('🔄 Auto-refreshing time slots...');
+        fetchTimeSlots();
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [selectedDate, selectedStaff, serviceDuration, bookingDetails]);
 
   const handleDatePress = (day: { dateString: string }): void => {
     const availability = getStaffAvailabilityForDate(day.dateString, selectedStaff);
@@ -176,17 +295,7 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
   };
 
   const handleTimePress = (slot: any) => {
-    if (!slot.available) {
-      Alert.alert('Time Unavailable', 'This time slot is already booked.');
-      return;
-    }
-    
-    if (!slot.staffAvailable) {
-      setWarningMessage('This time is outside the staff member\'s working hours. You can still book but the staff member may not be available.');
-      setShowWarningModal(true);
-      return;
-    }
-    
+    // Since we're only showing available slots, we can directly select them
     setSelectedTime(slot.startTime);
   };
 
@@ -202,6 +311,38 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
     
     try {
       setLoading(true);
+      
+      // Double-check availability right before booking
+      console.log('🔄 Re-checking slot availability before booking...');
+      const currentBookings = await getStaffBookingsForDate(selectedStaff.id, selectedDate);
+      
+      // Check if selected time conflicts with any existing booking
+      const [selectedHour, selectedMinute] = selectedTime.split(':').map(Number);
+      const selectedStartMinutes = selectedHour * 60 + selectedMinute;
+      const selectedEndMinutes = selectedStartMinutes + serviceDuration;
+      
+      const hasConflict = currentBookings.some(booking => {
+        const [bookingStartHour, bookingStartMin] = booking.start.split(':').map(Number);
+        const [bookingEndHour, bookingEndMin] = booking.end.split(':').map(Number);
+        const bookingStartMinutes = bookingStartHour * 60 + bookingStartMin;
+        const bookingEndMinutes = bookingEndHour * 60 + bookingEndMin;
+        
+        // Check for overlap
+        return (selectedStartMinutes < bookingEndMinutes && selectedEndMinutes > bookingStartMinutes);
+      });
+      
+      if (hasConflict) {
+        setLoading(false);
+        Alert.alert(
+          'Slot No Longer Available', 
+          'This time slot was just booked by someone else. Please select another time.',
+          [{ text: 'OK', onPress: () => {
+            // Refresh the time slots
+            setSelectedTime('');
+          }}]
+        );
+        return;
+      }
       
       // Calculate end time based on service duration
       const [startHour, startMinute] = selectedTime.split(':').map(Number);
@@ -375,7 +516,33 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
         }, 2500);
       } else {
         console.error('❌ Booking creation failed:', response.error);
-        Alert.alert('Booking Failed', response.error || 'Failed to create booking. Please try again.');
+        
+        // Handle specific conflict error
+        if (response.error?.includes('already booked')) {
+          // This shouldn't happen with our pre-checks, but if it does, refresh the slots
+          Alert.alert(
+            'Time Slot Unavailable', 
+            'This time slot was just booked. The available times will refresh now.',
+            [{ text: 'OK', onPress: async () => {
+              setSelectedTime('');
+              // Force refresh the time slots
+              setLoading(true);
+              try {
+                const slots = await generateStaffTimeSlotsWithBookings(
+                  selectedDate, 
+                  selectedStaff, 
+                  serviceDuration, 
+                  getStaffBookingsForDate
+                );
+                setAvailableSlots(slots);
+              } finally {
+                setLoading(false);
+              }
+            }}]
+          );
+        } else {
+          Alert.alert('Booking Failed', response.error || 'Failed to create booking. Please try again.');
+        }
       }
       
     } catch (error) {
@@ -534,15 +701,14 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
                 <ActivityIndicator size="large" color="#1A2533" />
                 <Text style={styles.loadingText}>Loading available times...</Text>
               </View>
-            ) : availableSlots.length > 0 ? (
+            ) : availableSlots.filter(slot => slot.available && slot.staffAvailable).length > 0 ? (
               <View style={styles.timeSlotsGrid}>
-                {availableSlots.map(slot => (
+                {availableSlots.filter(slot => slot.available && slot.staffAvailable).map(slot => (
                   <TouchableOpacity
                     key={slot.id}
                     style={[
                       styles.timeSlot,
                       selectedTime === slot.startTime && styles.selectedTimeSlot,
-                      !slot.available && styles.unavailableTimeSlot,
                     ]}
                     onPress={() => handleTimePress(slot)}
                   >
@@ -550,14 +716,10 @@ const BookingDateTimeEnhancedScreen: React.FC = () => {
                       style={[
                         styles.timeText,
                         selectedTime === slot.startTime && styles.selectedTimeText,
-                        !slot.available && styles.unavailableTimeText,
                       ]}
                     >
                       {slot.startTime}
                     </Text>
-                    {!slot.available && (
-                      <Text style={styles.bookedText}>Booked</Text>
-                    )}
                   </TouchableOpacity>
                 ))}
               </View>
