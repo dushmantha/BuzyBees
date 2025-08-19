@@ -1780,7 +1780,7 @@ const ShopDetailsScreen: React.FC = () => {
           if (imageUploadType === 'staff') {
             console.log('🔄 Setting staff avatar immediately:', asset.uri);
             
-            // Show the image immediately first - use React's functional update to ensure latest state
+            // Show the image immediately first for better UX
             setStaffForm(prev => {
               console.log('🔄 Staff form before update:', prev.avatar_url);
               const updated = { ...prev, avatar_url: asset.uri! };
@@ -1797,22 +1797,35 @@ const ShopDetailsScreen: React.FC = () => {
               });
             }, 100);
             
-            // Then compress avatar image in background
+            // Then compress and upload avatar image to cloud storage
             try {
+              console.log('🗜️ Compressing avatar image...');
               const compressionResult = await compressAvatarImage(asset.uri);
               console.log('🗜️ Compression result:', compressionResult);
               
-              if (compressionResult.success && compressionResult.uri) {
-                console.log('✅ Updating with compressed version:', compressionResult.uri);
-                // Update with compressed version
-                setStaffForm(prev => ({ ...prev, avatar_url: compressionResult.uri! }));
+              const imageToUpload = compressionResult.success && compressionResult.uri 
+                ? compressionResult.uri 
+                : asset.uri;
+              
+              console.log('☁️ Uploading avatar to cloud storage...');
+              const uploadResult = await ImageUploadService.uploadStaffAvatar(imageToUpload);
+              
+              if (uploadResult.success && uploadResult.data) {
+                console.log('✅ Avatar uploaded successfully:', uploadResult.data);
+                // Update with cloud storage URL
+                setStaffForm(prev => ({ ...prev, avatar_url: uploadResult.data! }));
+                setAvatarRefresh(prev => prev + 1);
               } else {
-                console.log('⚠️ Compression failed, keeping original');
+                console.warn('⚠️ Upload failed, keeping local image:', uploadResult.error);
+                // Keep the local compressed version if upload fails
+                if (compressionResult.success && compressionResult.uri) {
+                  setStaffForm(prev => ({ ...prev, avatar_url: compressionResult.uri! }));
+                }
               }
-            } catch (compressionError) {
-              console.error('❌ Compression error:', compressionError);
+            } catch (error) {
+              console.error('❌ Avatar processing error:', error);
+              // Keep the original image if both compression and upload fail
             }
-            // If compression fails, keep the original image (already set above)
           } else {
             // Compress shop image
             const compressionResult = await compressShopImage(asset.uri);
@@ -1834,10 +1847,25 @@ const ShopDetailsScreen: React.FC = () => {
             }
           }
         } catch (error) {
+          console.error('❌ Image processing error:', error);
           
-          // Fall back to original images
+          // Fall back to uploading original images
           if (imageUploadType === 'staff') {
-            setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
+            // Try to upload original avatar to cloud storage
+            try {
+              console.log('☁️ Fallback: Uploading original avatar to cloud storage...');
+              const uploadResult = await ImageUploadService.uploadStaffAvatar(asset.uri);
+              if (uploadResult.success && uploadResult.data) {
+                console.log('✅ Fallback avatar upload successful:', uploadResult.data);
+                setStaffForm(prev => ({ ...prev, avatar_url: uploadResult.data! }));
+              } else {
+                console.warn('⚠️ Fallback upload failed, using local URI:', uploadResult.error);
+                setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
+              }
+            } catch (fallbackError) {
+              console.error('❌ Fallback upload error:', fallbackError);
+              setStaffForm(prev => ({ ...prev, avatar_url: asset.uri! }));
+            }
           } else {
             setShop(prev => {
               const newImages = [...(prev.images || [])];

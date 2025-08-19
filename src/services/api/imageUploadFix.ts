@@ -269,6 +269,29 @@ export class ImageUploadService {
   static async uploadShopLogo(localUri: string): Promise<ImageUploadResult> {
     return this.uploadImage(localUri, 'shop-images', 'logos');
   }
+
+  /**
+   * Upload staff avatar with fallback buckets
+   */
+  static async uploadStaffAvatar(localUri: string): Promise<ImageUploadResult> {
+    // Try shop-images bucket first (most likely to exist)
+    const result = await this.uploadImage(localUri, 'shop-images', 'staff-avatars');
+    
+    if (result.success) {
+      return result;
+    }
+    
+    // Fallback to user-avatars bucket if it exists
+    console.log('🔄 Trying user-avatars bucket as fallback...');
+    const fallbackResult = await this.uploadImage(localUri, 'user-avatars', 'staff');
+    
+    if (fallbackResult.success) {
+      return fallbackResult;
+    }
+    
+    // If both fail, return the original error
+    return result;
+  }
   
   /**
    * Upload shop gallery images and return URLs for database storage
