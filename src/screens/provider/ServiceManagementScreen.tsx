@@ -28,6 +28,8 @@ import ServiceManagementAPI, {
 import normalizedShopService from '../../lib/supabase/normalized';
 import { useAuth } from '../../navigation/AppNavigator';
 import { CancellationBanner } from '../../components/CancellationBanner';
+import { shouldUseMockData, logMockUsage } from '../../config/devConfig';
+import { getMockServices, MOCK_SHOPS } from '../../data/mockData';
 import { 
   generateStaffTimeSlots, 
   generateStaffCalendarMarks,
@@ -1261,6 +1263,31 @@ const ServiceManagementScreen = ({ navigation }) => {
       console.log('🏪 Loading shops for user:', user.id);
       setIsLoading(true);
       setError(null);
+
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_SHOPS')) {
+        console.log('🎭 Using mock shop data');
+        logMockUsage('Loading mock shop data for services');
+        
+        const mockShops = MOCK_SHOPS.map(shop => ({
+          ...shop,
+          is_active: true
+        }));
+        
+        console.log('✅ Mock shops loaded:', mockShops.length, 'shops');
+        setShops(mockShops);
+        
+        if (mockShops.length > 0) {
+          const firstShop = mockShops[0];
+          console.log('🎯 Selected first mock shop:', firstShop.name);
+          setSelectedShop(firstShop);
+          await loadServices(firstShop.id);
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await ServiceManagementAPI.getShops(user.id);
       
       console.log('🏪 Shop load response:', response);
@@ -1295,6 +1322,38 @@ const ServiceManagementScreen = ({ navigation }) => {
 
   const loadServices = useCallback(async (shopId: string) => {
     try {
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_SERVICES')) {
+        console.log('🎭 Using mock services data for shop:', shopId);
+        logMockUsage('Loading mock services data');
+        
+        const mockServices = getMockServices(shopId).map(service => ({
+          ...service,
+          // Map mock service fields to expected interface
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          price: service.price,
+          base_price: service.price,
+          duration: service.duration,
+          duration_minutes: service.duration,
+          category: service.category,
+          image: service.image,
+          is_active: service.isActive,
+          // Add some mock available dates
+          available_dates: [
+            new Date().toISOString().split('T')[0],
+            new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          ]
+        }));
+        
+        console.log('✅ Mock services loaded:', mockServices.length, 'services');
+        console.log('📊 Mock services data:', mockServices);
+        setServices(mockServices);
+        return;
+      }
+
       // Use the new normalized service to get services with correct field names
       const response = await normalizedShopService.getServices(shopId);
       

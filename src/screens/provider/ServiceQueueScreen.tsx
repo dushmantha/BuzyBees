@@ -24,6 +24,8 @@ import ServiceManagementAPI from '../../services/ServiceManagementAPI';
 import { usePremium } from '../../contexts/PremiumContext';
 import { CancellationBanner } from '../../components/CancellationBanner';
 import { useQueueBadge } from '../../contexts/QueueBadgeContext';
+import { shouldUseMockData, logMockUsage } from '../../config/devConfig';
+import { getMockBookings } from '../../data/mockData';
 
 // Types
 interface QueueItem {
@@ -203,6 +205,58 @@ const ServiceQueueScreen = ({ navigation }) => {
     try {
       if (showLoading) {
         setIsLoading(true);
+      }
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_BOOKINGS')) {
+        console.log('🎭 Using mock queue data');
+        logMockUsage('Loading mock service queue data');
+        
+        const mockBookings = getMockBookings();
+        
+        // Filter mock bookings to only show active ones (not completed)
+        const queueBookings = mockBookings.filter(booking => {
+          return booking.status !== 'completed' && 
+                 booking.status !== 'cancelled' && 
+                 booking.status !== 'no_show';
+        });
+        
+        // Transform mock data to match QueueItem interface
+        const customerNames = ['Sarah Williams', 'Emma Thompson', 'John Miller', 'Maria Garcia', 'David Chen'];
+        const customerEmails = ['sarah.w@email.com', 'emma.t@email.com', 'john.m@email.com', 'maria.g@email.com', 'david.c@email.com'];
+        const customerPhones = ['+1 (555) 123-4567', '+1 (555) 234-5678', '+1 (555) 345-6789', '+1 (555) 456-7890', '+1 (555) 567-8901'];
+        
+        const queueItems: QueueItem[] = queueBookings.map((booking, index) => ({
+          id: booking.id,
+          booking_id: booking.id,
+          title: Array.isArray(booking.serviceNames) ? booking.serviceNames[0] : booking.serviceNames || 'Service',
+          service_type: 'Beauty Service',
+          service_options: [],
+          client: customerNames[index % customerNames.length],
+          client_phone: customerPhones[index % customerPhones.length],
+          client_email: customerEmails[index % customerEmails.length],
+          date: booking.bookingDate,
+          time: booking.startTime,
+          scheduled_time: `${booking.bookingDate}T${booking.startTime}:00`,
+          duration: '60 min',
+          price: booking.totalPrice,
+          status: booking.status as any,
+          priority: booking.status === 'pending' ? 'high' : 'medium',
+          notes: booking.notes || '',
+          location_type: 'in_house' as any,
+          location: 'Shop Location',
+          staff_name: booking.staffName || 'Staff Member',
+          created_at: booking.createdAt,
+          invoice_sent: false
+        }));
+        
+        console.log('📋 Mock queue items loaded:', queueItems.length);
+        setQueueData(queueItems);
+        
+        if (showLoading) {
+          setIsLoading(false);
+        }
+        return;
       }
       
       // Get user ID from multiple sources for reliability

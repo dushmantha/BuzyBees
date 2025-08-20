@@ -146,7 +146,7 @@ const BookingSummaryScreen = () => {
           bookingDetails: bookingDetails || {
             serviceId: 'unknown',
             shopId: 'unknown',
-            shopName: 'Service Provider',
+            shopName: 'Qwiken Partner',
             shopAddress: 'Address not available',
             shopContact: 'Contact not available'
           }

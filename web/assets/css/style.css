@@ -137,7 +137,11 @@ p {
 .logo-img {
     width: 40px;
     height: 40px;
-    border-radius: var(--radius);
+    border-radius: 50%;
+}
+
+.logo-icon img {
+    border-radius: 50%;
 }
 
 .nav-menu {
@@ -398,10 +402,10 @@ section {
 }
 
 .about-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    align-items: center;
+    display: block;
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
 }
 
 .about-intro {
@@ -457,11 +461,6 @@ section {
     font-size: 0.9rem;
 }
 
-.about-image img {
-    width: 100%;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-}
 
 /* Download Section */
 .download {
@@ -635,7 +634,7 @@ section {
 .footer-logo img {
     width: 40px;
     height: 40px;
-    border-radius: var(--radius);
+    border-radius: 50%;
 }
 
 .footer-section p {
@@ -761,7 +760,6 @@ section {
     }
 
     .hero-container,
-    .about-content,
     .download-content,
     .contact-content {
         grid-template-columns: 1fr;
@@ -911,4 +909,11 @@ section {
     padding: 1rem;
     border-radius: var(--radius);
     margin-top: 1rem;
+}
+
+
+/* Partner Features Section */
+.partner-features {
+    padding: 5rem 0;
+    background: linear-gradient(135deg, var(--background-light) 0%, #F8FFFE 100%);
 }

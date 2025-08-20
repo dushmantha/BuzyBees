@@ -26,6 +26,8 @@ import { usePremium } from '../contexts/PremiumContext';
 import { stripeService } from '../lib/stripe/stripeService';
 import { CancellationBanner } from '../components/CancellationBanner';
 import { ImageUploadService } from '../services/api/imageUploadFix';
+import { shouldUseMockData, logMockUsage } from '../config/devConfig';
+import { MOCK_USERS } from '../data/mockData';
 
 interface ProfileData {
   id: string;
@@ -231,19 +233,77 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         setIsLoading(true);
         console.log('🔄 Fetching user profile...');
         
-        // Check if we have an authenticated user first
+        // Check if we should use mock data or if we have an authenticated user
         const currentUser = await authService.getCurrentUser();
+        
+        // Use mock data if enabled, regardless of authentication status
+        if (shouldUseMockData('MOCK_AUTH')) {
+          console.log('🎭 Using mock profile data');
+          logMockUsage('Loading mock profile data');
+          const mockUser = MOCK_USERS[0];
+          
+          const mockProfile = {
+            id: currentUser?.id || mockUser.id,
+            email: mockUser.email,
+            phone: mockUser.phone || '1234567890',
+            first_name: mockUser.firstName,
+            last_name: mockUser.lastName,
+            full_name: `${mockUser.firstName} ${mockUser.lastName}`,
+            avatar_url: mockUser.avatar,
+            account_type: accountType,
+            is_premium: false,
+            email_verified: true,
+            phone_verified: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            bio: 'This is a mock profile for development and testing purposes.',
+            address: '123 Mock Street, Demo City, DC 12345',
+            gender: 'prefer-not-to-say',
+            birth_date: '1990-01-01',
+            provider_business: accountType === 'provider' ? {
+              id: 'mock-provider-id',
+              name: 'Demo Beauty Salon',
+              category: 'Beauty & Wellness',
+              description: 'A mock beauty salon for testing purposes',
+              is_verified: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined,
+            consumer_details: accountType === 'consumer' ? {
+              id: 'mock-consumer-id',
+              budget_range: '$50-$100',
+              location_preference: 'Within 10 miles',
+              service_history: 15,
+              total_spent: 750,
+              average_rating_given: 4.5,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } : undefined
+          };
+          
+          setProfile(mockProfile);
+          setProfileImageError(false);
+          console.log('✅ Mock profile loaded successfully');
+          setIsLoading(false);
+          return;
+        }
+        
         if (!currentUser) {
           console.warn('⚠️ No authenticated user found, using default profile data');
-          // Set default profile data for unauthenticated users
+          const mockUser = MOCK_USERS[0];
+          
+          if (mockUser) {
+            logMockUsage('Loading fallback mock profile data');
+          }
+          
           const defaultProfile = {
-            id: 'temp-user-id',
-            email: 'user@example.com',
-            phone: '1234567890',
-            first_name: 'Demo',
-            last_name: 'User', 
-            full_name: 'Demo User',
-            avatar_url: null,
+            id: mockUser?.id || 'temp-user-id',
+            email: mockUser?.email || 'user@example.com',
+            phone: mockUser?.phone || '1234567890',
+            first_name: mockUser?.firstName || 'Demo',
+            last_name: mockUser?.lastName || 'User', 
+            full_name: mockUser ? `${mockUser.firstName} ${mockUser.lastName}` : 'Demo User',
+            avatar_url: mockUser?.avatar || null,
             account_type: accountType,
             is_premium: false,
             email_verified: false,
@@ -421,6 +481,48 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const loadProviderSkills = async () => {
     try {
       setIsLoadingSkills(true);
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_AUTH')) {
+        logMockUsage('Loading mock provider skills');
+        const mockSkills = [
+          {
+            id: 'skill-1',
+            skill_name: 'Hair Cutting & Styling',
+            experience_level: 'Expert',
+            years_experience: 8,
+            is_certified: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'skill-2',
+            skill_name: 'Hair Coloring',
+            experience_level: 'Advanced',
+            years_experience: 6,
+            is_certified: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'skill-3',
+            skill_name: 'Makeup Application',
+            experience_level: 'Intermediate',
+            years_experience: 4,
+            is_certified: false,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'skill-4',
+            skill_name: 'Nail Art',
+            experience_level: 'Advanced',
+            years_experience: 5,
+            is_certified: true,
+            created_at: new Date().toISOString()
+          }
+        ];
+        setProviderSkills(mockSkills);
+        return;
+      }
+      
       const response = await normalizedShopService.getProviderSkills();
       if (response.success) {
         setProviderSkills(response.data);
@@ -437,6 +539,46 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const loadProviderCertifications = async () => {
     try {
       setIsLoadingCerts(true);
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_AUTH')) {
+        logMockUsage('Loading mock provider certifications');
+        const mockCertifications = [
+          {
+            id: 'cert-1',
+            certification_name: 'Professional Hair Stylist Certification',
+            issued_by: 'International Beauty Academy',
+            issue_date: '2020-06-15',
+            expiry_date: '2025-06-15',
+            certificate_number: 'IBA-2020-HS-12345',
+            verification_url: 'https://iba.org/verify/12345',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'cert-2',
+            certification_name: 'Advanced Color Theory',
+            issued_by: 'Professional Colorists Association',
+            issue_date: '2021-03-20',
+            expiry_date: '2026-03-20',
+            certificate_number: 'PCA-2021-CT-67890',
+            verification_url: 'https://pca.org/verify/67890',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'cert-3',
+            certification_name: 'Organic Hair Treatment Specialist',
+            issued_by: 'Green Beauty Institute',
+            issue_date: '2022-01-10',
+            expiry_date: '2027-01-10',
+            certificate_number: 'GBI-2022-OT-54321',
+            verification_url: 'https://gbi.org/verify/54321',
+            created_at: new Date().toISOString()
+          }
+        ];
+        setProviderCertifications(mockCertifications);
+        return;
+      }
+      
       const response = await normalizedShopService.getProviderCertifications();
       if (response.success) {
         setProviderCertifications(response.data);
@@ -797,7 +939,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       
       Alert.alert(
         'Account Switched', 
-        `You are now viewing your ${newAccountType === 'provider' ? 'Service Provider' : 'Service Consumer'} profile.`,
+        `You are now viewing your ${newAccountType === 'provider' ? 'Qwiken Partner' : 'Qwiken Member'} profile.`,
         [{ text: 'OK' }]
       );
 
@@ -1310,7 +1452,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                   styles.accountOptionTitle,
                   accountType === 'consumer' && styles.selectedAccountOptionTitle
                 ]}>
-                  Service Consumer
+                  Qwiken Member
                 </Text>
                 <Text style={styles.accountOptionDescription}>
                   Find and book services from trusted providers
@@ -1341,7 +1483,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
                   styles.accountOptionTitle,
                   accountType === 'provider' && styles.selectedProviderOptionTitle
                 ]}>
-                  Service Provider
+                  Qwiken Partner
                 </Text>
                 <Text style={styles.accountOptionDescription}>
                   Offer your services and grow your business
@@ -1620,7 +1762,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             styles.accountTypeText,
             accountType === 'provider' && styles.providerBadgeText
           ]}>
-            {accountType === 'provider' ? 'Service Provider' : 'Service Consumer'}
+            {accountType === 'provider' ? 'Qwiken Partner' : 'Qwiken Member'}
           </Text>
           {isPremium && (
             <View style={styles.premiumBadge}>

@@ -404,7 +404,7 @@ BuzyBees is more than just a marketplace - it's a hive of real people helping ea
 - **Give honest, helpful feedback**
 - **Ask questions if you're unsure about anything**
 
-### For Service Providers
+### For Qwiken Partners
 - **Deliver what you promise**
 - **Show up on time and prepared**
 - **Keep your skills and profile updated**

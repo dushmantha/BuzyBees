@@ -1,4 +1,6 @@
 import { supabaseService } from '../../../lib/supabase/index';
+import { shouldUseMockData, mockDelay, logMockUsage } from '../../../config/devConfig';
+import { getMockCategories } from '../../../data/mockData';
 
 export interface Category {
   id: string;
@@ -169,6 +171,21 @@ class CategoryAPI {
   async getAllCategories(): Promise<CategoryApiResponse> {
     try {
       console.log('📋 Fetching all categories...');
+      
+      // Check if we should use mock data
+      if (shouldUseMockData('MOCK_CATEGORIES')) {
+        logMockUsage('Categories API');
+        await mockDelay();
+        
+        const mockCategories = getMockCategories();
+        console.log('🎭 Using mock categories:', mockCategories.length);
+        
+        return {
+          data: mockCategories,
+          error: null,
+          status: 200
+        };
+      }
       
       // Get default categories (always shown)
       const defaultCategories = this.getDefaultCategories();

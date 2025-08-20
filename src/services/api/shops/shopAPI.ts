@@ -1,4 +1,6 @@
 import { supabaseService } from '../../../lib/supabase/index';
+import { shouldUseMockData, mockDelay, logMockUsage } from '../../../config/devConfig';
+import { getMockShops, getMockServices, getMockStaff } from '../../../data/mockData';
 
 export interface Shop {
   id: string;
@@ -51,6 +53,47 @@ class ShopAPI {
   async getShopsWithDiscounts(): Promise<ShopApiResponse> {
     try {
       console.log('💰 Fetching shops with real discount data...');
+      
+      // Check if we should use mock data
+      if (shouldUseMockData('MOCK_SHOPS')) {
+        logMockUsage('Shops with Discounts API');
+        await mockDelay();
+        
+        const mockShops = getMockShops();
+        console.log('🎭 Using mock shops with fake discounts:', mockShops.length);
+        
+        // Add fake discounts to some shops
+        const shopsWithDiscounts = mockShops.map((shop, index) => ({
+          ...shop,
+          images: shop.images || [],
+          staff: getMockStaff(shop.id),
+          services: getMockServices(shop.id),
+          business_hours: Object.entries(shop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+            day_of_week: day,
+            open_time: hours.open,
+            close_time: hours.close,
+            is_open: hours.isOpen
+          })),
+          reviews_count: shop.reviewCount,
+          rating: shop.rating,
+          // Add discount to first 2 shops
+          discounts: index < 2 ? {
+            id: `discount-${index + 1}`,
+            shop_id: shop.id,
+            title: index === 0 ? '20% off first visit' : '15% off spa treatments',
+            description: index === 0 ? 'New customer special offer' : 'Relaxation package deal',
+            discount_type: 'percentage',
+            discount_percentage: index === 0 ? 20 : 15,
+            is_active: true
+          } : null
+        })).filter(shop => shop.discounts); // Only return shops with discounts
+        
+        return {
+          data: shopsWithDiscounts,
+          error: null,
+          status: 200
+        };
+      }
       
       // First, get all active discounts
       const discountsResult = await this.supabase.client
@@ -248,6 +291,37 @@ class ShopAPI {
   async getAllShops(): Promise<ShopApiResponse> {
     try {
       console.log('🏪 Fetching all shops from database...');
+      
+      // Check if we should use mock data
+      if (shouldUseMockData('MOCK_SHOPS')) {
+        logMockUsage('Shops API');
+        await mockDelay();
+        
+        const mockShops = getMockShops();
+        console.log('🎭 Using mock shops:', mockShops.length);
+        
+        // Transform mock data to expected format
+        const transformedShops = mockShops.map(shop => ({
+          ...shop,
+          images: shop.images || [],
+          staff: getMockStaff(shop.id),
+          services: getMockServices(shop.id),
+          business_hours: Object.entries(shop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+            day_of_week: day,
+            open_time: hours.open,
+            close_time: hours.close,
+            is_open: hours.isOpen
+          })),
+          reviews_count: shop.reviewCount,
+          rating: shop.rating
+        }));
+        
+        return {
+          data: transformedShops,
+          error: null,
+          status: 200
+        };
+      }
       
       // Check if user is authenticated (required for RLS)
       const { data: { session }, error: sessionError } = await this.supabase.client.auth.getSession();

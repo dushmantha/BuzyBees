@@ -18,6 +18,8 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { favoritesAPI, FavoriteShop } from '../services/api/favorites/favoritesAPI';
 import { useAuth } from '../navigation/AppNavigator';
 import { createFavoritesTable } from '../utils/createFavoritesTable';
+import { shouldUseMockData, mockDelay, logMockUsage } from '../config/devConfig';
+import { getMockShops } from '../data/mockData';
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Favorites'>;
 
@@ -47,15 +49,38 @@ const FavoritesScreen = () => {
     try {
       if (showLoader) setFavoritesLoading(true);
       
-      console.log('❤️ Loading favorites for user:', userId);
-      const response = await favoritesAPI.getUserFavorites(userId);
-      
-      if (!response.success) {
-        Alert.alert('Error', response.error || 'Failed to load favorites');
-        return;
-      }
+      // Check if we should use mock data
+      if (shouldUseMockData('MOCK_SHOPS')) {
+        await mockDelay();
+        logMockUsage('Loading mock favorites');
+        
+        // Get mock shops and mark first 3 as favorites
+        const mockShops = getMockShops();
+        const mockFavorites: FavoriteShop[] = mockShops.slice(0, 3).map(shop => ({
+          id: `fav_${shop.id}`,
+          user_id: userId,
+          shop_id: shop.id,
+          shop_name: shop.name,
+          shop_image_url: shop.images?.[0] || shop.logo || '',
+          shop_rating: shop.rating || 0,
+          shop_category: shop.category,
+          shop_address: shop.address,
+          created_at: new Date().toISOString(),
+        }));
+        
+        console.log('❤️ Mock favorites loaded:', mockFavorites.length);
+        setFavorites(mockFavorites);
+      } else {
+        console.log('❤️ Loading favorites for user:', userId);
+        const response = await favoritesAPI.getUserFavorites(userId);
+        
+        if (!response.success) {
+          Alert.alert('Error', response.error || 'Failed to load favorites');
+          return;
+        }
 
-      setFavorites(response.data || []);
+        setFavorites(response.data || []);
+      }
     } catch (error) {
       console.error('Error loading favorites:', error);
       Alert.alert('Error', 'Failed to load favorites');

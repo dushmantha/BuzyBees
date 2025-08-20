@@ -13,6 +13,8 @@ import { serviceOptionsAPI, ServiceOption } from '../services/api/serviceOptions
 import normalizedShopService, { CompleteShopData, supabase } from '../lib/supabase/normalized';
 import { favoritesAPI } from '../services/api/favorites/favoritesAPI';
 import { formatCurrency, CURRENCY } from '../utils/currency';
+import { shouldUseMockData, mockDelay, logMockUsage } from '../config/devConfig';
+import { getMockShops, getMockServices, getMockStaff, getMockReviews } from '../data/mockData';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -319,6 +321,49 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
   useEffect(() => {
     const fetchShopData = async () => {
       try {
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('AboutTab', `for shop ${service.id}`);
+          await mockDelay();
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === service.id);
+          
+          if (mockShop) {
+            console.log('🎭 AboutTab using mock shop data:', mockShop.name);
+            
+            // Transform mock shop to CompleteShopData format
+            const completeShopData: CompleteShopData = {
+              ...mockShop,
+              image_url: mockShop.images?.[0] || mockShop.logo,
+              logo_url: mockShop.logo,
+              reviews_count: mockShop.reviewCount,
+              city: mockShop.address?.split(',')[1]?.trim() || 'New York',
+              country: mockShop.address?.split(',')[2]?.trim() || 'NY',
+              business_hours: Object.entries(mockShop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+                day_of_week: day,
+                is_open: hours.isOpen,
+                open_time: hours.open,
+                close_time: hours.close
+              })),
+              staff: getMockStaff(service.id),
+              services: getMockServices(service.id),
+              discounts: null,
+              payment_methods: [],
+              certificate_images: [],
+              before_after_images: mockShop.images?.slice(1) || [],
+              welcome_message: mockShop.description,
+              special_note: '',
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              distance: ''
+            };
+            
+            setShopData(completeShopData);
+            return;
+          }
+        }
+        
         const response = await normalizedShopService.getShopById(service.id);
         if (response.success && response.data) {
           console.log('🔍 About Tab - Shop data from same source as provider saves:', response.data);
@@ -331,6 +376,26 @@ const AboutTab: React.FC<ServiceTabProps> = ({ service }) => {
 
     const fetchBusinessHours = async () => {
       try {
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          await mockDelay();
+          logMockUsage('Loading mock business hours');
+          
+          // Set mock business hours
+          const mockHours = [
+            { day: 'Monday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Tuesday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Wednesday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+            { day: 'Thursday', isOpen: true, openTime: '09:00', closeTime: '21:00' },
+            { day: 'Friday', isOpen: true, openTime: '09:00', closeTime: '21:00' },
+            { day: 'Saturday', isOpen: true, openTime: '10:00', closeTime: '18:00' },
+            { day: 'Sunday', isOpen: true, openTime: '11:00', closeTime: '17:00' }
+          ];
+          setBusinessHours(mockHours);
+          console.log('✅ Mock business hours loaded');
+          return;
+        }
+
         console.log('🕐 Fetching business hours from provider_businesses table for shop:', service.id);
         const { data: providerData, error } = await supabase
           .from('provider_businesses')
@@ -468,6 +533,50 @@ const HoursTab: React.FC<ServiceTabProps> = ({ service }) => {
   useEffect(() => {
     const fetchShopAndHoursData = async () => {
       try {
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('HoursTab', `for shop ${service.id}`);
+          await mockDelay();
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === service.id);
+          
+          if (mockShop) {
+            console.log('🎭 HoursTab using mock shop data:', mockShop.name);
+            
+            // Transform mock shop to CompleteShopData format
+            const completeShopData: CompleteShopData = {
+              ...mockShop,
+              image_url: mockShop.images?.[0] || mockShop.logo,
+              logo_url: mockShop.logo,
+              reviews_count: mockShop.reviewCount,
+              city: mockShop.address?.split(',')[1]?.trim() || 'New York',
+              country: mockShop.address?.split(',')[2]?.trim() || 'NY',
+              business_hours: Object.entries(mockShop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+                day_of_week: day,
+                is_open: hours.isOpen,
+                open_time: hours.open,
+                close_time: hours.close
+              })),
+              staff: getMockStaff(service.id),
+              services: getMockServices(service.id),
+              discounts: null,
+              payment_methods: [],
+              certificate_images: [],
+              before_after_images: mockShop.images?.slice(1) || [],
+              welcome_message: mockShop.description,
+              special_note: '',
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              distance: ''
+            };
+            
+            setShopData(completeShopData);
+            setBusinessHours(completeShopData.business_hours);
+            return;
+          }
+        }
+        
         // Fetch basic shop data
         const shopResponse = await normalizedShopService.getShopById(service.id);
         if (shopResponse.success && shopResponse.data) {
@@ -566,6 +675,49 @@ const OffersTab: React.FC<ServiceTabProps> = ({ service }) => {
   useEffect(() => {
     const fetchShopData = async () => {
       try {
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('OffersTab', `for shop ${service.id}`);
+          await mockDelay();
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === service.id);
+          
+          if (mockShop) {
+            console.log('🎭 OffersTab using mock shop data:', mockShop.name);
+            
+            // Transform mock shop to CompleteShopData format
+            const completeShopData: CompleteShopData = {
+              ...mockShop,
+              image_url: mockShop.images?.[0] || mockShop.logo,
+              logo_url: mockShop.logo,
+              reviews_count: mockShop.reviewCount,
+              city: mockShop.address?.split(',')[1]?.trim() || 'New York',
+              country: mockShop.address?.split(',')[2]?.trim() || 'NY',
+              business_hours: Object.entries(mockShop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+                day_of_week: day,
+                is_open: hours.isOpen,
+                open_time: hours.open,
+                close_time: hours.close
+              })),
+              staff: getMockStaff(service.id),
+              services: getMockServices(service.id),
+              discounts: null,
+              payment_methods: [],
+              certificate_images: [],
+              before_after_images: mockShop.images?.slice(1) || [],
+              welcome_message: mockShop.description,
+              special_note: '',
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              distance: ''
+            };
+            
+            setShopData(completeShopData);
+            return;
+          }
+        }
+        
         const response = await normalizedShopService.getShopById(service.id);
         if (response.success && response.data) {
           console.log('🔍 Offers Tab - Shop discounts from same source as provider saves:', response.data?.discounts);
@@ -631,6 +783,19 @@ const ReviewsTab: React.FC<ServiceTabProps> = ({ service, reviewStats }) => {
     const fetchReviews = async () => {
       try {
         setLoadingReviews(true);
+        
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_REVIEWS')) {
+          logMockUsage('ReviewsTab', `for shop ${service.id}`);
+          await mockDelay();
+          
+          const mockReviews = getMockReviews(service.id);
+          console.log('🎭 Using mock reviews:', mockReviews.length);
+          setReviews(mockReviews);
+          setLoadingReviews(false);
+          return;
+        }
+        
         const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
         const response = await reviewsAPI.getProviderBusinessReviews(service.id, 10, 0);
         
@@ -934,6 +1099,56 @@ const ServiceDetailScreen: React.FC = () => {
         }
         setError(null);
         
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('ServiceDetailScreen', `for shop ID ${routeServiceId}`);
+          await mockDelay();
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === routeServiceId);
+          
+          if (mockShop) {
+            console.log('🎭 Using mock shop data:', mockShop.name);
+            
+            // Transform mock shop to CompleteShopData format
+            const completeShopData: CompleteShopData = {
+              ...mockShop,
+              image_url: mockShop.images?.[0] || mockShop.logo,
+              logo_url: mockShop.logo,
+              reviews_count: mockShop.reviewCount,
+              city: mockShop.address?.split(',')[1]?.trim() || 'New York',
+              country: mockShop.address?.split(',')[2]?.trim() || 'NY',
+              business_hours: Object.entries(mockShop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+                day_of_week: day,
+                is_open: hours.isOpen,
+                open_time: hours.open,
+                close_time: hours.close
+              })),
+              staff: getMockStaff(routeServiceId),
+              services: getMockServices(routeServiceId),
+              discounts: null,
+              payment_methods: [],
+              certificate_images: [],
+              before_after_images: mockShop.images?.slice(1) || [],
+              welcome_message: mockShop.description,
+              special_note: '',
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              distance: ''
+            };
+            
+            // Transform to service format
+            const serviceData = transformShopToService(completeShopData);
+            console.log('🎭 Mock service data transformed:', serviceData.name);
+            
+            setService(serviceData);
+            setLoading(false);
+            return;
+          } else {
+            console.warn('🎭 Mock shop not found for ID:', routeServiceId);
+          }
+        }
+        
         console.log('🔍 Fetching service details for ID:', routeServiceId);
         console.log('🔍 normalizedShopService available:', !!normalizedShopService);
         
@@ -1055,9 +1270,39 @@ const ServiceDetailScreen: React.FC = () => {
         return;
       }
 
+      setServicesLoading(true);
+      console.log('🔍 Loading services for shop ID:', routeServiceId);
+      
       try {
-        setServicesLoading(true);
-        console.log('🔍 Loading services for shop ID:', routeServiceId);
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SERVICES')) {
+          logMockUsage('ServiceDetailScreen Services', `for shop ${routeServiceId}`);
+          console.log('🔍 Looking for mock services with shopId:', routeServiceId);
+          await mockDelay();
+          
+          const mockServicesData = getMockServices(routeServiceId);
+          console.log('🎭 Found mock services:', mockServicesData.length);
+          console.log('🎭 Mock services data:', mockServicesData.map(s => ({ id: s.id, name: s.name, shopId: s.shopId })));
+          
+          // Transform mock services to expected format
+          const transformedServices = mockServicesData.map(service => ({
+            id: service.id,
+            shop_id: routeServiceId,
+            name: service.name,
+            description: service.description,
+            price: service.price,
+            duration: service.duration,
+            category: service.category,
+            is_active: service.isActive !== false,
+            assigned_staff: service.staffIds || [],
+            image_url: service.image,
+            created_at: new Date().toISOString()
+          }));
+          
+          console.log('✅ Mock services loaded:', transformedServices.length);
+          setShopServices(transformedServices);
+          return; // Early return for mock data
+        }
         
         // Fetch services directly from shop_services table
         const { data: servicesData, error: servicesError } = await supabase
@@ -1103,6 +1348,40 @@ const ServiceDetailScreen: React.FC = () => {
 
       try {
         console.log('🔍 Loading all staff members for shop:', routeServiceId);
+        
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_STAFF')) {
+          logMockUsage('ServiceDetailScreen Staff', `for shop ${routeServiceId}`);
+          await mockDelay();
+          
+          const mockStaffData = getMockStaff(routeServiceId);
+          console.log('🎭 Using mock staff:', mockStaffData.length);
+          
+          if (mockStaffData && mockStaffData.length > 0) {
+            // Transform mock staff to expected format
+            const transformedStaff = mockStaffData.map(staff => ({
+              id: staff.id,
+              name: staff.name,
+              email: staff.email,
+              phone: staff.phone,
+              role: staff.role,
+              avatar_url: staff.avatar,
+              shop_id: staff.shopId,
+              bio: staff.bio,
+              specialties: staff.specialties,
+              rating: staff.rating,
+              review_count: staff.reviewCount,
+              experience_years: staff.experienceYears,
+              is_active: staff.isActive,
+              created_at: new Date().toISOString()
+            }));
+            
+            console.log('✅ Mock staff loaded:', transformedStaff);
+            setAllStaffMembers(transformedStaff);
+            setStaffMembers(transformedStaff);
+            return;
+          }
+        }
         
         // Use the same method as ShopDetailsScreen
         const staffResponse = await normalizedShopService.getStaffByShopId(routeServiceId);
@@ -1325,7 +1604,79 @@ const ServiceDetailScreen: React.FC = () => {
             });
             
             try {
-              // Get options from service_options table using service_id
+              // Check if we should use mock data
+              if (shouldUseMockData('MOCK_SERVICES')) {
+                await mockDelay();
+                logMockUsage('Loading mock service options');
+                
+                // Generate mock options for the service based on service type
+                let mockOptions = [];
+                
+                // Determine service category and create appropriate options
+                const serviceName = service.name?.toLowerCase() || '';
+                
+                if (serviceName.includes('hair') || serviceName.includes('cut') || serviceName.includes('style')) {
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: 'Quick Trim', price: service.price || 50, duration: 30, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: 'Full Style & Cut', price: (service.price || 50) * 1.5, duration: 45, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: 'Premium Style with Treatment', price: (service.price || 50) * 2, duration: 60, is_active: true, sort_order: 3 }
+                  ];
+                } else if (serviceName.includes('nail') || serviceName.includes('manicure') || serviceName.includes('pedicure')) {
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: 'Express Service', price: service.price || 40, duration: 20, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: 'Classic Polish', price: (service.price || 40) * 1.5, duration: 30, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: 'Gel/Shellac Polish', price: (service.price || 40) * 2, duration: 45, is_active: true, sort_order: 3 }
+                  ];
+                } else if (serviceName.includes('massage') || serviceName.includes('spa')) {
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: '30 Minute Session', price: service.price || 80, duration: 30, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: '60 Minute Session', price: (service.price || 80) * 1.8, duration: 60, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: '90 Minute Deep Tissue', price: (service.price || 80) * 2.5, duration: 90, is_active: true, sort_order: 3 }
+                  ];
+                } else if (serviceName.includes('facial') || serviceName.includes('skin')) {
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: 'Basic Facial', price: service.price || 60, duration: 30, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: 'Deep Cleansing Facial', price: (service.price || 60) * 1.5, duration: 45, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: 'Anti-Aging Treatment', price: (service.price || 60) * 2, duration: 60, is_active: true, sort_order: 3 }
+                  ];
+                } else if (serviceName.includes('makeup') || serviceName.includes('bridal')) {
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: 'Natural Look', price: service.price || 70, duration: 30, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: 'Glamour Makeup', price: (service.price || 70) * 1.5, duration: 45, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: 'Bridal Package', price: (service.price || 70) * 2.5, duration: 90, is_active: true, sort_order: 3 }
+                  ];
+                } else {
+                  // Default options for other services
+                  mockOptions = [
+                    { id: `${service.id}_opt1`, name: 'Standard Service', price: service.price || 50, duration: 30, is_active: true, sort_order: 1 },
+                    { id: `${service.id}_opt2`, name: 'Premium Service', price: (service.price || 50) * 1.5, duration: 45, is_active: true, sort_order: 2 },
+                    { id: `${service.id}_opt3`, name: 'Deluxe Service', price: (service.price || 50) * 2, duration: 60, is_active: true, sort_order: 3 }
+                  ];
+                }
+                
+                const serviceOptions = mockOptions;
+                
+                if (serviceOptions && serviceOptions.length > 0) {
+                  console.log('✅ Found', serviceOptions.length, 'mock options for service:', service.name);
+                  
+                  // Transform options to match expected format
+                  const transformedOptions = serviceOptions.map(option => ({
+                    ...option,
+                    service_id: service.id,
+                    option_name: option.name, // Map 'name' to 'option_name'
+                    option_description: option.description || ''
+                  }));
+                  
+                  return {
+                    ...service,
+                    options: transformedOptions
+                  };
+                }
+                
+                return service;
+              }
+              
+              // Real API call - only if not using mock data
               const { data: serviceOptions, error: optionsError } = await supabase
                 .from('service_options')
                 .select('*')
@@ -1395,115 +1746,229 @@ const ServiceDetailScreen: React.FC = () => {
       try {
         console.log('🕐 Loading business hours and shop data for header:', service.id);
         
-        // Fetch business hours from provider_businesses table
-        const { data: providerData, error } = await supabase
-          .from('provider_businesses')
-          .select('business_hours')
-          .eq('id', service.id)
-          .single();
-
-        if (!error && providerData?.business_hours) {
-          const hours = Array.isArray(providerData.business_hours) 
-            ? providerData.business_hours 
-            : [providerData.business_hours];
-          setBusinessHoursForHeader(hours);
-          console.log('✅ Loaded business hours for header:', hours);
+        // Check if we should use mock data
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('ServiceDetailScreen Header', `business hours for shop ${service.id}`);
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === service.id);
+          
+          if (mockShop && mockShop.openingHours) {
+            const mockHours = Object.entries(mockShop.openingHours).map(([day, hours]: [string, any]) => ({
+              day_of_week: day,
+              is_open: hours.isOpen,
+              open_time: hours.open,
+              close_time: hours.close
+            }));
+            setBusinessHoursForHeader(mockHours);
+            console.log('🎭 Loaded mock business hours for header:', mockHours);
+          } else {
+            console.log('⚠️ No mock business hours found, using default hours');
+          }
         } else {
-          console.log('⚠️ No business hours found, using default hours');
-          // Default hours fallback
-          const defaultHours = [
-            { day: 'Monday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
-            { day: 'Tuesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
-            { day: 'Wednesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
-            { day: 'Thursday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
-            { day: 'Friday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
-            { day: 'Saturday', isOpen: true, openTime: '10:00', closeTime: '16:00' },
-            { day: 'Sunday', isOpen: false, openTime: '10:00', closeTime: '16:00' }
-          ];
-          setBusinessHoursForHeader(defaultHours);
+          // Fetch business hours from provider_businesses table
+          const { data: providerData, error } = await supabase
+            .from('provider_businesses')
+            .select('business_hours')
+            .eq('id', service.id)
+            .single();
+
+          if (!error && providerData?.business_hours) {
+            const hours = Array.isArray(providerData.business_hours) 
+              ? providerData.business_hours 
+              : [providerData.business_hours];
+            setBusinessHoursForHeader(hours);
+            console.log('✅ Loaded business hours for header:', hours);
+          } else {
+            console.log('⚠️ No business hours found, using default hours');
+            // Default hours fallback
+            const defaultHours = [
+              { day: 'Monday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+              { day: 'Tuesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+              { day: 'Wednesday', isOpen: true, openTime: '09:00', closeTime: '18:00' },
+              { day: 'Thursday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+              { day: 'Friday', isOpen: true, openTime: '09:00', closeTime: '20:00' },
+              { day: 'Saturday', isOpen: true, openTime: '10:00', closeTime: '16:00' },
+              { day: 'Sunday', isOpen: false, openTime: '10:00', closeTime: '16:00' }
+            ];
+            setBusinessHoursForHeader(defaultHours);
+          }
         }
 
         // Fetch complete shop data for discounts and other header info
-        const shopResponse = await normalizedShopService.getShopById(service.id);
-        if (shopResponse.success && shopResponse.data) {
-          console.log('🔍 Header - Shop data loaded:', {
-            id: shopResponse.data.id,
-            name: shopResponse.data.name,
-            hasImages: !!shopResponse.data.images,
-            imagesType: typeof shopResponse.data.images,
-            imagesLength: Array.isArray(shopResponse.data.images) ? shopResponse.data.images.length : 'not array',
-            imageUrls: shopResponse.data.images,
-            image_url: shopResponse.data.image_url,
-            logo_url: shopResponse.data.logo_url
-          });
-          setShopData(shopResponse.data);
+        if (shouldUseMockData('MOCK_SHOPS')) {
+          logMockUsage('ServiceDetailScreen Header', `shop data for ${service.id}`);
+          
+          const mockShops = getMockShops();
+          const mockShop = mockShops.find(shop => shop.id === service.id);
+          
+          if (mockShop) {
+            const completeShopData: CompleteShopData = {
+              ...mockShop,
+              image_url: mockShop.images?.[0] || mockShop.logo,
+              logo_url: mockShop.logo,
+              reviews_count: mockShop.reviewCount,
+              city: mockShop.address?.split(',')[1]?.trim() || 'New York',
+              country: mockShop.address?.split(',')[2]?.trim() || 'NY',
+              business_hours: Object.entries(mockShop.openingHours || {}).map(([day, hours]: [string, any]) => ({
+                day_of_week: day,
+                is_open: hours.isOpen,
+                open_time: hours.open,
+                close_time: hours.close
+              })),
+              staff: getMockStaff(service.id),
+              services: getMockServices(service.id),
+              discounts: null,
+              payment_methods: [],
+              certificate_images: [],
+              before_after_images: mockShop.images?.slice(1) || [],
+              welcome_message: mockShop.description,
+              special_note: '',
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              distance: ''
+            };
+            
+            console.log('🎭 Header - Mock shop data loaded:', {
+              id: completeShopData.id,
+              name: completeShopData.name,
+              hasImages: !!completeShopData.images,
+              imagesLength: Array.isArray(completeShopData.images) ? completeShopData.images.length : 'not array',
+            });
+            setShopData(completeShopData);
+          }
+        } else {
+          const shopResponse = await normalizedShopService.getShopById(service.id);
+          if (shopResponse.success && shopResponse.data) {
+            console.log('🔍 Header - Shop data loaded:', {
+              id: shopResponse.data.id,
+              name: shopResponse.data.name,
+              hasImages: !!shopResponse.data.images,
+              imagesType: typeof shopResponse.data.images,
+              imagesLength: Array.isArray(shopResponse.data.images) ? shopResponse.data.images.length : 'not array',
+              imageUrls: shopResponse.data.images,
+              image_url: shopResponse.data.image_url,
+              logo_url: shopResponse.data.logo_url
+            });
+            setShopData(shopResponse.data);
+          }
         }
 
-        // Fetch real reviews from database
+        // Fetch reviews from database or mock data
         try {
-          const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
-          const reviewsResponse = await reviewsAPI.getProviderBusinessReviews(service.id, 5);
-          if (reviewsResponse.success && reviewsResponse.data) {
-            console.log('📝 Real reviews loaded:', reviewsResponse.data.length);
-            setRealReviews(reviewsResponse.data);
+          // Check if we should use mock data
+          if (shouldUseMockData('MOCK_REVIEWS')) {
+            logMockUsage('ServiceDetailScreen Header', `reviews for shop ${service.id}`);
+            await mockDelay();
             
-            // Calculate real review stats
-            const totalReviews = reviewsResponse.data.length;
+            const mockReviews = getMockReviews(service.id);
+            console.log('🎭 Using mock reviews for header:', mockReviews.length);
+            setRealReviews(mockReviews);
+            
+            // Calculate mock review stats
+            const totalReviews = mockReviews.length;
             const averageRating = totalReviews > 0 
-              ? reviewsResponse.data.reduce((sum, review) => sum + review.overall_rating, 0) / totalReviews
+              ? mockReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
               : 0;
             setReviewStats({ total_reviews: totalReviews, average_rating: averageRating });
+          } else {
+            const { reviewsAPI } = await import('../services/api/reviews/reviewsAPI');
+            const reviewsResponse = await reviewsAPI.getProviderBusinessReviews(service.id, 5);
+            if (reviewsResponse.success && reviewsResponse.data) {
+              console.log('📝 Real reviews loaded:', reviewsResponse.data.length);
+              setRealReviews(reviewsResponse.data);
+              
+              // Calculate real review stats
+              const totalReviews = reviewsResponse.data.length;
+              const averageRating = totalReviews > 0 
+                ? reviewsResponse.data.reduce((sum, review) => sum + review.overall_rating, 0) / totalReviews
+                : 0;
+              setReviewStats({ total_reviews: totalReviews, average_rating: averageRating });
+            }
           }
         } catch (reviewError) {
           console.error('❌ Error loading reviews:', reviewError);
         }
 
-        // Fetch real discounts from shop_discounts table
-        console.log('💰 Fetching real discounts for shop:', service.id);
-        const { data: discountsData, error: discountsError } = await supabase
-          .from('shop_discounts')
-          .select('*')
-          .eq('shop_id', service.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        console.log('💰 Discount query result:', { discountsData, discountsError });
-
-        if (!discountsError && discountsData && discountsData.length > 0) {
-          const discount = discountsData[0]; // Take the first discount
-          console.log('✅ Real discount found:', discount);
-          const discountInfo = {
-            id: discount.id, // Include the actual UUID from database
-            title: discount.title,
-            discount_percentage: discount.value,
-            description: discount.description,
-            type: discount.type,
-            code: discount.code
+        // Check if we should use mock data for discounts
+        if (shouldUseMockData('MOCK_DISCOUNTS')) {
+          await mockDelay();
+          logMockUsage('Loading mock discounts');
+          
+          // Create mock discount
+          const mockDiscount = {
+            id: `discount_${service.id}`,
+            title: 'New Customer Special',
+            discount_percentage: 20,
+            description: 'Get 20% off your first visit!',
+            type: 'percentage',
+            code: 'WELCOME20'
           };
           
-          // Update service with real discount data
+          console.log('✅ Mock discount loaded:', mockDiscount);
+          
+          // Update service with mock discount data
           setService(prev => prev ? {
             ...prev,
-            discounts: discountInfo,
-            category: prev.category || shopResponse.data?.category
+            discounts: mockDiscount,
+            category: prev.category || 'Beauty & Wellness'
           } : null);
           
           // Also update shopData
-          if (shopResponse.data) {
-            setShopData(prev => prev ? {
-              ...prev,
-              discounts: discountInfo
-            } : null);
+          if (shopResponse?.data) {
+            setShopData({
+              ...shopResponse.data,
+              discounts: mockDiscount
+            });
           }
         } else {
-          console.log('⚠️ No active discounts found in database - will not show discount banner');
-          // Don't set any discount data - let the discount banner conditionally not render
-          setService(prev => prev ? {
-            ...prev,
-            discounts: null, // Explicitly set to null so discount banner won't show
-            category: prev.category || shopResponse.data?.category
-          } : null);
+          // Fetch real discounts from shop_discounts table
+          console.log('💰 Fetching real discounts for shop:', service.id);
+          const { data: discountsData, error: discountsError } = await supabase
+            .from('shop_discounts')
+            .select('*')
+            .eq('shop_id', service.id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          console.log('💰 Discount query result:', { discountsData, discountsError });
+
+          if (!discountsError && discountsData && discountsData.length > 0) {
+            const discount = discountsData[0]; // Take the first discount
+            console.log('✅ Real discount found:', discount);
+            const discountInfo = {
+              id: discount.id, // Include the actual UUID from database
+              title: discount.title,
+              discount_percentage: discount.value,
+              description: discount.description,
+              type: discount.type,
+              code: discount.code
+            };
+          
+            // Update service with real discount data
+            setService(prev => prev ? {
+              ...prev,
+              discounts: discountInfo,
+              category: prev.category || shopResponse.data?.category
+            } : null);
+            
+            // Also update shopData
+            if (shopResponse.data) {
+              setShopData(prev => prev ? {
+                ...prev,
+                discounts: discountInfo
+              } : null);
+            }
+          } else {
+            console.log('⚠️ No active discounts found in database - will not show discount banner');
+            // Don't set any discount data - let the discount banner conditionally not render
+            setService(prev => prev ? {
+              ...prev,
+              discounts: null, // Explicitly set to null so discount banner won't show
+              category: prev.category || shopResponse.data?.category
+            } : null);
+          }
         }
       } catch (error) {
         console.error('Error loading business hours for header:', error);

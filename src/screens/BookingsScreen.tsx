@@ -22,7 +22,10 @@ import type { RootStackParamList, ConsumerTabParamList } from '../navigation/App
 import { useAuth } from '../navigation/AppNavigator';
 import { bookingsAPI } from '../services/api/bookings/bookingsAPI';
 import { reviewsAPI } from '../services/api/reviews/reviewsAPI';
+import { dataService } from '../services/dataService';
 import { formatCurrency } from '../utils/currency';
+import { MockDataBanner, MockDataIndicator } from '../components/dev/MockDataIndicator';
+import { shouldUseMockData } from '../config/devConfig';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -315,100 +318,6 @@ const BookingsScreen = () => {
   console.log('📱 BookingsScreen - isInitializing:', isInitializing);
   console.log('📱 BookingsScreen - isAuthenticated:', isAuthenticated);
 
-  // Single API service function for comprehensive booking data
-  const apiService = {
-    async getBookingsData(userId: string): Promise<ApiResponse<{
-      bookings: Booking[];
-      upcomingCount: number;
-      pastCount: number;
-    }>> {
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const { data: bookings, error: bookingsError } = await mockService.getBookings(userId);
-        
-        if (bookingsError) {
-          throw new Error(bookingsError);
-        }
-        
-        const now = new Date();
-        const upcoming = bookings?.filter(b => new Date(b.date) >= now) || [];
-        const past = bookings?.filter(b => new Date(b.date) < now) || [];
-        
-        return {
-          data: {
-            bookings: bookings || [],
-            upcomingCount: upcoming.length,
-            pastCount: past.length
-          },
-          success: true
-        };
-      } catch (error) {
-        console.error('Bookings API Error:', error);
-        return {
-          data: {
-            bookings: [],
-            upcomingCount: 0,
-            pastCount: 0
-          },
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to fetch bookings'
-        };
-      }
-    },
-
-    async cancelBooking(bookingId: string): Promise<ApiResponse<null>> {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const { error: cancelError } = await mockService.cancelBooking(bookingId);
-        
-        if (cancelError) {
-          throw new Error(cancelError);
-        }
-        
-        return {
-          data: null,
-          success: true
-        };
-      } catch (error) {
-        console.error('Cancel booking error:', error);
-        return {
-          data: null,
-          success: false,
-          error: 'Failed to cancel booking'
-        };
-      }
-    },
-
-    async submitReview(reviewData: {
-      bookingId: string;
-      rating: number;
-      comment: string;
-      serviceQuality: number;
-      punctuality: number;
-      cleanliness: number;
-      valueForMoney: number;
-    }): Promise<ApiResponse<{ reviewId: string }>> {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        return {
-          data: {
-            reviewId: `REV_${Date.now()}`
-          },
-          success: true
-        };
-      } catch (error) {
-        console.error('Submit review error:', error);
-        return {
-          data: { reviewId: '' },
-          success: false,
-          error: 'Failed to submit review'
-        };
-      }
-    }
-  };
 
   // Format date to a readable string
   const formatBookingDate = (dateString: string, timeString: string) => {
@@ -631,9 +540,10 @@ const BookingsScreen = () => {
       console.log('🔍 User ID is valid UUID:', isValidUUID(userId));
       console.log('👤 Auth user:', user?.id || 'No user');
       console.log('🔄 Current timestamp:', new Date().toISOString());
+      console.log('🎭 Using mock data:', shouldUseMockData('MOCK_BOOKINGS'));
       
-      // Use real bookingsAPI to fetch from Supabase
-      const response = await bookingsAPI.getCustomerBookings(userId);
+      // Use dataService which handles mock data automatically
+      const response = await dataService.getBookingsByCustomer(userId);
       
       console.log('📊 Bookings API Response:', {
         success: response.success,
@@ -681,22 +591,22 @@ const BookingsScreen = () => {
 
           return {
             id: booking.id,
-            service: booking.service_names || 'Service',
-            date: new Date(booking.booking_date).toLocaleDateString('en-US', {
+            service: booking.service_names || (Array.isArray(booking.serviceNames) ? booking.serviceNames[0] : booking.serviceNames) || 'Service',
+            date: new Date(booking.booking_date || booking.bookingDate).toLocaleDateString('en-US', {
               weekday: 'short',
               month: 'short', 
               day: 'numeric'
             }),
-            time: booking.start_time,
-            professional: booking.staff_names || 'Staff Member',
-            salon: booking.shop_name || 'Salon',
-            price: booking.total_price,
+            time: booking.start_time || booking.startTime,
+            professional: booking.staff_names || booking.staffName || 'Staff Member',
+            salon: booking.shop_name || booking.shopName || 'Salon',
+            price: booking.total_price || booking.totalPrice,
             status: booking.status === 'confirmed' ? 'Confirmed' : 
                    booking.status === 'completed' ? 'Completed' :
                    booking.status === 'cancelled' ? 'Cancelled' : 'Pending',
-            originalDate: new Date(`${booking.booking_date}T${booking.start_time}`),
+            originalDate: new Date(`${booking.booking_date || booking.bookingDate}T${booking.start_time || booking.startTime}`),
             duration: booking.duration || 60,
-            image: booking.shop_image_url || 'https://via.placeholder.com/150',
+            image: booking.shop_image_url || booking.shopImage || 'https://via.placeholder.com/150',
             notes: booking.notes || '',
             rating,
             review
@@ -824,6 +734,9 @@ const BookingsScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+      
+      {/* Mock Data Banner */}
+      <MockDataBanner context="Bookings Screen" />
       
       {/* Modern Header */}
       <View style={styles.modernHeader}>

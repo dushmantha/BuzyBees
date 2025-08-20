@@ -353,5 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+
     console.log('Qwiken website loaded successfully! 🚀');
 });
+

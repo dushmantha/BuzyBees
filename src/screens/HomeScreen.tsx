@@ -24,9 +24,13 @@ import Geolocation from '@react-native-community/geolocation';
 import api from '../services/api/home/providerHomeAPI';
 import { shopAPI } from '../services/api/shops/shopAPI';
 import { categoryAPI } from '../services/api/categories/categoryAPI';
+import { dataService } from '../services/dataService';
 import { useAuth } from '../navigation/AppNavigator';
 import { usePremium } from '../contexts/PremiumContext';
 import { formatCurrency } from '../utils/currency';
+import { MockDataBanner, MockDataIndicator } from '../components/dev/MockDataIndicator';
+import { DEV_CONFIG, shouldUseMockData, logMockUsage } from '../config/devConfig';
+import { MOCK_USERS, getMockReviews } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 3;
@@ -165,6 +169,24 @@ const HomeScreen = () => {
   const [categoryShops, setCategoryShops] = useState<{[key: string]: Shop[]}>({});
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
 
+  // Helper functions for mock user display
+  const getDisplayName = () => {
+    if (shouldUseMockData('MOCK_AUTH')) {
+      const mockUser = MOCK_USERS[0]; // Use first mock user (Sarah Johnson)
+      return `${mockUser.firstName} ${mockUser.lastName}`;
+    }
+    return user ? (user.full_name || user.first_name || user.email?.split('@')[0] || 'there') : '';
+  };
+
+  const getDisplayAvatar = () => {
+    if (shouldUseMockData('MOCK_AUTH')) {
+      const mockUser = MOCK_USERS[0]; // Use first mock user (Sarah Johnson)
+      logMockUsage('Using mock user avatar for HomeScreen');
+      return mockUser.avatar;
+    }
+    return user?.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg';
+  };
+
   // Request location permission
   const requestLocationPermission = async () => {
     if (Platform.OS === 'ios') {
@@ -281,10 +303,108 @@ const HomeScreen = () => {
         userId: user?.id || 'anonymous',
         isPremium,
         subscriptionType: subscription?.subscription_type,
-        subscriptionStatus: subscription?.subscription_status
+        subscriptionStatus: subscription?.subscription_status,
+        usingMockData: shouldUseMockData()
       });
 
-      // Fetch categories from our new category API (always shows all categories)
+      // Test imports
+      console.log('🔍 Testing imports:', {
+        DEV_CONFIG_exists: !!DEV_CONFIG,
+        USE_MOCK_DATA_value: DEV_CONFIG.USE_MOCK_DATA,
+        shouldUseMockData_function: typeof shouldUseMockData,
+        dataService_exists: !!dataService
+      });
+
+      if (shouldUseMockData()) {
+        // Use mock data service
+        console.log('🎭 MOCK DATA: Starting mock data load for home screen');
+        console.log('🎭 MOCK DATA: shouldUseMockData() returned:', shouldUseMockData());
+        console.log('🎭 MOCK DATA: DEV_CONFIG.USE_MOCK_DATA:', DEV_CONFIG.USE_MOCK_DATA);
+        
+        try {
+          const [categoriesResponse, shopsResponse, servicesResponse] = await Promise.all([
+            dataService.getCategories(),
+            dataService.getShops(true), // Get featured shops
+            dataService.getFeaturedServices()
+          ]);
+
+          console.log('🎭 MOCK DATA: Responses received:', {
+            categories: categoriesResponse.success,
+            shops: shopsResponse.success,
+            services: servicesResponse.success
+          });
+
+          if (!categoriesResponse.success) {
+            console.error('🎭 MOCK DATA: Categories failed:', categoriesResponse.error);
+            throw new Error(categoriesResponse.error || 'Failed to load categories');
+          }
+
+          if (!shopsResponse.success) {
+            console.error('🎭 MOCK DATA: Shops failed:', shopsResponse.error);
+            throw new Error(shopsResponse.error || 'Failed to load shops');
+          }
+
+          // Transform mock shops to the expected service format
+          const transformShopToService = (shop: any) => ({
+            id: shop.id,
+            name: shop.name,
+            description: shop.description,
+            professional_name: 'Shop Team',
+            salon_name: shop.name,
+            price: 50, // Default price for display
+            duration: 60,
+            rating: shop.rating,
+            reviews_count: shop.reviewCount,
+            location: shop.address,
+            distance: '2.5 km',
+            image: shop.images?.[0] || shop.logo,
+            category_id: 'mock-cat',
+            available_time_text: 'Available today',
+            welcome_message: `Welcome to ${shop.name}!`,
+            special_note: shop.amenities?.[0] || '',
+            payment_methods: ['Card', 'Cash'],
+            is_favorite: false,
+            hasDiscount: false,
+            discountPercentage: 0
+          });
+
+          const mockShops = shopsResponse.data || [];
+          console.log('🎭 MOCK DATA: Mock shops loaded:', mockShops.length);
+          
+          const homeData = {
+            categories: categoriesResponse.data || [],
+            promotions: [],
+            specialOffers: servicesResponse.data || [],
+            trendingServices: mockShops.slice(0, 6).map(transformShopToService),
+            popularServices: mockShops.slice(1, 7).map(transformShopToService),
+            recommendedServices: mockShops.slice(2, 8).map(transformShopToService),
+            upcomingBookings: [],
+            stats: {
+              totalServices: 150,
+              totalCategories: categoriesResponse.data?.length || 0,
+              totalProviders: mockShops.length,
+              avgRating: 4.7
+            }
+          };
+
+          console.log('🎭 MOCK DATA: Setting mock home data:', {
+            categoriesCount: homeData.categories.length,
+            trendingCount: homeData.trendingServices.length,
+            popularCount: homeData.popularServices.length
+          });
+
+          setHomeData(homeData);
+          console.log('✅ 🎭 MOCK DATA: Mock home data loaded successfully and set!');
+          setIsLoading(false); // Make sure to stop loading
+          return;
+        } catch (mockError) {
+          console.error('❌ 🎭 MOCK DATA: Error in mock data loading:', mockError);
+          // Re-throw the error so it gets caught by outer try-catch
+          throw mockError;
+        }
+      }
+
+      // Original real data fetching logic
       console.log('📋 Fetching categories from categoryAPI...');
       const categoriesResponse = await categoryAPI.getAllCategories();
       
@@ -352,6 +472,26 @@ const HomeScreen = () => {
               finalPrice = Math.round(originalPrice * (1 - discountInfo.discount_percentage / 100));
             }
             
+            // Add mock reviews if mock data is enabled
+            let rating = shop.rating || 4.5;
+            let reviewsCount = shop.reviews_count || 0;
+            
+            if (shouldUseMockData('MOCK_REVIEWS')) {
+              const mockReviews = getMockReviews(shop.id);
+              if (mockReviews.length > 0) {
+                // Calculate average rating from mock reviews
+                const totalRating = mockReviews.reduce((sum, review) => sum + review.rating, 0);
+                rating = Number((totalRating / mockReviews.length).toFixed(1));
+                reviewsCount = mockReviews.length;
+                logMockUsage(`Using mock reviews for ${shop.name}`, { count: reviewsCount, rating });
+              } else {
+                // If no specific reviews for this shop, use some default mock values
+                rating = Math.round((4.5 + (Math.random() * 0.5)) * 10) / 10; // Random between 4.5-5.0, rounded to 1 decimal
+                reviewsCount = Math.floor(Math.random() * 50) + 10; // Random between 10-59
+                logMockUsage(`Generated mock reviews for ${shop.name}`, { count: reviewsCount, rating });
+              }
+            }
+
             const serviceData = {
               id: shop.id,
               name: shop.name,
@@ -361,8 +501,8 @@ const HomeScreen = () => {
               price: finalPrice,
               originalPrice: hasDiscount ? originalPrice : null,
               duration: shop.services && shop.services.length > 0 ? shop.services[0].duration : 60,
-              rating: shop.rating || 4.5,
-              reviews_count: shop.reviews_count || 0,
+              rating: rating,
+              reviews_count: reviewsCount,
               location: `${shop.city}, ${shop.country}`,
               distance: shop.distance || '1.5 km',
               image: shop.images && shop.images.length > 0 ? shop.images[0] : shop.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
@@ -937,7 +1077,9 @@ const HomeScreen = () => {
     console.log('🎨 Rendering service card:', service.name, {
       hasDiscount: service.hasDiscount,
       isSpecialOffer: service.isSpecialOffer,
-      discountPercentage: service.discountPercentage
+      discountPercentage: service.discountPercentage,
+      rating: service.rating,
+      reviews_count: service.reviews_count
     });
     
     return (
@@ -1051,18 +1193,21 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F0FFFE" />
       
+      {/* Mock Data Banner */}
+      <MockDataBanner context="Home Screen" />
+      
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerGreeting}>
-            Hello{user ? ` ${user.full_name || user.first_name || user.email?.split('@')[0] || 'there'}` : ''}! 👋
+            Hello {getDisplayName()}! 👋
           </Text>
           <Text style={styles.headerTitle}>What would you like to book?</Text>
         </View>
-        {user && (
+        {(user || shouldUseMockData('MOCK_AUTH')) && (
           <TouchableOpacity style={styles.profileButton}>
             <Image
-              source={{ uri: user.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg' }}
+              source={{ uri: getDisplayAvatar() }}
               style={styles.profileImage}
             />
           </TouchableOpacity>
@@ -1248,7 +1393,10 @@ const HomeScreen = () => {
         {homeData.specialOffers.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, styles.specialOfferTitle]}>🔥 Special Offers</Text>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={[styles.sectionTitle, styles.specialOfferTitle]}>🔥 Special Offers</Text>
+                <MockDataIndicator context="Offers" />
+              </View>
               <TouchableOpacity onPress={handleViewAllSpecialOffers}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
@@ -1305,7 +1453,10 @@ const HomeScreen = () => {
         {homeData.trendingServices.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Trending</Text>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionTitle}>Trending</Text>
+                <MockDataIndicator context="Trending" />
+              </View>
               <TouchableOpacity onPress={handleViewAllTrending}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
@@ -1339,7 +1490,10 @@ const HomeScreen = () => {
         {homeData.popularServices.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Popular Services</Text>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionTitle}>Popular Services</Text>
+                <MockDataIndicator context="Popular" />
+              </View>
               <TouchableOpacity onPress={handleViewAllPopularServices}>
                 <Text style={styles.seeAllText}>See all</Text>
               </TouchableOpacity>
@@ -1632,6 +1786,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 20,

@@ -955,6 +955,42 @@ class NormalizedShopService {
     try {
       console.log('👥 Fetching all staff for shop:', shopId);
 
+      // Check if we should use mock data
+      const { shouldUseMockData, mockDelay, logMockUsage } = await import('../../config/devConfig');
+      const { getMockStaff } = await import('../../data/mockData');
+      
+      if (shouldUseMockData('MOCK_STAFF')) {
+        logMockUsage('NormalizedShopService.getStaffByShopId', `for shop ${shopId}`);
+        await mockDelay();
+        
+        const mockStaffData = getMockStaff(shopId);
+        console.log('🎭 Using mock staff data:', mockStaffData.length);
+        
+        // Transform mock staff to expected format
+        const transformedStaff: ShopStaff[] = mockStaffData.map(staff => ({
+          id: staff.id,
+          shop_id: staff.shopId,
+          name: staff.name,
+          email: staff.email,
+          phone: staff.phone,
+          role: staff.role,
+          avatar_url: staff.avatar,
+          bio: staff.bio,
+          specialties: staff.specialties,
+          rating: staff.rating,
+          review_count: staff.reviewCount,
+          experience_years: staff.experienceYears,
+          is_active: staff.isActive,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+        
+        return {
+          success: true,
+          data: transformedStaff
+        };
+      }
+
       const { data, error } = await this.client
         .from('shop_staff')
         .select('*')

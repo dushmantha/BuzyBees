@@ -3,6 +3,8 @@ import { bookingEmailService } from '../../bookingEmailService';
 import { directEmailService } from '../../directEmailService';
 import { emailJSService } from '../../emailJSService';
 import { directResendService } from '../../directResendService';
+import { shouldUseMockData, mockDelay, logMockUsage } from '../../../config/devConfig';
+import { getMockBookings } from '../../../data/mockData';
 
 export interface BookingService {
   id: string;
@@ -235,6 +237,21 @@ class BookingsAPI {
   async getCustomerBookings(customerId: string): Promise<ApiResponse<any[]>> {
     try {
       console.log('📅 Fetching bookings for customer:', customerId);
+
+      // Check if we should use mock data
+      if (shouldUseMockData('MOCK_BOOKINGS')) {
+        logMockUsage('Bookings API', `for customer ${customerId}`);
+        await mockDelay();
+        
+        const mockBookings = getMockBookings(customerId);
+        console.log('🎭 Using mock bookings:', mockBookings.length);
+        
+        return {
+          data: mockBookings,
+          error: null,
+          success: true
+        };
+      }
 
       // Fetch bookings with shop and staff information
       const { data: bookings, error: bookingsError } = await supabase

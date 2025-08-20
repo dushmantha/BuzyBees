@@ -138,7 +138,7 @@ const AnalyticsScreen: React.FC = () => {
           date.setDate(date.getDate() - i);
           data.push({
             period: date.toLocaleDateString('en-US', { weekday: 'short' }),
-            amount: Math.random() * 500 + 200,
+            amount: Math.random() * 150 + 75,
             bookings: Math.floor(Math.random() * 10) + 3,
             growth: (Math.random() - 0.5) * 20,
           });
@@ -150,7 +150,7 @@ const AnalyticsScreen: React.FC = () => {
           date.setMonth(date.getMonth() - i);
           data.push({
             period: date.toLocaleDateString('en-US', { month: 'short' }),
-            amount: Math.random() * 5000 + 2000,
+            amount: Math.random() * 1500 + 600,
             bookings: Math.floor(Math.random() * 80) + 20,
             growth: (Math.random() - 0.5) * 30,
           });
@@ -162,7 +162,7 @@ const AnalyticsScreen: React.FC = () => {
           date.setFullYear(date.getFullYear() - i);
           data.push({
             period: date.getFullYear().toString(),
-            amount: Math.random() * 50000 + 20000,
+            amount: Math.random() * 15000 + 6000,
             bookings: Math.floor(Math.random() * 800) + 200,
             growth: (Math.random() - 0.5) * 50,
           });
@@ -186,25 +186,25 @@ const AnalyticsScreen: React.FC = () => {
     return {
       incomeData,
       monthlyStats: [
-        { month: 'Jan', revenue: 3200, customers: 24, bookings: 45 },
-        { month: 'Feb', revenue: 4100, customers: 28, bookings: 52 },
-        { month: 'Mar', revenue: 3800, customers: 31, bookings: 48 },
-        { month: 'Apr', revenue: 4500, customers: 35, bookings: 58 },
-        { month: 'May', revenue: 5200, customers: 42, bookings: 67 },
-        { month: 'Jun', revenue: 4800, customers: 38, bookings: 61 },
-        { month: 'Jul', revenue: 5500, customers: 45, bookings: 72 },
-        { month: 'Aug', revenue: 5100, customers: 41, bookings: 65 },
-        { month: 'Sep', revenue: 4900, customers: 39, bookings: 63 },
-        { month: 'Oct', revenue: 5300, customers: 43, bookings: 69 },
-        { month: 'Nov', revenue: 4700, customers: 37, bookings: 59 },
-        { month: 'Dec', revenue: 5800, customers: 47, bookings: 75 },
+        { month: 'Jan', revenue: 960, customers: 24, bookings: 45 },
+        { month: 'Feb', revenue: 1230, customers: 28, bookings: 52 },
+        { month: 'Mar', revenue: 1140, customers: 31, bookings: 48 },
+        { month: 'Apr', revenue: 1350, customers: 35, bookings: 58 },
+        { month: 'May', revenue: 1560, customers: 42, bookings: 67 },
+        { month: 'Jun', revenue: 1440, customers: 38, bookings: 61 },
+        { month: 'Jul', revenue: 1650, customers: 45, bookings: 72 },
+        { month: 'Aug', revenue: 1530, customers: 41, bookings: 65 },
+        { month: 'Sep', revenue: 1470, customers: 39, bookings: 63 },
+        { month: 'Oct', revenue: 1590, customers: 43, bookings: 69 },
+        { month: 'Nov', revenue: 1410, customers: 37, bookings: 59 },
+        { month: 'Dec', revenue: 1740, customers: 47, bookings: 75 },
       ],
       servicePerformance: [
-        { serviceName: 'Hair Cut & Style', bookings: 65, revenue: 3250, averageRating: 4.7, color: '#1A2533' },
-        { serviceName: 'Nail Care', bookings: 48, revenue: 2400, averageRating: 4.5, color: '#EF4444' },
-        { serviceName: 'Facial Treatment', bookings: 32, revenue: 2240, averageRating: 4.8, color: '#10B981' },
-        { serviceName: 'Massage Therapy', bookings: 28, revenue: 1960, averageRating: 4.6, color: '#3B82F6' },
-        { serviceName: 'Eyebrow Shaping', bookings: 42, revenue: 1260, averageRating: 4.4, color: '#8B5CF6' },
+        { serviceName: 'Hair Cut & Style', bookings: 65, revenue: 975, averageRating: 4.7, color: '#1A2533' },
+        { serviceName: 'Nail Care', bookings: 48, revenue: 720, averageRating: 4.5, color: '#EF4444' },
+        { serviceName: 'Facial Treatment', bookings: 32, revenue: 672, averageRating: 4.8, color: '#10B981' },
+        { serviceName: 'Massage Therapy', bookings: 28, revenue: 588, averageRating: 4.6, color: '#3B82F6' },
+        { serviceName: 'Eyebrow Shaping', bookings: 42, revenue: 378, averageRating: 4.4, color: '#8B5CF6' },
       ],
       peakHours: [
         { hour: '9 AM', bookings: 12 },
@@ -224,7 +224,7 @@ const AnalyticsScreen: React.FC = () => {
         newCustomers: 28,
         returningCustomers: 64,
         totalBookings: 158,
-        averageBookingValue: 147.50,
+        averageBookingValue: 45.00,
         customerSatisfaction: 4.6,
         repeatRate: 69.5,
       },
@@ -342,7 +342,7 @@ const AnalyticsScreen: React.FC = () => {
   };
 
   // Utility functions
-  const formatCurrency = (amount: number) => `${amount.toLocaleString()} kr`;
+  const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
 
   // Export utility functions
@@ -554,13 +554,10 @@ please use the web dashboard or contact support.
         <View style={styles.cardHeader}>
           <Ionicons name="trending-up" size={20} color="#FFFFFF" />
           <Text style={styles.primaryCardTitle}>
-            Total Revenue {isShowingSampleData && '(Sample)'}
+            Total Revenue
           </Text>
         </View>
         <Text style={styles.primaryCardValue}>{formatCurrency(totalRevenue)}</Text>
-        {isShowingSampleData && (
-          <Text style={styles.sampleDataIndicator}>Using demo data</Text>
-        )}
         <View style={styles.growthContainer}>
           <Ionicons 
             name={revenueGrowth > 0 ? "arrow-up" : "arrow-down"} 
@@ -894,15 +891,6 @@ please use the web dashboard or contact support.
       {renderHeader()}
       {renderPeriodSelector()}
       
-      {/* Sample Data Banner */}
-      {isShowingSampleData && (
-        <View style={styles.sampleDataBanner}>
-          <Ionicons name="information-circle" size={16} color="#1A2533" />
-          <Text style={styles.sampleDataText}>
-            Showing sample data - Start booking services to see real analytics
-          </Text>
-        </View>
-      )}
 
       <ScrollView
         style={styles.content}

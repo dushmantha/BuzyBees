@@ -22,6 +22,8 @@ import { normalizedShopService } from '../../lib/supabase/normalized';
 import { useAuth } from '../../navigation/AppNavigator';
 import { usePremium } from '../../contexts/PremiumContext';
 import { CancellationBanner } from '../../components/CancellationBanner';
+import { shouldUseMockData, logMockUsage } from '../../config/devConfig';
+import { getMockBookings } from '../../data/mockData';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,6 +42,31 @@ const EarningsScreen = ({ navigation }) => {
   
   // Track where upgrade was triggered from
   const [upgradeSource, setUpgradeSource] = useState('general');
+  
+  // Helper function to convert mock bookings to payments/earnings data
+  const getMockPaymentsFromBookings = () => {
+    const mockBookings = getMockBookings();
+    
+    // Convert bookings to payments - treat confirmed as paid (completed services), pending as pending payments
+    const mockPayments = mockBookings.map(booking => ({
+      id: booking.id,
+      booking_id: booking.id,
+      client_name: ['Sarah Williams', 'Emma Thompson', 'John Miller', 'Maria Garcia', 'David Chen'][Math.floor(Math.random() * 5)],
+      service_title: Array.isArray(booking.serviceNames) ? booking.serviceNames[0] : booking.serviceNames,
+      service_type: 'Beauty Service',
+      amount: booking.totalPrice,
+      service_date: booking.bookingDate,
+      booking_date: booking.createdAt,
+      // Treat 'confirmed' bookings as 'paid' (completed services) for earnings calculation
+      payment_status: booking.status === 'confirmed' ? 'paid' : 'pending',
+      payment_method: 'card',
+      location: booking.shopName || 'Shop Location',
+      duration: '60 min',
+      notes: booking.notes || ''
+    }));
+    
+    return mockPayments;
+  };
   
   // Helper function to get date ranges
   const getDateRange = (period) => {
@@ -95,6 +122,38 @@ const EarningsScreen = ({ navigation }) => {
       
       console.log('🔄 Fetching earnings data for period:', period, 'from', startDate, 'to', endDate);
       console.log('🔄 User ID:', user?.id);
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_PAYMENTS')) {
+        console.log('🎭 Using mock earnings data');
+        logMockUsage('Loading mock earnings data');
+        
+        const mockPayments = getMockPaymentsFromBookings();
+        console.log('💰 Mock payments data:', mockPayments.length, 'payments');
+        
+        // Filter paid payments for earnings calculation
+        const paidPayments = mockPayments.filter(p => p.payment_status === 'paid');
+        const pendingPayments = mockPayments.filter(p => p.payment_status === 'pending');
+        
+        // Calculate totals
+        const totalForPeriod = paidPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        const thisMonthTotal = paidPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        const thisWeekTotal = paidPayments.slice(0, 3).reduce((sum, payment) => sum + payment.amount, 0); // Mock recent week data
+        const pendingTotal = pendingPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        
+        console.log('💵 Mock totals - Period:', totalForPeriod, 'Month:', thisMonthTotal, 'Week:', thisWeekTotal, 'Pending:', pendingTotal);
+        
+        setEarningsData({
+          total: totalForPeriod,
+          thisMonth: thisMonthTotal,
+          thisWeek: thisWeekTotal,
+          pending: pendingTotal,
+          period: period,
+          dateRange: { startDate, endDate },
+          rawData: mockPayments
+        });
+        return;
+      }
       
       // Get provider earnings from Supabase using getPayments method
       const response = await normalizedShopService.getPayments(undefined, undefined, startDate, endDate);
@@ -192,6 +251,37 @@ const EarningsScreen = ({ navigation }) => {
       
       console.log('🔄 Fetching transactions for period:', period);
       
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_PAYMENTS')) {
+        console.log('🎭 Using mock transaction data');
+        logMockUsage('Loading mock transaction data');
+        
+        const mockPayments = getMockPaymentsFromBookings();
+        
+        // Transform mock payment data to match expected format
+        let transformedTransactions = mockPayments.map(payment => ({
+          id: payment.id,
+          client: payment.client_name,
+          service: payment.service_title,
+          amount: payment.amount,
+          date: payment.service_date,
+          status: payment.payment_status === 'paid' ? 'completed' : 'pending',
+          category: payment.service_type?.toLowerCase() || 'beauty',
+          bookingId: payment.booking_id,
+          paymentMethod: payment.payment_method,
+          location: payment.location,
+          duration: payment.duration,
+          notes: payment.notes
+        }));
+        
+        // Sort by date (newest first)
+        transformedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        console.log('✅ Mock transactions loaded:', transformedTransactions.length);
+        setTransactions(transformedTransactions);
+        return;
+      }
+      
       // Get all payments from Supabase
       const response = await normalizedShopService.getPayments(undefined, undefined, startDate, endDate);
       
@@ -233,6 +323,45 @@ const EarningsScreen = ({ navigation }) => {
   const fetchMonthlyData = async (period) => {
     try {
       console.log('🔄 Fetching monthly breakdown data for period:', period);
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_PAYMENTS')) {
+        console.log('🎭 Using mock monthly breakdown data');
+        logMockUsage('Loading mock monthly breakdown data');
+        
+        const mockPayments = getMockPaymentsFromBookings();
+        const payments = mockPayments.filter(p => p.payment_status === 'paid');
+        
+        console.log('💰 Mock paid payments for breakdown:', payments.length);
+        
+        let groupedData = [];
+        
+        if (period === 'week') {
+          // Create weekly breakdown with mock data
+          groupedData = [
+            { id: 'week-1', month: 'This Week', amount: 1240, jobs: 8, status: 'completed', date: new Date().toISOString().split('T')[0] },
+            { id: 'week-2', month: 'Last Week', amount: 965, jobs: 6, status: 'completed', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+          ];
+        } else if (period === 'month') {
+          // Create monthly breakdown with mock data
+          groupedData = [
+            { id: 'month-1', month: 'December 2024', amount: 4850, jobs: 32, status: 'completed', date: '2024-12-01' },
+            { id: 'month-2', month: 'November 2024', amount: 3920, jobs: 28, status: 'completed', date: '2024-11-01' },
+            { id: 'month-3', month: 'October 2024', amount: 4180, jobs: 30, status: 'completed', date: '2024-10-01' }
+          ];
+        } else {
+          // Year view
+          groupedData = [
+            { id: 'year-1', month: '2024', amount: 52840, jobs: 365, status: 'completed', date: '2024-01-01' },
+            { id: 'year-2', month: '2023', amount: 48200, jobs: 340, status: 'completed', date: '2023-01-01' }
+          ];
+        }
+        
+        console.log('📊 Mock grouped data:', groupedData.length, 'items');
+        setMonthlyData(groupedData);
+        setLoading(false);
+        return;
+      }
       
       // Get all payments for the provider
       const response = await normalizedShopService.getPayments();

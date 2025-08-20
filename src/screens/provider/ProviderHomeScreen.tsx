@@ -23,6 +23,8 @@ import { authService } from '../../lib/supabase/index';
 import { normalizedShopService } from '../../lib/supabase/normalized';
 import { reviewsAPI } from '../../services/api/reviews/reviewsAPI';
 import { responseTimeAPI, responseTimeUtils } from '../../services/api/responseTime/responseTimeAPI';
+import { shouldUseMockData, logMockUsage } from '../../config/devConfig';
+import { MOCK_USERS } from '../../data/mockData';
 
 const { width } = Dimensions.get('window');
 
@@ -238,6 +240,35 @@ const ProviderHomeScreen: React.FC = () => {
   const [myShops, setMyShops] = useState<Shop[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // Helper functions for mock data
+  const getDisplayName = () => {
+    if (shouldUseMockData('MOCK_AUTH')) {
+      const mockUser = MOCK_USERS[0];
+      return `${mockUser.firstName} ${mockUser.lastName}`;
+    }
+    
+    return userProfile?.full_name || 
+           (userProfile?.first_name && userProfile?.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : '') ||
+           userProfile?.first_name || 
+           user?.user_metadata?.full_name ||
+           user?.user_metadata?.first_name ||
+           user?.email?.split('@')[0] || 
+           'Provider';
+  };
+
+  const getAvatarUrl = () => {
+    if (shouldUseMockData('MOCK_AUTH')) {
+      return MOCK_USERS[0].avatar;
+    }
+    
+    return userProfile?.avatar_url;
+  };
+
+  const getAvatarInitial = () => {
+    const name = getDisplayName();
+    return name.charAt(0).toUpperCase();
+  };
 
   // Provider API service - Using real Supabase data
   const providerAPI = {
@@ -523,15 +554,15 @@ const ProviderHomeScreen: React.FC = () => {
       
       return {
         stats: {
-          totalEarnings: 24850.75,
+          totalEarnings: 7455.25,
           activeJobs: 7,
           completedJobs: 342,
           customerRating: 4.9,
           pendingBookings: 12,
-          thisMonthEarnings: 5420.50,
+          thisMonthEarnings: 1626.15,
           responseRate: 98,
           totalCustomers: 156,
-          averageJobValue: 127.80,
+          averageJobValue: 38.35,
           growthPercentage: 23.5,
           weeklyBookings: 8,
           monthlyGrowth: 15.2,
@@ -543,7 +574,7 @@ const ProviderHomeScreen: React.FC = () => {
             title: 'Payment Received',
             description: 'Premium hair styling service payment from Sarah Williams',
             timestamp: '2024-01-16T16:45:00Z',
-            amount: 185.00,
+            amount: 55.50,
             customer: 'Sarah Williams',
             priority: 'medium',
           },
@@ -796,6 +827,20 @@ const ProviderHomeScreen: React.FC = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
+      
+      // Use mock data if enabled
+      if (shouldUseMockData('MOCK_AUTH')) {
+        console.log('🎭 Using mock dashboard data');
+        logMockUsage('Loading mock provider dashboard data');
+        const mockData = await providerAPI.getMockDashboardData();
+        setDashboardStats(mockData.stats);
+        setRecentActivity(mockData.activity);
+        setMyShops(mockData.shops);
+        setNotifications(mockData.notifications);
+        const unreadCount = mockData.notifications.filter(n => !n.is_read).length;
+        setUnreadNotifications(unreadCount);
+        return;
+      }
       
       // Check if user is authenticated
       if (!user?.id) {
@@ -1117,28 +1162,22 @@ const ProviderHomeScreen: React.FC = () => {
     <View style={styles.header}>
       <View style={styles.headerLeft}>
         <View style={styles.avatarContainer}>
-          {userProfile?.avatar_url ? (
+          {getAvatarUrl() ? (
             <Image
-              source={{ uri: userProfile.avatar_url }}
+              source={{ uri: getAvatarUrl() }}
               style={styles.avatarImage}
               onError={() => console.log('Avatar image failed to load')}
             />
           ) : (
             <Text style={styles.avatarText}>
-              {(userProfile?.full_name || userProfile?.first_name || user?.email)?.charAt(0)?.toUpperCase() || 'P'}
+              {getAvatarInitial()}
             </Text>
           )}
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.welcomeText}>Welcome back</Text>
           <Text style={styles.userName}>
-            {userProfile?.full_name || 
-             (userProfile?.first_name && userProfile?.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : '') ||
-             userProfile?.first_name || 
-             user?.user_metadata?.full_name ||
-             user?.user_metadata?.first_name ||
-             user?.email?.split('@')[0] || 
-             'Provider'}
+            {getDisplayName()}
           </Text>
         </View>
       </View>
