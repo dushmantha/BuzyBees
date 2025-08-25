@@ -368,18 +368,19 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
             provider_business: profileResponse.data.provider_business || null
           };
           
-          setProfile(safeProfileData);
-          
           // Reset image error state when profile is loaded
           setProfileImageError(false);
           
-          // Update account type in context if different
-          const profileAccountType = safeProfileData.account_type;
-          if (profileAccountType && 
-              (profileAccountType === 'provider' || profileAccountType === 'consumer') && 
-              profileAccountType !== accountType) {
-            setAccountType(profileAccountType);
-          }
+          // Respect user's current account type preference - don't auto-switch
+          // The account type should only be changed by explicit user action
+          console.log('📝 Profile account type from DB:', safeProfileData.account_type, 'Current context:', accountType);
+          
+          // Update profile data to use current context account type instead of DB value
+          // This prevents random switching and respects user's saved preference
+          setProfile({
+            ...safeProfileData,
+            account_type: accountType // Use the persisted account type from context
+          });
         } else {
           console.error('❌ Failed to load profile:', profileResponse.error);
           // Fall back to default profile instead of throwing error
@@ -468,7 +469,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     };
 
     fetchUserProfile();
-  }, [accountType]);
+  }, [userId]); // Only re-run when user changes, not when account type changes
 
   // Load skills and certifications for provider accounts
   useEffect(() => {
@@ -476,7 +477,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       loadProviderSkills();
       loadProviderCertifications();
     }
-  }, [accountType, profile]);
+  }, [profile]); // Remove accountType dependency to prevent circular updates
 
   const loadProviderSkills = async () => {
     try {

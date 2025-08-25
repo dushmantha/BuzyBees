@@ -269,6 +269,18 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   useEffect(() => {
     if (isAuthenticated && user) {
+      // Load user-specific account type immediately when user authenticates
+      const initializeAccountType = async () => {
+        const userAccountTypeKey = `accountType_${user.id}`;
+        const savedUserType = await AsyncStorage.getItem(userAccountTypeKey);
+        
+        if (savedUserType && (savedUserType === 'provider' || savedUserType === 'consumer')) {
+          console.log('🔄 Initializing account type for authenticated user:', savedUserType);
+          setAccountTypeState(savedUserType);
+        }
+      };
+      
+      initializeAccountType();
       loadUserProfile();
     } else {
       // Reset profile when user logs out
@@ -308,6 +320,11 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.log('📝 Loading user profile for:', user.id);
       setIsLoading(true);
       
+      // FIRST: Load saved account type for this specific user
+      const userAccountTypeKey = `accountType_${user.id}`;
+      const savedUserType = await AsyncStorage.getItem(userAccountTypeKey);
+      console.log('📱 Saved account type for user:', savedUserType);
+      
       // Check cache first to avoid network calls
       const cachedProfile = await AsyncStorage.getItem(`profile_${user.id}`);
       if (cachedProfile) {
@@ -320,16 +337,17 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         }
       }
       
-      // Reduce timeout and add exponential backoff
+      // Set reasonable timeout for profile loading
       const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile loading timeout')), 5000)
+        setTimeout(() => reject(new Error('Profile loading timeout')), 10000) // Increased to 10 seconds
       );
       
-      const response = await Promise.race([
-        authService.getUserProfile(user.id),
-        timeout
-      ]);
-      console.log('📝 Profile response:', response.success ? 'Success' : response.error);
+      try {
+        const response = await Promise.race([
+          authService.getUserProfile(user.id),
+          timeout
+        ]);
+        console.log('📝 Profile response:', response.success ? 'Success' : response.error);
       
       if (response.success && response.data) {
         setUserProfile(response.data);
@@ -342,17 +360,29 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
           console.warn('📝 Failed to cache profile');
         }
         
-        // Priority: Database account_type > AsyncStorage > default 'consumer'
+        // Priority: User-specific saved type > Database account_type > default 'consumer'
+        const userAccountTypeKey = `accountType_${user.id}`;
         const dbAccountType = response.data.account_type;
-        if (dbAccountType && (dbAccountType === 'provider' || dbAccountType === 'consumer')) {
+        
+        // If user has a saved preference, use it regardless of DB
+        if (savedUserType && (savedUserType === 'provider' || savedUserType === 'consumer')) {
+          setAccountTypeState(savedUserType);
+          console.log('✅ Using saved user preference:', savedUserType);
+          
+          // Update profile with saved type
+          setUserProfile(prev => prev ? { ...prev, account_type: savedUserType } : response.data);
+        } 
+        // Otherwise, use DB account type if valid
+        else if (dbAccountType && (dbAccountType === 'provider' || dbAccountType === 'consumer')) {
           setAccountTypeState(dbAccountType);
-          await AsyncStorage.setItem('accountType', dbAccountType);
+          await AsyncStorage.setItem(userAccountTypeKey, dbAccountType);
           console.log('✅ Profile loaded, account type from DB:', dbAccountType);
-        } else {
-          // Fallback to AsyncStorage if DB doesn't have account_type
-          const savedType = await AsyncStorage.getItem('accountType');
-          const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+        } 
+        // Final fallback to consumer
+        else {
+          const finalType = 'consumer';
           setAccountTypeState(finalType);
+          await AsyncStorage.setItem(userAccountTypeKey, finalType);
           
           // Update the profile with the selected account type
           setUserProfile(prev => prev ? { ...prev, account_type: finalType } : {
@@ -364,14 +394,15 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
             is_premium: false
           });
           
-          console.log('✅ Profile loaded, using saved account type:', finalType);
+          console.log('✅ Profile loaded, defaulting to:', finalType);
         }
       } else {
         console.warn('⚠️ Failed to load profile, creating fallback profile:', response.error);
         
         // Create a fallback profile from auth user data
-        const savedType = await AsyncStorage.getItem('accountType');
-        const finalType = (savedType === 'provider' || savedType === 'consumer') ? savedType : 'consumer';
+        const userAccountTypeKey = `accountType_${user.id}`;
+        const userSavedType = savedUserType || await AsyncStorage.getItem(userAccountTypeKey);
+        const finalType = (userSavedType === 'provider' || userSavedType === 'consumer') ? userSavedType : 'consumer';
         
         const fallbackProfile = {
           id: user.id,
@@ -393,6 +424,42 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         setAccountTypeState(finalType);
         await AsyncStorage.setItem('accountType', finalType);
         console.log('✅ Fallback profile created with account type:', finalType);
+      }
+      
+      } catch (profileError) {
+        console.warn('⚠️ Profile loading timed out or failed, using cached/fallback data:', profileError.message);
+        
+        // If we have cached profile, use it
+        if (cachedProfile) {
+          console.log('📝 Using cached profile due to timeout');
+          return; // We already set the cached profile above
+        }
+        
+        // Otherwise create a basic fallback profile
+        const userAccountTypeKey = `accountType_${user.id}`;
+        const userSavedType = savedUserType || await AsyncStorage.getItem(userAccountTypeKey);
+        const finalType = (userSavedType === 'provider' || userSavedType === 'consumer') ? userSavedType : 'consumer';
+        
+        const timeoutFallbackProfile = {
+          id: user.id,
+          email: user.email || '',
+          first_name: user.user_metadata?.first_name || 'User',
+          last_name: user.user_metadata?.last_name || 'Name',
+          full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || 'User'} ${user.user_metadata?.last_name || 'Name'}`,
+          phone: user.phone || '',
+          account_type: finalType,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          is_premium: false,
+          email_verified: user.email_confirmed_at ? true : false,
+          phone_verified: false,
+          created_at: user.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setUserProfile(timeoutFallbackProfile);
+        setAccountTypeState(finalType);
+        await AsyncStorage.setItem(userAccountTypeKey, finalType);
+        console.log('✅ Timeout fallback profile created with account type:', finalType);
       }
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
@@ -482,8 +549,11 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       // Always update local state and AsyncStorage (works for both auth and guest)
       setAccountTypeState(type);
-      await AsyncStorage.setItem('accountType', type);
-      console.log('✅ Account type updated locally to:', type);
+      
+      // Store with user-specific key if authenticated, otherwise use generic key
+      const storageKey = user ? `accountType_${user.id}` : 'accountType';
+      await AsyncStorage.setItem(storageKey, type);
+      console.log('✅ Account type updated locally to:', type, 'with key:', storageKey);
       
       // Update the profile state immediately if available
       if (userProfile) {
@@ -494,13 +564,14 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.error('❌ Error updating account type:', error);
       // Try to revert the state
       try {
-        const savedType = await AsyncStorage.getItem('accountType');
+        const storageKey = user ? `accountType_${user.id}` : 'accountType';
+        const savedType = await AsyncStorage.getItem(storageKey);
         if (savedType && (savedType === 'provider' || savedType === 'consumer') && savedType !== type) {
           setAccountTypeState(savedType as 'provider' | 'consumer');
         } else {
           // If no valid saved type, default to consumer
           setAccountTypeState('consumer');
-          await AsyncStorage.setItem('accountType', 'consumer');
+          await AsyncStorage.setItem(storageKey, 'consumer');
         }
       } catch (revertError) {
         console.error('❌ Error reverting account type:', revertError);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -15,7 +15,9 @@ import {
   FlatList,
   Alert,
   PermissionsAndroid,
-  Platform
+  Platform,
+  AppState,
+  AppStateStatus
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,7 +35,11 @@ import { DEV_CONFIG, shouldUseMockData, logMockUsage } from '../config/devConfig
 import { MOCK_USERS, getMockReviews } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 3;
+// Responsive card width for 2 columns with proper spacing
+const horizontalPadding = 20; // Padding on both sides
+const columnGap = 16; // Gap between columns
+const numColumns = 2;
+const cardWidth = (width - (horizontalPadding * 2) - (columnGap * (numColumns - 1))) / numColumns;
 const promotionWidth = width - 40;
 
 interface Category {
@@ -133,7 +139,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { user, isLoading: authLoading, reloadUserData } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
   const { isPremium, subscription, isLoading: premiumLoading } = usePremium();
   
   const [homeData, setHomeData] = useState<HomeData>({
@@ -168,23 +174,41 @@ const HomeScreen = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categoryShops, setCategoryShops] = useState<{[key: string]: Shop[]}>({});
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  
+  // App state tracking
+  const appState = useRef(AppState.currentState);
+  const [appStateVisible, setAppStateVisible] = useState(appState.current);
+  const isFetchingRef = useRef(false);
 
-  // Helper functions for mock user display
+  // Helper functions for user display - prioritize real data
   const getDisplayName = () => {
-    if (shouldUseMockData('MOCK_AUTH')) {
-      const mockUser = MOCK_USERS[0]; // Use first mock user (Sarah Johnson)
-      return `${mockUser.firstName} ${mockUser.lastName}`;
+    // First check for real user data
+    if (user) {
+      const firstName = user.first_name || user.full_name?.split(' ')[0] || '';
+      if (firstName) return firstName;
+      return user.email?.split('@')[0] || 'there';
     }
-    return user ? (user.full_name || user.first_name || user.email?.split('@')[0] || 'there') : '';
+    // Fall back to mock data only if no real user
+    if (shouldUseMockData('MOCK_AUTH')) {
+      const mockUser = MOCK_USERS[0];
+      return mockUser.firstName;
+    }
+    return 'there';
   };
 
   const getDisplayAvatar = () => {
-    if (shouldUseMockData('MOCK_AUTH')) {
-      const mockUser = MOCK_USERS[0]; // Use first mock user (Sarah Johnson)
+    // First check for real user data
+    if (user?.avatar_url) {
+      return user.avatar_url;
+    }
+    // Fall back to mock data only if no real user
+    if (!user && shouldUseMockData('MOCK_AUTH')) {
+      const mockUser = MOCK_USERS[0];
       logMockUsage('Using mock user avatar for HomeScreen');
       return mockUser.avatar;
     }
-    return user?.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg';
+    // Default avatar
+    return 'https://randomuser.me/api/portraits/men/1.jpg';
   };
 
   // Request location permission
@@ -287,6 +311,12 @@ const HomeScreen = () => {
 
   // Fetch home data
   const fetchHomeData = useCallback(async () => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      console.log('⏳ Already fetching data, skipping duplicate request');
+      return;
+    }
+    
     // Don't fetch if auth is still loading
     if (authLoading || premiumLoading) {
       console.log('🔄 Waiting for auth to complete...', { 
@@ -296,6 +326,8 @@ const HomeScreen = () => {
       // Don't set loading to false here, let auth complete first
       return;
     }
+    
+    isFetchingRef.current = true;
 
     try {
       setError(null);
@@ -396,6 +428,7 @@ const HomeScreen = () => {
           setHomeData(homeData);
           console.log('✅ 🎭 MOCK DATA: Mock home data loaded successfully and set!');
           setIsLoading(false); // Make sure to stop loading
+          isFetchingRef.current = false; // Clear fetch lock
           return;
         } catch (mockError) {
           console.error('❌ 🎭 MOCK DATA: Error in mock data loading:', mockError);
@@ -632,17 +665,18 @@ const HomeScreen = () => {
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+      isFetchingRef.current = false; // Clear fetch lock
     }
   }, [authLoading, premiumLoading, user?.id, isPremium, subscription, currentLocation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     // Reload user data first to get fresh profile
-    if (reloadUserData) {
-      await reloadUserData();
+    if (refreshUser) {
+      await refreshUser();
     }
     fetchHomeData();
-  }, [fetchHomeData, reloadUserData]);
+  }, [fetchHomeData, refreshUser]);
 
   useEffect(() => {
     // Load fresh user data on mount, but only after auth is ready
@@ -670,6 +704,51 @@ const HomeScreen = () => {
       fetchHomeData();
     }
   }, [currentLocation]);
+
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      console.log('🔄 App state changing from', appState.current, 'to', nextAppState);
+      
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('🔄 App has come to the foreground - refreshing data');
+        setAppStateVisible(nextAppState);
+        
+        // Refresh critical data when app comes to foreground
+        if (user) {
+          // Reload user data to ensure fresh session
+          refreshUser();
+        }
+        
+        // Refresh home data
+        if (!isLoading) {
+          fetchHomeData();
+        }
+        
+        // Refresh location if available
+        if (currentLocation) {
+          requestLocationPermission();
+        }
+      } else if (nextAppState === 'background') {
+        console.log('📱 App going to background');
+        setAppStateVisible(nextAppState);
+        
+        // Clear any sensitive data or timers if needed
+        setShowSearchResults(false);
+        setSearchQuery('');
+      }
+      
+      appState.current = nextAppState;
+    };
+
+    // Subscribe to app state changes
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.remove();
+    };
+  }, [user, isLoading, currentLocation, fetchHomeData, refreshUser, requestLocationPermission]);
 
   // Search through loaded data locally
   const searchLoadedData = useCallback((query) => {
@@ -1205,7 +1284,11 @@ const HomeScreen = () => {
           <Text style={styles.headerTitle}>What would you like to book?</Text>
         </View>
         {(user || shouldUseMockData('MOCK_AUTH')) && (
-          <TouchableOpacity style={styles.profileButton}>
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('Profile' as never)}
+            activeOpacity={0.7}
+          >
             <Image
               source={{ uri: getDisplayAvatar() }}
               style={styles.profileImage}
@@ -1808,7 +1891,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   categoriesContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: horizontalPadding,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -1822,7 +1905,7 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     width: '100%',
-    aspectRatio: 1,
+    aspectRatio: 1.1, // Slightly taller for better proportions
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1840,27 +1923,27 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   categoryImage: {
-    width: '70%',
-    height: '50%',
-    borderRadius: 8,
-    marginBottom: 8,
+    width: '75%',
+    height: '55%',
+    borderRadius: 12,
+    marginBottom: 10,
   },
   categoryImagePlaceholder: {
-    width: '70%',
-    height: '50%',
-    borderRadius: 8,
-    marginBottom: 8,
+    width: '75%',
+    height: '55%',
+    borderRadius: 12,
+    marginBottom: 10,
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   categoryName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1A2533', // Primary: Vibrant Teal
     textAlign: 'center',
-    paddingHorizontal: 4,
-    marginBottom: 2,
+    paddingHorizontal: 8,
+    marginBottom: 4,
   },
   expandButton: {
     position: 'absolute',

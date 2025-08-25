@@ -52,7 +52,7 @@ export const MOCK_SHOPS = [
     phone: '+1-555-BEAUTY',
     email: 'info@luxebeautystudio.com',
     website: 'https://luxebeautystudio.com',
-    category: 'Beauty & Spa',
+    category: 'Hair Salon',
     isActive: true,
     featured: true,
     openingHours: {
@@ -95,7 +95,7 @@ export const MOCK_SHOPS = [
     phone: '+1-555-FITCORE',
     email: 'hello@fitcoregym.com',
     website: 'https://fitcoregym.com',
-    category: 'Fitness & Health',
+    category: 'Fitness & Gym',
     isActive: true,
     featured: true,
     openingHours: {
@@ -137,7 +137,7 @@ export const MOCK_SHOPS = [
     phone: '+1-555-SERENE',
     email: 'relax@serenityspa.com',
     website: 'https://serenityspa.com',
-    category: 'Massage Therapy',
+    category: 'Spa & Massage',
     isActive: true,
     featured: false,
     openingHours: {
@@ -212,7 +212,7 @@ export const MOCK_SHOPS = [
     phone: '+1-555-ZENOGA',
     email: 'namaste@zenyogastudio.com',
     website: 'https://zenyogastudio.com',
-    category: 'Yoga & Wellness',
+    category: 'Yoga & Pilates',
     isActive: true,
     featured: false,
     openingHours: {
@@ -353,7 +353,7 @@ export const MOCK_SERVICES = [
     description: 'Professional haircut with wash, style, and finishing. Includes consultation for the perfect look.',
     price: 65,
     duration: 60,
-    category: 'Hair Services',
+    category: 'Hair Salon',
     image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440001'],
@@ -371,7 +371,7 @@ export const MOCK_SERVICES = [
     description: 'Full color service with highlights or lowlights. Includes color consultation and aftercare advice.',
     price: 120,
     duration: 180,
-    category: 'Hair Services',
+    category: 'Hair Salon',
     image: 'https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440001'],
@@ -389,7 +389,7 @@ export const MOCK_SERVICES = [
     description: 'Complete nail care with cuticle treatment, shaping, polish, and hand massage.',
     price: 45,
     duration: 45,
-    category: 'Nail Services',
+    category: 'Nails & Manicure',
     image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440003'],
@@ -405,7 +405,7 @@ export const MOCK_SERVICES = [
     description: 'Luxurious foot treatment with exfoliation, massage, and polish application.',
     price: 55,
     duration: 60,
-    category: 'Nail Services',
+    category: 'Nails & Manicure',
     image: 'https://images.unsplash.com/photo-1610992015332-c34271226b09?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440003'],
@@ -421,7 +421,7 @@ export const MOCK_SERVICES = [
     description: 'Deep cleansing facial with extraction, mask, and moisturizing treatment.',
     price: 85,
     duration: 75,
-    category: 'Skincare',
+    category: 'Facial & Skincare',
     image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440001'],
@@ -437,7 +437,7 @@ export const MOCK_SERVICES = [
     description: 'Precise eyebrow shaping using traditional threading technique.',
     price: 25,
     duration: 20,
-    category: 'Beauty',
+    category: 'Makeup & Lashes',
     image: 'https://images.unsplash.com/photo-1585233640299-e44fac62a0e0?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440001'],
@@ -453,7 +453,7 @@ export const MOCK_SERVICES = [
     description: 'Professional makeup application for special occasions or events.',
     price: 75,
     duration: 60,
-    category: 'Beauty',
+    category: 'Makeup & Lashes',
     image: 'https://images.unsplash.com/photo-1487412912498-0447578fcca8?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440001',
     staffIds: ['660e8400-e29b-41d4-a716-446655440001'],
@@ -469,7 +469,7 @@ export const MOCK_SERVICES = [
     description: 'One-on-one personal training session customized to your fitness goals and current level.',
     price: 80,
     duration: 60,
-    category: 'Fitness',
+    category: 'Fitness & Gym',
     image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440002',
     staffIds: ['660e8400-e29b-41d4-a716-446655440002'],
@@ -485,7 +485,7 @@ export const MOCK_SERVICES = [
     description: 'Full-body Swedish massage designed to promote relaxation and relieve muscle tension.',
     price: 95,
     duration: 90,
-    category: 'Massage',
+    category: 'Spa & Massage',
     image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440003',
     staffIds: ['660e8400-e29b-41d4-a716-446655440004'],
@@ -501,7 +501,7 @@ export const MOCK_SERVICES = [
     description: 'Therapeutic deep tissue massage targeting specific muscle groups and tension areas.',
     price: 110,
     duration: 75,
-    category: 'Massage',
+    category: 'Spa & Massage',
     image: 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=400',
     shopId: '550e8400-e29b-41d4-a716-446655440003',
     staffIds: ['660e8400-e29b-41d4-a716-446655440004'],
@@ -517,8 +517,8 @@ export const MOCK_SERVICES = [
 export const MOCK_CATEGORIES = [
   {
     id: '880e8400-e29b-41d4-a716-446655440001', // Valid UUID format
-    name: 'Hair & Beauty',
-    description: 'Hair styling, coloring, cuts, and beauty treatments',
+    name: 'Hair Salon',
+    description: 'Haircuts, styling, coloring, and treatments',
     image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=300',
     color: '#E91E63',
     serviceCount: 45,
@@ -526,29 +526,65 @@ export const MOCK_CATEGORIES = [
   },
   {
     id: '880e8400-e29b-41d4-a716-446655440002', // Valid UUID format
-    name: 'Spa & Wellness',
-    description: 'Massage therapy, facials, and relaxation treatments',
+    name: 'Spa & Massage',
+    description: 'Relaxation massages, hot stone therapy, aromatherapy',
     image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=300',
     color: '#9C27B0',
-    serviceCount: 32,
+    serviceCount: 38,
     featured: true
   },
   {
     id: '880e8400-e29b-41d4-a716-446655440003', // Valid UUID format
-    name: 'Fitness & Health',
-    description: 'Personal training, group fitness, and health programs',
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300',
-    color: '#FF5722',
-    serviceCount: 28,
+    name: 'Nails & Manicure',
+    description: 'Manicure, pedicure, nail art, gel polish',
+    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300',
+    color: '#FF9800',
+    serviceCount: 32,
     featured: true
   },
   {
     id: '880e8400-e29b-41d4-a716-446655440004', // Valid UUID format
-    name: 'Nail Care',
-    description: 'Manicures, pedicures, and nail art services',
-    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300',
-    color: '#FF9800',
-    serviceCount: 22,
+    name: 'Facial & Skincare',
+    description: 'Deep cleansing, anti-aging treatments, facials',
+    image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=300',
+    color: '#4CAF50',
+    serviceCount: 28,
+    featured: true
+  },
+  {
+    id: '880e8400-e29b-41d4-a716-446655440005', // Valid UUID format
+    name: 'Fitness & Gym',
+    description: 'Personal training, group classes, CrossFit',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300',
+    color: '#FF5722',
+    serviceCount: 42,
+    featured: true
+  },
+  {
+    id: '880e8400-e29b-41d4-a716-446655440006', // Valid UUID format
+    name: 'Yoga & Pilates',
+    description: 'Yoga classes, meditation, Pilates sessions',
+    image: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=300',
+    color: '#00BCD4',
+    serviceCount: 25,
+    featured: true
+  },
+  {
+    id: '880e8400-e29b-41d4-a716-446655440007', // Valid UUID format
+    name: 'Barbershop',
+    description: 'Men\'s haircuts, beard trimming, hot shaves',
+    image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=300',
+    color: '#795548',
+    serviceCount: 30,
+    featured: false
+  },
+  {
+    id: '880e8400-e29b-41d4-a716-446655440008', // Valid UUID format
+    name: 'Makeup & Lashes',
+    description: 'Professional makeup, lash extensions, eyebrow shaping',
+    image: 'https://images.unsplash.com/photo-1487412912498-0447578fcca8?w=300',
+    color: '#673AB7',
+    serviceCount: 35,
     featured: false
   }
 ];

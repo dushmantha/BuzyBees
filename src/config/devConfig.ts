@@ -3,7 +3,7 @@
 
 export const DEV_CONFIG = {
   // Main flag to enable/disable all mock data
-  USE_MOCK_DATA: true, // Set to false for production/real data
+  USE_MOCK_DATA: false, // Set to false for production/real data
   
   // Granular controls for different types of mock data
   MOCK_FLAGS: {

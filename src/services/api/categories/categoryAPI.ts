@@ -26,144 +26,84 @@ class CategoryAPI {
   private getDefaultCategories(): Category[] {
     return [
       {
-        id: 'beauty-wellness',
-        name: 'Beauty & Wellness',
-        description: 'Beauty and wellness services including hair, skincare, and spa treatments',
-        image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300&h=200&fit=crop',
-        color: '#F5F5E9',
+        id: 'hair-salon',
+        name: 'Hair Salon',
+        description: 'Haircuts, styling, coloring, and treatments',
+        image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=300&h=200&fit=crop',
+        color: '#FFE0EC',
         service_count: 0,
         is_active: true,
         sort_order: 1
       },
       {
-        id: 'hair-salon',
-        name: 'Hair Salon',
-        description: 'Professional hair cutting, styling, and treatment services',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300&h=200&fit=crop',
-        color: '#E1F5FE',
+        id: 'spa-massage',
+        name: 'Spa & Massage',
+        description: 'Relaxation massages, hot stone therapy, aromatherapy',
+        image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=300&h=200&fit=crop',
+        color: '#F3E5F5',
         service_count: 0,
         is_active: true,
         sort_order: 2
       },
       {
-        id: 'spa-wellness',
-        name: 'Spa & Wellness',
-        description: 'Relaxing spa treatments and wellness services',
-        image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=300&h=200&fit=crop',
-        color: '#F3E5F5',
+        id: 'nails-manicure',
+        name: 'Nails & Manicure',
+        description: 'Manicure, pedicure, nail art, gel polish',
+        image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300&h=200&fit=crop',
+        color: '#FFE8CC',
         service_count: 0,
         is_active: true,
         sort_order: 3
       },
       {
-        id: 'nail-care',
-        name: 'Nail Care',
-        description: 'Manicure, pedicure, and nail art services',
-        image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300&h=200&fit=crop',
+        id: 'facial-skincare',
+        name: 'Facial & Skincare',
+        description: 'Deep cleansing, anti-aging treatments, facials',
+        image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=300&h=200&fit=crop',
         color: '#E8F5E8',
         service_count: 0,
         is_active: true,
         sort_order: 4
       },
       {
-        id: 'massage-therapy',
-        name: 'Massage Therapy',
-        description: 'Therapeutic massage and bodywork treatments',
-        image: 'https://images.unsplash.com/photo-1559268950-2d7ceb2efa80?w=300&h=200&fit=crop',
-        color: '#FFF3E0',
+        id: 'fitness-gym',
+        name: 'Fitness & Gym',
+        description: 'Personal training, group classes, CrossFit',
+        image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=200&fit=crop',
+        color: '#FFE5E5',
         service_count: 0,
         is_active: true,
         sort_order: 5
       },
       {
-        id: 'skincare',
-        name: 'Skincare',
-        description: 'Facial treatments and skincare services',
-        image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=300&h=200&fit=crop',
-        color: '#E0F2F1',
+        id: 'yoga-pilates',
+        name: 'Yoga & Pilates',
+        description: 'Yoga classes, meditation, Pilates sessions',
+        image: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=300&h=200&fit=crop',
+        color: '#E0F7FA',
         service_count: 0,
         is_active: true,
         sort_order: 6
       },
       {
-        id: 'fitness-health',
-        name: 'Fitness & Health',
-        description: 'Personal training, fitness classes, and health services',
-        image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop',
-        color: '#FCE4EC',
+        id: 'barbershop',
+        name: 'Barbershop',
+        description: 'Men\'s haircuts, beard trimming, hot shaves',
+        image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=300&h=200&fit=crop',
+        color: '#F5F5E9',
         service_count: 0,
         is_active: true,
         sort_order: 7
       },
       {
-        id: 'home-services',
-        name: 'Home Services',
-        description: 'Home maintenance, repair, and improvement services',
-        image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=200&fit=crop',
-        color: '#F1F8E9',
+        id: 'makeup-lashes',
+        name: 'Makeup & Lashes',
+        description: 'Professional makeup, lash extensions, eyebrow shaping',
+        image: 'https://images.unsplash.com/photo-1487412912498-0447578fcca8?w=300&h=200&fit=crop',
+        color: '#F8E6FF',
         service_count: 0,
         is_active: true,
         sort_order: 8
-      },
-      {
-        id: 'auto-services',
-        name: 'Auto Services',
-        description: 'Car maintenance, repair, and detailing services',
-        image: 'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=300&h=200&fit=crop',
-        color: '#EFEBE9',
-        service_count: 0,
-        is_active: true,
-        sort_order: 9
-      },
-      {
-        id: 'pet-care',
-        name: 'Pet Care',
-        description: 'Pet grooming, veterinary, and care services',
-        image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=300&h=200&fit=crop',
-        color: '#E8EAF6',
-        service_count: 0,
-        is_active: true,
-        sort_order: 10
-      },
-      {
-        id: 'food-dining',
-        name: 'Food & Dining',
-        description: 'Restaurant, catering, and food delivery services',
-        image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=300&h=200&fit=crop',
-        color: '#FFF8E1',
-        service_count: 0,
-        is_active: true,
-        sort_order: 11
-      },
-      {
-        id: 'education',
-        name: 'Education',
-        description: 'Tutoring, courses, and educational services',
-        image: 'https://images.unsplash.com/photo-1497486751825-1233686d5d80?w=300&h=200&fit=crop',
-        color: '#E1F5FE',
-        service_count: 0,
-        is_active: true,
-        sort_order: 12
-      },
-      {
-        id: 'cleaning',
-        name: 'Cleaning',
-        description: 'Professional cleaning services for homes and offices',
-        image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop',
-        color: '#F3E5F5',
-        service_count: 0,
-        is_active: true,
-        sort_order: 13
-      },
-      {
-        id: 'other',
-        name: 'Other',
-        description: 'Other professional services not listed above',
-        image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=300&h=200&fit=crop',
-        color: '#FAFAFA',
-        service_count: 0,
-        is_active: true,
-        sort_order: 14
       }
     ];
   }
@@ -280,25 +220,24 @@ class CategoryAPI {
 
   private mapCategoryNameToId(categoryName: string): string {
     const mappings: { [key: string]: string } = {
-      'Beauty & Wellness': 'beauty-wellness',
       'Hair Salon': 'hair-salon',
-      'Spa & Wellness': 'spa-wellness',
-      'Nail Care': 'nail-care',
-      'Massage Therapy': 'massage-therapy',
-      'Skincare': 'skincare',
-      'Fitness & Health': 'fitness-health',
-      'Home Services': 'home-services',
-      'Auto Services': 'auto-services',
-      'Automotive': 'auto-services', // Alternative name
-      'Pet Care': 'pet-care',
-      'Pet Services': 'pet-care', // Alternative name
-      'Food & Dining': 'food-dining',
-      'Education': 'education',
-      'Cleaning': 'cleaning',
-      'Other': 'other'
+      'Spa & Massage': 'spa-massage',
+      'Nails & Manicure': 'nails-manicure',
+      'Facial & Skincare': 'facial-skincare',
+      'Fitness & Gym': 'fitness-gym',
+      'Yoga & Pilates': 'yoga-pilates',
+      'Barbershop': 'barbershop',
+      'Makeup & Lashes': 'makeup-lashes',
+      // Legacy mappings for compatibility
+      'Beauty & Wellness': 'hair-salon',
+      'Spa & Wellness': 'spa-massage',
+      'Nail Care': 'nails-manicure',
+      'Massage Therapy': 'spa-massage',
+      'Skincare': 'facial-skincare',
+      'Fitness & Health': 'fitness-gym'
     };
 
-    return mappings[categoryName] || 'other';
+    return mappings[categoryName] || 'hair-salon';
   }
 
   async searchCategories(query: string): Promise<CategoryApiResponse> {

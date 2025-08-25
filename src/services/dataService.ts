@@ -213,11 +213,31 @@ class DataService {
       await mockDelay();
       // For mock data, return all bookings with the current customer ID injected
       const mockBookings = getMockBookings();
-      // Update customer ID to match current user for mock data
+      // Update customer ID to match current user for mock data and convert to expected format
       const bookingsWithCurrentUser = mockBookings.map(booking => ({
+        // Map to the format expected by BookingsScreen
+        id: booking.id,
+        customer_id: customerId,
+        user_id: customerId,
+        shop_id: booking.shopId,
+        staff_id: booking.staffId,
+        service_id: booking.serviceIds?.[0],
+        booking_date: booking.bookingDate,
+        start_time: booking.startTime,
+        end_time: booking.endTime,
+        status: booking.status,
+        total_price: booking.totalPrice,
+        notes: booking.notes,
+        created_at: booking.createdAt,
+        // Enriched display data
+        shop_name: booking.shopName,
+        staff_names: booking.staffName,
+        service_names: booking.serviceNames?.[0] || booking.serviceNames,
+        shop_image_url: booking.shopImage,
+        duration: 60, // Default duration
+        // Also keep original camelCase fields for compatibility
         ...booking,
-        customerId: customerId,
-        user_id: customerId // Also update user_id field
+        customerId: customerId
       }));
       return {
         success: true,
@@ -227,8 +247,8 @@ class DataService {
     
     // Real implementation
     try {
-      // return await bookingsAPI.getCustomerBookings(customerId);
-      return { success: false, data: null, error: 'Real booking service not implemented yet' };
+      const { bookingsAPI } = await import('./api/bookings/bookingsAPI');
+      return await bookingsAPI.getCustomerBookings(customerId);
     } catch (error) {
       return { 
         success: false, 
