@@ -7,6 +7,7 @@ import { StatusBar, ActivityIndicator, View, Text, Platform } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// import PushNotificationService from '../services/pushNotificationService';
 
 // FIXED IMPORTS - Use named imports from the corrected service
 import { supabase, authService } from '../lib/supabase/index';
@@ -280,8 +281,49 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         }
       };
       
+      // Handle pending push notification token with safe loading
+      const handlePushNotifications = async () => {
+        try {
+          console.log('🔔 Handling push notifications for authenticated user...');
+          const SafePushNotificationService = await import('../services/safePushNotificationService');
+          const configured = await SafePushNotificationService.default.configure();
+          
+          if (configured) {
+            // Handle any pending tokens first
+            await SafePushNotificationService.default.handlePendingToken();
+            
+            // Check current permission status
+            const permissions = await SafePushNotificationService.default.checkPermissions();
+            console.log('📱 Current push permissions:', permissions);
+            
+            if (!permissions.granted) {
+              console.log('📱 Push permissions not granted, requesting permissions...');
+              // Request permissions for authenticated user
+              const granted = await SafePushNotificationService.default.requestPermissions();
+              if (granted) {
+                console.log('✅ Push permissions granted and token should be registered');
+              } else {
+                console.log('❌ Push permissions denied by user');
+              }
+            } else {
+              console.log('✅ Push permissions already granted');
+              // Permissions are granted but maybe we don't have a token registered
+              // Let's trigger a token registration just to be sure
+              const tokenExists = SafePushNotificationService.default.getDeviceToken();
+              if (!tokenExists) {
+                console.log('📱 No device token found, requesting permissions to trigger registration...');
+                await SafePushNotificationService.default.requestPermissions();
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error handling push notifications on login:', error);
+        }
+      };
+      
       initializeAccountType();
       loadUserProfile();
+      handlePushNotifications();
     } else {
       // Reset profile when user logs out
       setUserProfile(null);

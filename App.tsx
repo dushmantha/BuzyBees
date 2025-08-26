@@ -69,8 +69,29 @@ function App(): React.JSX.Element {
       }
     };
     
+    // Initialize push notifications with safe loading
+    const initializePushNotifications = async () => {
+      try {
+        console.log('🔔 Initializing safe push notifications...');
+        const SafePushNotificationService = await import('./src/services/safePushNotificationService');
+        const configured = await SafePushNotificationService.default.configure();
+        
+        if (configured) {
+          // Don't request permissions on startup - wait for user action
+          console.log('✅ Push notification service configured, ready for permission request');
+        } else {
+          console.warn('⚠️ Push notifications not available on this device');
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize push notifications:', error);
+      }
+    };
+    
     // Initialize after a small delay to let the app load
-    setTimeout(initializeDatabase, 2000);
+    setTimeout(() => {
+      initializeDatabase();
+      initializePushNotifications();
+    }, 2000);
     
     return () => console.log('App unmounted');
   }, []);

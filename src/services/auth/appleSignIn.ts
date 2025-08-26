@@ -1,43 +1,6 @@
-// import appleAuth from '@invertase/react-native-apple-authentication';
+import appleAuth from '@invertase/react-native-apple-authentication';
 import { supabase } from '../../lib/supabase';
-// import { Platform } from 'react-native';
-
-// Placeholder appleAuth until package is installed
-const appleAuth = {
-  isAvailable: async (): Promise<boolean> => {
-    throw new Error('Apple Sign-In package not installed. Run: npm install @invertase/react-native-apple-authentication');
-  },
-  performRequest: async (request: any) => {
-    throw new Error('Apple Sign-In package not installed');
-  },
-  getCredentialStateForUser: async (user: string) => {
-    throw new Error('Apple Sign-In package not installed');
-  },
-  State: {
-    AUTHORIZED: 'AUTHORIZED',
-    REVOKED: 'REVOKED',
-    NOT_FOUND: 'NOT_FOUND',
-  },
-  Operation: {
-    IMPLICIT: 'IMPLICIT',
-    LOGIN: 'LOGIN',
-    REFRESH: 'REFRESH',
-    LOGOUT: 'LOGOUT',
-  },
-  Scope: {
-    EMAIL: 'EMAIL',
-    FULL_NAME: 'FULL_NAME',
-  },
-  PersonNameFormat: {
-    DEFAULT: 'DEFAULT',
-    PHONETIC: 'PHONETIC',
-  },
-  RealUserStatus: {
-    LIKELY_REAL: 'LIKELY_REAL',
-    UNKNOWN: 'UNKNOWN',
-    UNSUPPORTED: 'UNSUPPORTED',
-  },
-};
+import { Platform } from 'react-native';
 
 export interface AppleSignInResult {
   success: boolean;
