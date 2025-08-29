@@ -80,7 +80,7 @@ class IntegratedShopService {
   private client = supabase;
 
   constructor() {
-    console.log('🏪 Integrated Shop Service initialized');
+    // Defer initialization logging to avoid slowing down app startup
   }
 
   // ==============================================

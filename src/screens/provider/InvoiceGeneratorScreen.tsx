@@ -958,7 +958,7 @@ Thank you for choosing our services.`,
                     This is a computer-generated invoice. For questions, please contact us at ${invoiceData.companyEmail}
                 </p>
                 <div style="color: #D1D5DB; font-size: 11px;">
-                    Powered by BuzyBees • Professional Service Management • ${new Date().getFullYear()}
+                    Powered by Qwiken • Professional Service Management • ${new Date().getFullYear()}
                 </div>
             </div>
         </div>

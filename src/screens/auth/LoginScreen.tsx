@@ -52,7 +52,21 @@ const LoginScreen = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { forceCheckSession } = useAuth();
+  const { forceCheckSession, isAuthenticated } = useAuth();
+
+  // Monitor auth state changes to clear loading when login succeeds
+  useEffect(() => {
+    if (isAuthenticated && loading) {
+      console.log('✅ Auth state changed to authenticated, clearing login loading');
+      setLoading(false);
+      
+      // Clear any pending timeouts
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [isAuthenticated, loading]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -165,31 +179,16 @@ const LoginScreen = () => {
       if (response.success) {
         console.log('✅ Login successful - user:', response.user?.email);
         console.log('✅ Session exists:', !!response.session);
-        console.log('✅ Auth service login completed, triggering session check...');
+        console.log('✅ Auth service login completed');
         
-        // Immediately trigger a session check to ensure auth state updates
+        // Simple approach: trust that the auth state change will handle the navigation
+        // Add a single safety timeout in case auth state doesn't change
         setTimeout(async () => {
-          console.log('🔄 Immediate session check...');
+          console.log('🔄 Safety check - ensuring auth state updated...');
           await forceCheckSession();
-        }, 500); // Check after 500ms
+          setLoading(false); // Always clear loading after a reasonable time
+        }, 2000); // 2 second timeout
         
-        // Additional fallback check
-        setTimeout(async () => {
-          console.log('🔄 Fallback session check...');
-          await forceCheckSession();
-        }, 3000); // Check after 3 seconds
-        
-        // Keep loading state active until AppNavigator's auth state changes
-        // Add a timeout as a safety measure
-        timeoutRef.current = setTimeout(() => {
-          console.warn('⚠️ Auth state change timeout - forcing loading off');
-          setLoading(false);
-          setErrors({ 
-            general: 'Login completed but navigation failed. Please restart the app.' 
-          });
-        }, 10000); // 10 second timeout
-        
-        // Don't set loading to false here - let the auth state change handle navigation
       } else {
         setErrors({ 
           general: response.error || 'Invalid credentials. Please try again.' 
@@ -221,7 +220,7 @@ const LoginScreen = () => {
         if (result.isNewUser) {
           Alert.alert(
             'Welcome!',
-            'Your account has been created successfully. Welcome to BuzyBees!',
+            'Your account has been created successfully. Welcome to Qwiken!',
             [{ text: 'Get Started', style: 'default' }]
           );
         }
@@ -283,7 +282,7 @@ const LoginScreen = () => {
         if (result.isNewUser) {
           Alert.alert(
             'Welcome!',
-            'Your account has been created successfully. Welcome to BuzyBees!',
+            'Your account has been created successfully. Welcome to Qwiken!',
             [{ text: 'Get Started', style: 'default' }]
           );
         }
@@ -308,6 +307,7 @@ const LoginScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}

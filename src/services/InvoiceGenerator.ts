@@ -149,7 +149,7 @@ ${invoiceData.companyName}
 ${invoiceData.companyEmail}
 ${separator}
 
-Generated with BuzyBees • ${new Date().toISOString().split('T')[0]}`;
+Generated with Qwiken • ${new Date().toISOString().split('T')[0]}`;
 
     return invoice;
   }

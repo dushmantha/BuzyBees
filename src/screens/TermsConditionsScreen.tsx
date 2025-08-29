@@ -77,13 +77,13 @@ const TermsConditionsScreen: React.FC<TermsConditionsScreenProps> = ({ navigatio
 
 **Last Updated: January 15, 2025**
 
-## Welcome to BuzyBees! 🐝
+## Welcome to Qwiken! ⚡
 
-Thank you for choosing BuzyBees, your trusted service marketplace. These terms help ensure a safe, fair, and enjoyable experience for everyone in our buzzing community.
+Thank you for choosing Qwiken, your trusted service marketplace. These terms help ensure a safe, fair, and enjoyable experience for everyone in our growing community.
 
-## 🎯 What BuzyBees Does
+## 🎯 What Qwiken Does
 
-BuzyBees connects busy people who need services with skilled professionals who provide them. Whether you're looking for:
+Qwiken connects busy people who need services with skilled professionals who provide them. Whether you're looking for:
 
 - 🏠 **Home Services**: Cleaning, repairs, maintenance, gardening
 - 💄 **Personal Care**: Beauty, wellness, fitness, spa services
@@ -106,7 +106,7 @@ Our busy bees have got you covered!
 - **🔧 Provider**: Offer your services
 - **💎 Premium**: Enhanced features and benefits
 
-## 💰 How BuzyBees Payments Work
+## 💰 How Qwiken Payments Work
 
 ### Simple & Secure
 - All payments processed safely through our secure platform
@@ -151,7 +151,7 @@ Our busy bees have got you covered!
 ## 📞 Need Help?
 
 ### We're Here for You
-- **Email**: support@buzybees.com
+- **Email**: support@qwiken.com
 - **Phone**: +1 (555) 123-BEES
 - **Live Chat**: Available 24/7 in the app
 - **Help Center**: Comprehensive guides and FAQs
@@ -163,7 +163,7 @@ We may update these terms occasionally. You'll be notified of any important chan
 
 ---
 
-**Questions?** Our friendly BuzyBees support team is always ready to help explain anything you don't understand. We believe in transparency and want you to feel confident using our platform to find the perfect services for your busy life.`
+**Questions?** Our friendly Qwiken support team is always ready to help explain anything you don't understand. We believe in transparency and want you to feel confident using our platform to find the perfect services for your busy life.`
         },
         privacy: {
           id: 'privacy_v1.8',
@@ -179,9 +179,9 @@ We may update these terms occasionally. You'll be notified of any important chan
 
 **Last Updated: January 10, 2025**
 
-## Your Privacy Matters at BuzyBees 🔒
+## Your Privacy Matters at Qwiken 🔒
 
-At BuzyBees, we believe your personal information should be just that - personal. This policy explains exactly how we handle your data in our service marketplace.
+At Qwiken, we believe your personal information should be just that - personal. This policy explains exactly how we handle your data in our service marketplace.
 
 ## 📊 What Information We Collect
 
@@ -245,7 +245,7 @@ You can manage cookies in your browser settings or through your account preferen
 
 Have questions about your privacy? We're here to help!
 
-- **Email**: privacy@buzybees.com
+- **Email**: privacy@qwiken.com
 - **Response Time**: Within 24 hours
 - **Privacy Officer**: Available for complex questions
 
@@ -349,8 +349,8 @@ We only work with reputable companies that follow strict privacy standards:
 ## 📞 Questions About Cookies?
 
 ### We're Here to Help
-- **Email**: privacy@buzybees.com
-- **Live Chat**: Available 24/7 in the BuzyBees app
+- **Email**: privacy@qwiken.com
+- **Live Chat**: Available 24/7 in the Qwiken app
 - **Help Center**: Step-by-step guides
 - **Phone**: +1 (555) 123-BEES
 
@@ -372,9 +372,9 @@ We only work with reputable companies that follow strict privacy standards:
 
 **Last Updated: January 5, 2025**
 
-## Building an Amazing BuzyBees Community Together 🌟
+## Building an Amazing Qwiken Community Together 🌟
 
-BuzyBees is more than just a marketplace - it's a hive of real people helping each other get things done. These guidelines help us all create a positive, productive environment where everyone can thrive.
+Qwiken is more than just a marketplace - it's a hive of real people helping each other get things done. These guidelines help us all create a positive, productive environment where everyone can thrive.
 
 ## ✨ What Makes Our Community Great
 
@@ -457,7 +457,7 @@ We believe in second chances, but safety comes first:
 
 ### How to Report
 - **In-App**: Use the report button on any profile or message
-- **Email**: safety@buzybees.com
+- **Email**: safety@qwiken.com
 - **Phone**: +1 (555) 123-BEES
 - **Live Chat**: Available 24/7 for urgent issues in the app
 
@@ -488,9 +488,9 @@ We love celebrating people who make our community awesome:
 ## 📞 Questions or Concerns?
 
 ### We're Always Here
-- **Community Team**: community@buzybees.com
-- **General Support**: support@buzybees.com
-- **Safety Issues**: safety@buzybees.com
+- **Community Team**: community@qwiken.com
+- **General Support**: support@qwiken.com
+- **Safety Issues**: safety@qwiken.com
 - **Phone**: +1 (555) 123-BEES
 
 ---
@@ -511,9 +511,9 @@ We love celebrating people who make our community awesome:
 
 **Last Updated: January 20, 2025**
 
-## Welcome to the BuzyBees Provider Community! 🎉
+## Welcome to the Qwiken Provider Community! 🎉
 
-Congratulations on joining BuzyBees as a service provider! This agreement outlines everything you need to know to build a successful business with our buzzing community of customers.
+Congratulations on joining Qwiken as a service provider! This agreement outlines everything you need to know to build a successful business with our buzzing community of customers.
 
 ## 🎯 Your Provider Journey
 
@@ -631,8 +631,8 @@ Unlock advanced features with our premium membership:
 ## 📞 Support & Resources
 
 ### 🆘 When You Need Help
-- **Provider Support**: providers@buzybees.com
-- **Technical Issues**: tech@buzybees.com
+- **Provider Support**: providers@qwiken.com
+- **Technical Issues**: tech@qwiken.com
 - **Emergency Line**: +1 (555) 123-BEES
 - **Live Chat**: 24/7 instant support in the app
 
@@ -656,7 +656,7 @@ Unlock advanced features with our premium membership:
 
 We're committed to helping you build a thriving business on our platform. With the right tools, support, and community, there's no limit to what you can achieve.
 
-**Ready to get started?** Contact our Provider Success team at providers@buzybees.com for personalized onboarding assistance!`
+**Ready to get started?** Contact our Provider Success team at providers@qwiken.com for personalized onboarding assistance!`
         }
       };
     }
@@ -713,9 +713,9 @@ We're committed to helping you build a thriving business on our platform. With t
           text: '📧 Email',
           onPress: async () => {
             try {
-              await Linking.openURL('mailto:legal@buzybees.com?subject=Legal Question');
+              await Linking.openURL('mailto:legal@qwiken.com?subject=Legal Question');
             } catch (error) {
-              Alert.alert('Email Not Available', 'Please contact legal@buzybees.com');
+              Alert.alert('Email Not Available', 'Please contact legal@qwiken.com');
             }
           }
         },
@@ -937,7 +937,7 @@ We're committed to helping you build a thriving business on our platform. With t
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Legal Documents</Text>
           <Text style={styles.headerSubtitle}>
-            Everything you need to know about using BuzyBees safely and legally
+            Everything you need to know about using Qwiken safely and legally
           </Text>
         </View>
         <View style={styles.headerIcon}>

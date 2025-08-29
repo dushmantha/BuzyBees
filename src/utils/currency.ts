@@ -1,5 +1,5 @@
 /**
- * Currency utilities for BuzyBees app
+ * Currency utilities for Qwiken app
  * All prices are displayed in NZD (New Zealand Dollar)
  */
 

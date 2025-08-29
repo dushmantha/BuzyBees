@@ -49,14 +49,24 @@ class SafePushNotificationService {
         return false;
       }
 
-      // Only require modules if native modules exist
+      // Only require modules if native modules exist - with defensive requiring
       if (Platform.OS === 'ios') {
-        const pushNotificationIOSModule = require('@react-native-community/push-notification-ios');
-        this.PushNotificationIOS = pushNotificationIOSModule.default || pushNotificationIOSModule;
+        try {
+          const pushNotificationIOSModule = require('@react-native-community/push-notification-ios');
+          this.PushNotificationIOS = pushNotificationIOSModule.default || pushNotificationIOSModule;
+        } catch (iosError) {
+          console.warn('⚠️ Failed to require iOS push notification module:', iosError.message);
+          return false;
+        }
       }
       
-      const pushNotificationModule = require('react-native-push-notification');
-      this.PushNotification = pushNotificationModule.default || pushNotificationModule;
+      try {
+        const pushNotificationModule = require('react-native-push-notification');
+        this.PushNotification = pushNotificationModule.default || pushNotificationModule;
+      } catch (mainError) {
+        console.warn('⚠️ Failed to require main push notification module:', mainError.message);
+        return false;
+      }
       
       return true;
     } catch (error) {
@@ -92,8 +102,14 @@ class SafePushNotificationService {
       // Configure push notifications
       this.PushNotification.configure({
         onRegister: async (token: any) => {
-          console.log('📱 Device token received:', token.token);
+          console.log('🎉 === DEVICE TOKEN RECEIVED ===');
+          console.log('📱 Token object:', token);
+          console.log('📱 Token value:', token.token);
+          console.log('📱 Token OS:', token.os);
+          console.log('=================================');
           this.deviceToken = token.token;
+          
+          // Always try to save the token when received
           await this.saveDeviceToken(token.token);
         },
 
@@ -128,6 +144,30 @@ class SafePushNotificationService {
         popInitialNotification: true,
         requestPermissions: false, // We'll handle this manually
       });
+      
+      // For iOS, we need to explicitly register for remote notifications after configuration
+      // This is crucial for getting the device token
+      if (Platform.OS === 'ios' && this.PushNotificationIOS) {
+        console.log('📱 iOS detected, checking if we should auto-register for remote notifications...');
+        
+        // Check if permissions are already granted
+        this.PushNotificationIOS.checkPermissions((permissions: any) => {
+          const hasPermission = !!(permissions.alert || permissions.badge || permissions.sound);
+          console.log('📱 iOS permissions check during configure:', {
+            hasPermission,
+            alert: permissions.alert,
+            badge: permissions.badge,
+            sound: permissions.sound
+          });
+          
+          if (hasPermission) {
+            console.log('✅ iOS permissions already granted');
+            console.log('📱 Native AppDelegate should handle device token registration');
+          } else {
+            console.log('⚠️ iOS permissions not granted yet, will register after permission request');
+          }
+        });
+      }
 
       // Create notification channel for Android
       if (Platform.OS === 'android' && Importance) {
@@ -164,14 +204,37 @@ class SafePushNotificationService {
       }
 
       if (Platform.OS === 'ios' && this.PushNotificationIOS) {
-        const permissions = await this.PushNotificationIOS.checkPermissions();
-        console.log('📱 iOS Permissions:', permissions);
-        return {
-          granted: !!(permissions.alert || permissions.badge || permissions.sound),
-          alert: permissions.alert,
-          badge: permissions.badge,
-          sound: permissions.sound
-        };
+        return new Promise((resolve) => {
+          try {
+            // Try callback-based approach first
+            this.PushNotificationIOS.checkPermissions((permissions: any) => {
+              console.log('📱 iOS Permissions (callback):', permissions);
+              resolve({
+                granted: !!(permissions.alert || permissions.badge || permissions.sound),
+                alert: permissions.alert,
+                badge: permissions.badge,
+                sound: permissions.sound
+              });
+            });
+          } catch (callbackError) {
+            // Fallback to Promise-based approach
+            console.log('📱 Using Promise-based checkPermissions...');
+            this.PushNotificationIOS.checkPermissions()
+              .then((permissions: any) => {
+                console.log('📱 iOS Permissions (promise):', permissions);
+                resolve({
+                  granted: !!(permissions.alert || permissions.badge || permissions.sound),
+                  alert: permissions.alert,
+                  badge: permissions.badge,
+                  sound: permissions.sound
+                });
+              })
+              .catch((promiseError: any) => {
+                console.error('❌ Error with promise checkPermissions:', promiseError);
+                resolve({ granted: false });
+              });
+          }
+        });
       } else if (Platform.OS === 'android') {
         // Android permissions are handled automatically
         return { granted: true };
@@ -196,15 +259,27 @@ class SafePushNotificationService {
         return new Promise((resolve) => {
           console.log('📱 Requesting iOS push permissions...');
           
-          // Set up listeners first
+          // Remove any existing listeners first
+          try {
+            this.PushNotificationIOS.removeAllListeners('register');
+            this.PushNotificationIOS.removeAllListeners('registrationError');
+          } catch (e) {
+            console.log('📱 No existing listeners to remove');
+          }
+          
+          // Set up listeners for iOS token registration
           this.PushNotificationIOS.addEventListener('register', (token: string) => {
-            console.log('📱 iOS Device Token received:', token);
+            console.log('🎉 === iOS NATIVE TOKEN RECEIVED ===');
+            console.log('📱 iOS Device Token via addEventListener:', token);
+            console.log('=====================================');
             this.deviceToken = token;
+            // Save the token immediately
             this.saveDeviceToken(token);
           });
           
           this.PushNotificationIOS.addEventListener('registrationError', (error: any) => {
             console.error('📱 iOS Registration Error:', error);
+            console.error('   Error details:', JSON.stringify(error, null, 2));
           });
           
           // Request permissions with proper callback structure
@@ -222,9 +297,8 @@ class SafePushNotificationService {
               const granted = !!(permissions.alert || permissions.badge || permissions.sound);
               
               if (granted) {
-                console.log('✅ iOS Permissions granted, registering for remote notifications...');
-                // Register for remote notifications after permissions are granted
-                this.PushNotificationIOS.registerForRemoteNotifications();
+                console.log('✅ iOS Permissions granted');
+                console.log('📱 Native AppDelegate will handle device token registration');
                 resolve(true);
               } else {
                 console.log('❌ iOS Permissions denied');
@@ -242,8 +316,8 @@ class SafePushNotificationService {
                 const granted = !!(permissions.alert || permissions.badge || permissions.sound);
                 
                 if (granted) {
-                  console.log('✅ iOS Permissions granted, registering for remote notifications...');
-                  this.PushNotificationIOS.registerForRemoteNotifications();
+                  console.log('✅ iOS Permissions granted (Promise-based)');
+                  console.log('📱 Native AppDelegate will handle device token registration');
                   resolve(true);
                 } else {
                   console.log('❌ iOS Permissions denied');
@@ -269,15 +343,40 @@ class SafePushNotificationService {
     }
   };
 
-  // Save device token to Supabase
+  // Save device token to Supabase - ENHANCED VERSION
   saveDeviceToken = async (token: string) => {
     try {
+      console.log('💾 [ENHANCED] Attempting to save device token:', token.substring(0, 20) + '...');
+      console.log('💾 Current timestamp:', new Date().toISOString());
+      
+      // Check session first
+      const session = await supabase.auth.getSession();
+      console.log('🔐 Session check result:', {
+        hasSession: !!session.data.session,
+        hasUser: !!session.data.session?.user,
+        userId: session.data.session?.user?.id,
+        sessionError: session.error?.message,
+        accessToken: session.data.session?.access_token ? 'present' : 'missing'
+      });
+      
       const user = await supabase.auth.getUser();
+      console.log('👤 User check result:', {
+        hasUser: !!user.data.user,
+        userId: user.data.user?.id,
+        email: user.data.user?.email,
+        userError: user.error?.message,
+        createdAt: user.data.user?.created_at
+      });
+      
       if (!user.data.user) {
-        console.warn('⚠️ No authenticated user, storing token locally');
+        console.warn('⚠️ No authenticated user found');
+        console.log('💤 Storing device token as pending for later processing');
         await AsyncStorage.setItem('pending_device_token', token);
+        console.log('✅ Device token stored locally as pending');
         return;
       }
+      
+      console.log('✅ User authenticated, proceeding with database save');
 
       const deviceTokenData: Omit<DeviceToken, 'id' | 'created_at' | 'updated_at'> = {
         user_id: user.data.user.id,
@@ -301,49 +400,125 @@ class SafePushNotificationService {
 
       if (existingToken) {
         // Update existing token
-        const { error } = await supabase
+        console.log('📝 Updating existing device token:', existingToken.id);
+        const { data: updateData, error } = await supabase
           .from('device_tokens')
           .update({ 
             is_active: true, 
             updated_at: new Date().toISOString(),
             app_version: deviceTokenData.app_version,
           })
-          .eq('id', existingToken.id);
+          .eq('id', existingToken.id)
+          .select();
 
         if (error) {
           console.error('❌ Error updating device token:', error);
+          console.error('   Update error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          
+          // Store as pending if update fails
+          console.log('💤 Update failed, storing token as pending');
+          await AsyncStorage.setItem('pending_device_token', token);
         } else {
-          console.log('✅ Device token updated in Supabase');
+          console.log('✅ Device token updated in Supabase successfully');
+          console.log('   Updated token data:', updateData);
         }
       } else {
         // Insert new token
-        const { error } = await supabase
+        console.log('📤 Inserting new device token into database');
+        console.log('   Insert data:', {
+          user_id: deviceTokenData.user_id,
+          device_type: deviceTokenData.device_type,
+          token_preview: deviceTokenData.device_token.substring(0, 20) + '...',
+          app_version: deviceTokenData.app_version,
+          platform: deviceTokenData.device_info.platform
+        });
+        
+        const { data, error } = await supabase
           .from('device_tokens')
-          .insert([deviceTokenData]);
+          .insert([deviceTokenData])
+          .select();
 
         if (error) {
-          console.error('❌ Error saving device token:', error);
+          console.error('❌ Error saving device token to database:', error);
+          console.error('   Insert error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          
+          // Store as pending if insert fails
+          console.log('💤 Insert failed, storing token as pending for retry');
+          await AsyncStorage.setItem('pending_device_token', token);
         } else {
-          console.log('✅ Device token saved to Supabase');
+          console.log('✅ Device token saved to Supabase successfully!');
+          console.log('   Inserted token data:', data);
+          
+          // Verify the token was actually saved
+          if (data && data[0] && data[0].id) {
+            console.log('✅ Database insertion confirmed with ID:', data[0].id);
+          } else {
+            console.warn('⚠️ Database insertion succeeded but no ID returned');
+          }
         }
       }
 
-      // Store token locally as well
+      // Store token locally as well for backup
       await AsyncStorage.setItem('device_token', token);
+      console.log('💾 Device token also stored locally as backup');
 
     } catch (error) {
-      console.error('❌ Error in saveDeviceToken:', error);
+      console.error('❌ Unexpected error in saveDeviceToken:', error);
+      console.error('   Error stack:', error.stack);
+      
+      // On any unexpected error, store as pending
+      try {
+        await AsyncStorage.setItem('pending_device_token', token);
+        console.log('💤 Due to error, token stored as pending for later retry');
+      } catch (storageError) {
+        console.error('❌ Failed to store token as pending:', storageError);
+      }
     }
   };
 
-  // Handle pending token when user logs in
+  // Handle pending token when user logs in - ENHANCED VERSION
   handlePendingToken = async () => {
     try {
+      console.log('🔄 Processing pending device token...');
+      
       const pendingToken = await AsyncStorage.getItem('pending_device_token');
+      console.log('📱 Pending token found:', !!pendingToken);
+      
       if (pendingToken) {
+        console.log('💾 Processing pending token:', pendingToken.substring(0, 20) + '...');
+        
+        // Verify user is authenticated before processing
+        const user = await supabase.auth.getUser();
+        if (!user.data.user) {
+          console.warn('⚠️ User not authenticated, keeping token as pending');
+          return;
+        }
+        
+        console.log('✅ User authenticated, processing pending token for:', user.data.user.id);
+        
+        // Process the pending token
         await this.saveDeviceToken(pendingToken);
         await AsyncStorage.removeItem('pending_device_token');
-        console.log('✅ Pending device token processed');
+        console.log('✅ Pending device token processed successfully');
+      } else {
+        console.log('ℹ️ No pending device token found');
+        
+        // If no pending token but user is authenticated, try to re-register
+        const user = await supabase.auth.getUser();
+        if (user.data.user && this.deviceToken) {
+          console.log('🔄 Re-processing current device token for authenticated user');
+          await this.saveDeviceToken(this.deviceToken);
+        }
       }
     } catch (error) {
       console.error('❌ Error handling pending token:', error);
@@ -451,12 +626,35 @@ class SafePushNotificationService {
     }
 
     if (Platform.OS === 'ios' && this.PushNotificationIOS) {
-      const settings = await this.PushNotificationIOS.checkPermissions();
-      return {
-        alert: settings.alert === 1,
-        badge: settings.badge === 1,
-        sound: settings.sound === 1,
-      };
+      return new Promise((resolve) => {
+        try {
+          // Try callback-based approach first
+          this.PushNotificationIOS.checkPermissions((settings: any) => {
+            resolve({
+              alert: settings.alert === 1,
+              badge: settings.badge === 1,
+              sound: settings.sound === 1,
+            });
+          });
+        } catch (callbackError) {
+          // Fallback to Promise-based approach
+          this.PushNotificationIOS.checkPermissions()
+            .then((settings: any) => {
+              resolve({
+                alert: settings.alert === 1,
+                badge: settings.badge === 1,
+                sound: settings.sound === 1,
+              });
+            })
+            .catch(() => {
+              resolve({
+                alert: false,
+                badge: false,
+                sound: false,
+              });
+            });
+        }
+      });
     } else {
       // For Android, we'll assume permissions are granted
       return {
@@ -474,6 +672,140 @@ class SafePushNotificationService {
     } else {
       Linking.openSettings();
     }
+  };
+
+  // Debug method to check current token state - FOR DEBUGGING
+  debugTokenState = async () => {
+    console.log('\n🔍 === DEVICE TOKEN DEBUG STATE ===');
+    console.log('📅 Debug timestamp:', new Date().toISOString());
+    
+    try {
+      // Check local storage
+      const localToken = await AsyncStorage.getItem('device_token');
+      const pendingToken = await AsyncStorage.getItem('pending_device_token');
+      
+      console.log('💾 Local storage state:');
+      console.log('   - device_token:', localToken ? localToken.substring(0, 20) + '...' : 'null');
+      console.log('   - pending_device_token:', pendingToken ? pendingToken.substring(0, 20) + '...' : 'null');
+      
+      // Check service state
+      console.log('🔧 Service state:');
+      console.log('   - isInitialized:', this.isInitialized);
+      console.log('   - hasNativeModule:', this.hasNativeModule);
+      console.log('   - deviceToken:', this.deviceToken ? this.deviceToken.substring(0, 20) + '...' : 'null');
+      
+      // Check authentication
+      const session = await supabase.auth.getSession();
+      const user = await supabase.auth.getUser();
+      
+      console.log('🔐 Authentication state:');
+      console.log('   - hasSession:', !!session.data.session);
+      console.log('   - hasUser:', !!user.data.user);
+      console.log('   - userId:', user.data.user?.id);
+      console.log('   - userEmail:', user.data.user?.email);
+      
+      // Check database tokens for current user
+      if (user.data.user) {
+        const { data: dbTokens, error, count } = await supabase
+          .from('device_tokens')
+          .select('*', { count: 'exact' })
+          .eq('user_id', user.data.user.id);
+          
+        console.log('🗄️ Database tokens for current user:');
+        console.log('   - count:', count || 0);
+        console.log('   - error:', error?.message || 'none');
+        
+        if (dbTokens && dbTokens.length > 0) {
+          dbTokens.forEach((token, index) => {
+            console.log(`   - token ${index + 1}:`, {
+              id: token.id.substring(0, 8) + '...',
+              device_type: token.device_type,
+              is_active: token.is_active,
+              created_at: token.created_at,
+              token_preview: token.device_token.substring(0, 20) + '...'
+            });
+          });
+        }
+      }
+      
+      console.log('=== END DEBUG STATE ===\n');
+      
+      // Return summary for external use
+      return {
+        localToken: !!localToken,
+        pendingToken: !!pendingToken,
+        serviceToken: !!this.deviceToken,
+        isInitialized: this.isInitialized,
+        hasAuth: !!user.data.user,
+        dbTokenCount: user.data.user ? (await supabase.from('device_tokens').select('id', { count: 'exact' }).eq('user_id', user.data.user.id)).count || 0 : 0
+      };
+    } catch (error) {
+      console.error('❌ Error in debugTokenState:', error);
+      return { error: error.message };
+    }
+  };
+
+  // Force re-register device token - FOR DEBUGGING
+  forceReRegisterToken = async () => {
+    console.log('🔄 Force re-registering device token...');
+    
+    try {
+      if (!this.isInitialized) {
+        console.log('   🔧 Service not initialized, configuring first...');
+        await this.configure();
+      }
+      
+      if (Platform.OS === 'ios' && this.PushNotificationIOS) {
+        console.log('   📱 iOS: Forcing remote notification registration...');
+        
+        // First check current permissions
+        const permissions = await this.checkPermissions();
+        console.log('   📱 Current permissions:', permissions);
+        
+        if (permissions.granted) {
+          console.log('   ✅ Permissions granted, relying on native AppDelegate for token registration');
+          console.log('   📱 Native iOS should automatically generate and forward tokens');
+          
+          // Give it a moment to register
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Check if we got a token
+          if (this.deviceToken) {
+            console.log('   ✅ Token available:', this.deviceToken.substring(0, 20) + '...');
+            // Try to save it again
+            await this.saveDeviceToken(this.deviceToken);
+          } else {
+            console.log('   ⚠️ No token received yet, may need to restart app or check native logs');
+            console.log('   📱 Check Xcode logs for "Native iOS Device Token Generated"');
+          }
+        } else {
+          console.log('   ⚠️ Permissions not granted, requesting...');
+          await this.requestPermissions();
+        }
+      }
+      
+      // Also try to process any pending tokens
+      console.log('   🔄 Processing any pending tokens...');
+      await this.handlePendingToken();
+      
+      console.log('✅ Force re-registration completed');
+    } catch (error) {
+      console.error('❌ Error in force re-register:', error);
+    }
+  };
+  
+  // Check native iOS token status - FOR DEBUGGING
+  checkNativeTokenStatus = () => {
+    console.log('📱 Checking native iOS token status...');
+    console.log('   - Service initialized:', this.isInitialized);
+    console.log('   - Has native module:', this.hasNativeModule);
+    console.log('   - Device token in service:', !!this.deviceToken);
+    console.log('');
+    console.log('📱 If no device token is received:');
+    console.log('   1. Check Xcode console logs for "Native iOS Device Token Generated"');
+    console.log('   2. Verify iOS app has been rebuilt after AppDelegate changes');
+    console.log('   3. Ensure app has push notification permissions');
+    console.log('   4. Make sure testing on real device (not simulator)');
   };
 }
 

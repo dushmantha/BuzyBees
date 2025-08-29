@@ -3,6 +3,8 @@ import React_RCTAppDelegate
 import React
 import UserNotifications
 
+// Note: These imports will be resolved at runtime based on what's available
+
 @main
 class AppDelegate: RCTAppDelegate {
   
@@ -74,16 +76,85 @@ class AppDelegate: RCTAppDelegate {
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
     let token = tokenParts.joined()
-    print("Device Token: \(token)")
+    print("🎉 Native iOS Device Token Generated: \(token)")
+    
+    // Forward to React Native modules
+    self.forwardTokenToReactNative(deviceToken: deviceToken)
+  }
+  
+  private func forwardTokenToReactNative(deviceToken: Data) {
+    guard let bridge = self.bridge else {
+      print("❌ React Native bridge not available")
+      return
+    }
+    
+    // Try to forward to RNCPushNotificationIOS
+    if let pushNotificationIOSClass = NSClassFromString("RNCPushNotificationIOS"),
+       let pushNotificationManager = bridge.module(for: pushNotificationIOSClass) as? NSObject {
+      if pushNotificationManager.responds(to: NSSelectorFromString("didRegisterForRemoteNotificationsWithDeviceToken:")) {
+        pushNotificationManager.perform(NSSelectorFromString("didRegisterForRemoteNotificationsWithDeviceToken:"), with: deviceToken)
+        print("✅ Device token forwarded to RNCPushNotificationIOS")
+      }
+    }
+    
+    // Try to forward to RCTPushNotificationManager (fallback)
+    if let pushNotificationManagerClass = NSClassFromString("RCTPushNotificationManager"),
+       let pushNotificationManager = bridge.module(for: pushNotificationManagerClass) as? NSObject {
+      if pushNotificationManager.responds(to: NSSelectorFromString("didRegisterForRemoteNotificationsWithDeviceToken:")) {
+        pushNotificationManager.perform(NSSelectorFromString("didRegisterForRemoteNotificationsWithDeviceToken:"), with: deviceToken)
+        print("✅ Device token forwarded to RCTPushNotificationManager")
+      }
+    }
+    
+    print("📱 Device token forwarding completed")
   }
   
   override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    print("Failed to register for remote notifications: \(error)")
+    print("❌ Native iOS Failed to register for remote notifications: \(error)")
+    
+    // Forward error to React Native modules
+    self.forwardErrorToReactNative(error: error)
+  }
+  
+  private func forwardErrorToReactNative(error: Error) {
+    guard let bridge = self.bridge else {
+      print("❌ React Native bridge not available for error forwarding")
+      return
+    }
+    
+    // Try to forward to RNCPushNotificationIOS
+    if let pushNotificationIOSClass = NSClassFromString("RNCPushNotificationIOS"),
+       let pushNotificationManager = bridge.module(for: pushNotificationIOSClass) as? NSObject {
+      if pushNotificationManager.responds(to: NSSelectorFromString("didFailToRegisterForRemoteNotificationsWithError:")) {
+        pushNotificationManager.perform(NSSelectorFromString("didFailToRegisterForRemoteNotificationsWithError:"), with: error)
+        print("✅ Error forwarded to RNCPushNotificationIOS")
+      }
+    }
   }
   
   override func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-    print("Received remote notification: \(userInfo)")
+    print("📱 Native iOS Received remote notification: \(userInfo)")
+    
+    // Forward to React Native modules
+    self.forwardNotificationToReactNative(userInfo: userInfo)
+    
     completionHandler(.newData)
+  }
+  
+  private func forwardNotificationToReactNative(userInfo: [AnyHashable : Any]) {
+    guard let bridge = self.bridge else {
+      print("❌ React Native bridge not available for notification forwarding")
+      return
+    }
+    
+    // Try to forward to RNCPushNotificationIOS
+    if let pushNotificationIOSClass = NSClassFromString("RNCPushNotificationIOS"),
+       let pushNotificationManager = bridge.module(for: pushNotificationIOSClass) as? NSObject {
+      if pushNotificationManager.responds(to: NSSelectorFromString("didReceiveRemoteNotification:")) {
+        pushNotificationManager.perform(NSSelectorFromString("didReceiveRemoteNotification:"), with: userInfo)
+        print("✅ Remote notification forwarded to RNCPushNotificationIOS")
+      }
+    }
   }
 }
 

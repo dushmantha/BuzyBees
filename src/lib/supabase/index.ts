@@ -311,6 +311,14 @@ class AuthServiceClass {
         console.log('   - User ID:', data.user.id);
         console.log('   - User email:', data.user.email);
         console.log('   - Email confirmed:', data.user.email_confirmed_at ? 'Yes' : 'No');
+        
+        // Ensure session is properly established
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (session) {
+          console.log('✅ Session established:', session.access_token ? 'Token present' : 'No token');
+        } else {
+          console.warn('⚠️ No session after login:', sessionError);
+        }
         console.log('   - Session exists:', !!data.session);
       } else {
         console.warn('⚠️ Sign in returned no user data');
@@ -366,6 +374,15 @@ class AuthServiceClass {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
+      // First try to get the session to ensure we have valid auth
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.warn('⚠️ No valid session found');
+        return null;
+      }
+      
+      // Now get the user with valid session
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error) {
@@ -388,14 +405,17 @@ class AuthServiceClass {
       let targetUserId = userId;
 
       if (!targetUserId) {
+        console.log('🔍 Getting current user for profile fetch...');
         const user = await this.getCurrentUser();
         if (!user) {
+          console.error('❌ No authenticated user found for profile fetch');
           return {
             success: false,
-            error: 'User not authenticated'
+            error: 'User not authenticated - please login again'
           };
         }
         targetUserId = user.id;
+        console.log('✅ User found:', targetUserId);
       }
 
       console.log('📝 Fetching comprehensive user profile for:', targetUserId);

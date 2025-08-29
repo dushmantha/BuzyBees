@@ -1,3 +1,6 @@
+-- Safe Push Notifications Schema Migration
+-- This script checks for existing objects before creating them
+
 -- Create device_tokens table for storing user device tokens
 CREATE TABLE IF NOT EXISTS device_tokens (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -71,6 +74,32 @@ ALTER TABLE notification_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist and recreate them
+DO $$ 
+BEGIN
+  -- Device tokens policies
+  DROP POLICY IF EXISTS "Users can view their own device tokens" ON device_tokens;
+  DROP POLICY IF EXISTS "Users can insert their own device tokens" ON device_tokens;
+  DROP POLICY IF EXISTS "Users can update their own device tokens" ON device_tokens;
+  DROP POLICY IF EXISTS "Users can delete their own device tokens" ON device_tokens;
+  
+  -- Notification subscriptions policies  
+  DROP POLICY IF EXISTS "Users can view their own subscriptions" ON notification_subscriptions;
+  DROP POLICY IF EXISTS "Users can insert their own subscriptions" ON notification_subscriptions;
+  DROP POLICY IF EXISTS "Users can update their own subscriptions" ON notification_subscriptions;
+  DROP POLICY IF EXISTS "Users can delete their own subscriptions" ON notification_subscriptions;
+  
+  -- Notifications policies
+  DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
+  DROP POLICY IF EXISTS "System can insert notifications for users" ON notifications;
+  DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
+  
+  -- Notification settings policies
+  DROP POLICY IF EXISTS "Users can view their own notification settings" ON notification_settings;
+  DROP POLICY IF EXISTS "Users can insert their own notification settings" ON notification_settings;
+  DROP POLICY IF EXISTS "Users can update their own notification settings" ON notification_settings;
+END $$;
+
 -- Create RLS policies
 -- Device tokens policies
 CREATE POLICY "Users can view their own device tokens" ON device_tokens
@@ -118,6 +147,12 @@ CREATE POLICY "Users can insert their own notification settings" ON notification
 CREATE POLICY "Users can update their own notification settings" ON notification_settings
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop trigger if exists before creating
+DROP TRIGGER IF EXISTS create_user_notification_settings ON auth.users;
+
+-- Drop function if exists before creating  
+DROP FUNCTION IF EXISTS create_notification_settings_for_user();
+
 -- Create function to automatically create notification settings for new users
 CREATE OR REPLACE FUNCTION create_notification_settings_for_user()
 RETURNS TRIGGER AS $$
@@ -135,7 +170,7 @@ CREATE TRIGGER create_user_notification_settings
   FOR EACH ROW
   EXECUTE FUNCTION create_notification_settings_for_user();
 
--- Create function to update updated_at timestamp
+-- Create or replace function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -143,6 +178,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_device_tokens_updated_at ON device_tokens;
+DROP TRIGGER IF EXISTS update_notification_subscriptions_updated_at ON notification_subscriptions;
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
+DROP TRIGGER IF EXISTS update_notification_settings_updated_at ON notification_settings;
 
 -- Add updated_at triggers
 CREATE TRIGGER update_device_tokens_updated_at
@@ -164,3 +205,15 @@ CREATE TRIGGER update_notification_settings_updated_at
   BEFORE UPDATE ON notification_settings
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- Grant necessary permissions
+GRANT ALL ON device_tokens TO authenticated;
+GRANT ALL ON notification_subscriptions TO authenticated;
+GRANT ALL ON notifications TO authenticated;
+GRANT ALL ON notification_settings TO authenticated;
+
+-- Success message
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Push notification tables setup completed successfully!';
+END $$;

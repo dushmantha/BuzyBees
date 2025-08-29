@@ -1,6 +1,18 @@
-import appleAuth from '@invertase/react-native-apple-authentication';
 import { supabase } from '../../lib/supabase';
 import { Platform } from 'react-native';
+
+// Check if we're in simulator (for development fallback)
+const isSimulator = __DEV__ && Platform.OS === 'ios';
+
+// Try to import Apple Auth with error handling
+let appleAuth: any = null;
+try {
+  const module = require('@invertase/react-native-apple-authentication');
+  appleAuth = module.default || module;
+  console.log('✅ Apple Auth module loaded:', !!appleAuth);
+} catch (error) {
+  console.warn('Apple Authentication module not found:', error);
+}
 
 export interface AppleSignInResult {
   success: boolean;
@@ -21,10 +33,31 @@ export class AppleSignInService {
 
   async isAvailable(): Promise<boolean> {
     try {
-      // Apple Sign-In is only available on iOS 13+ and macOS 10.15+
-      return await appleAuth.isAvailable();
+      // Check if we're on iOS first
+      if (Platform.OS !== 'ios') {
+        console.log('🚫 Apple Auth: Not on iOS platform');
+        return false;
+      }
+      
+      // Check if the Apple Auth module is available
+      if (!appleAuth) {
+        console.log('🚫 Apple Auth: Module not loaded');
+        return false;
+      }
+      
+      // Check if the native module is properly linked
+      const nativeModule = appleAuth.native;
+      if (!nativeModule) {
+        console.log('🔄 Apple Auth: Native module is null - iOS app needs rebuild');
+        return false;
+      }
+      
+      // isSupported is a boolean property, not a function!
+      const isSupported = nativeModule.isSupported;
+      console.log('✅ Apple Auth: isSupported property value:', isSupported);
+      return isSupported === true;
     } catch (error) {
-      console.log('Apple Sign-In not available:', error);
+      console.log('❌ Apple Sign-In availability check failed:', error);
       return false;
     }
   }
@@ -43,7 +76,7 @@ export class AppleSignInService {
       }
 
       // Perform the Apple Sign-In request
-      const appleAuthRequestResponse = await appleAuth.performRequest({
+      const appleAuthRequestResponse = await appleAuth.native.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
@@ -120,13 +153,48 @@ export class AppleSignInService {
     } catch (error: any) {
       console.error('❌ Apple Sign-In error:', error);
       
-      // Handle specific Apple Sign-In errors
+      // Handle Apple Sign-In limitations on iOS Simulator (temporarily disabled for testing)
+      if (false && isSimulator && (error.code === '1000' || error.code === 1000)) {
+        console.log('🔧 Apple Sign-In failed on simulator - using development fallback');
+        
+        // Create a mock Apple Sign-In user for development testing
+        const mockAppleUser = {
+          user: '001234.fake.apple.user.id',
+          email: 'user@privaterelay.appleid.com',
+          fullName: {
+            givenName: 'Test',
+            familyName: 'User',
+          },
+          identityToken: 'mock.identity.token.for.development',
+          authorizationCode: 'mock.authorization.code',
+        };
+        
+        console.log('🧪 Using mock Apple Sign-In for simulator development');
+        
+        // For development, just return a success message without actual auth
+        // This allows testing the UI flow without backend complications
+        console.log('✅ Mock Apple Sign-In completed (development mode)');
+        return {
+          success: true,
+          user: {
+            id: 'mock-apple-user-id',
+            email: 'apple.test@simulator.dev',
+            user_metadata: {
+              full_name: 'Apple Test User',
+              email_verified: true,
+            }
+          },
+          isNewUser: false,
+        };
+      }
+      
+      // Handle specific Apple Sign-In errors for real devices
       let errorMessage = 'An error occurred during Apple sign in';
       
       if (error.code === '1001') {
         errorMessage = 'Apple sign in was cancelled';
       } else if (error.code === '1000') {
-        errorMessage = 'Apple sign in failed. Please try again.';
+        errorMessage = 'Apple Sign-In requires an Apple ID. Please sign in to your Apple ID in Settings → Sign in to your iPhone, then try again.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -140,7 +208,7 @@ export class AppleSignInService {
 
   async getCredentialState(userAppleId: string): Promise<string | null> {
     try {
-      const credentialState = await appleAuth.getCredentialStateForUser(userAppleId);
+      const credentialState = await appleAuth.native.getCredentialStateForUser(userAppleId);
       return credentialState;
     } catch (error) {
       console.error('❌ Failed to get Apple credential state:', error);

@@ -756,7 +756,7 @@ const RegisterScreen = () => {
         if (result.isNewUser) {
           Alert.alert(
             'Welcome!',
-            'Your account has been created successfully with Google. Welcome to BuzyBees!',
+            'Your account has been created successfully with Google. Welcome to Qwiken!',
             [{ text: 'Get Started', style: 'default' }]
           );
         } else {
@@ -829,7 +829,7 @@ const RegisterScreen = () => {
         if (result.isNewUser) {
           Alert.alert(
             'Welcome!',
-            'Your account has been created successfully with Apple. Welcome to BuzyBees!',
+            'Your account has been created successfully with Apple. Welcome to Qwiken!',
             [{ text: 'Get Started', style: 'default' }]
           );
         } else {

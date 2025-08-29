@@ -15,7 +15,15 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAccount } from '../navigation/AppNavigator';
-import { normalizedShopService } from '../lib/supabase/normalized';
+
+// Lazy import to improve startup performance
+let normalizedShopService: any;
+const getShopService = async () => {
+  if (!normalizedShopService) {
+    normalizedShopService = (await import('../lib/supabase/normalized')).normalizedShopService;
+  }
+  return normalizedShopService;
+};
 
 interface FAQ {
   id: string;
@@ -71,22 +79,22 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       const consumerFAQs: FAQ[] = [
         {
           id: '1',
-          question: 'How do I book a service with BuzyBees?',
-          answer: 'To book a service on BuzyBees, browse our service categories (cleaning, plumbing, electrical, etc.), select the service you need, choose your preferred date and time from the provider\'s available slots, and confirm your booking. You\'ll receive instant confirmation with all the details.',
+          question: 'How do I book a service with Qwiken?',
+          answer: 'To book a service on Qwiken, browse our service categories (cleaning, plumbing, electrical, etc.), select the service you need, choose your preferred date and time from the provider\'s available slots, and confirm your booking. You\'ll receive instant confirmation with all the details.',
           category: 'Booking',
           helpful_count: 156,
         },
         {
           id: '2',
           question: 'Can I request a service at my location?',
-          answer: 'Yes! BuzyBees supports both in-house services (at the provider\'s location) and on-location services (at your home or office). When browsing services, look for the location type indicator. For on-location services, you\'ll need to provide your address during booking.',
+          answer: 'Yes! Qwiken supports both in-house services (at the provider\'s location) and on-location services (at your home or office). When browsing services, look for the location type indicator. For on-location services, you\'ll need to provide your address during booking.',
           category: 'Booking',
           helpful_count: 89,
         },
         {
           id: '3',
           question: 'How do I know if a provider is verified?',
-          answer: 'Verified providers on BuzyBees have a blue checkmark on their profile. This means they\'ve completed our verification process including identity verification, business registration, and skill certifications. You can also check their ratings and reviews from other customers.',
+          answer: 'Verified providers on Qwiken have a blue checkmark on their profile. This means they\'ve completed our verification process including identity verification, business registration, and skill certifications. You can also check their ratings and reviews from other customers.',
           category: 'Trust & Safety',
           helpful_count: 134,
         },
@@ -99,8 +107,8 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
         },
         {
           id: '5',
-          question: 'How do payments work on BuzyBees?',
-          answer: 'Payments are handled securely through BuzyBees. You pay when booking the service, but the payment is held until the service is completed. Once marked as complete by the provider, you have 24 hours to confirm satisfaction before payment is released.',
+          question: 'How do payments work on Qwiken?',
+          answer: 'Payments are handled securely through Qwiken. You pay when booking the service, but the payment is held until the service is completed. Once marked as complete by the provider, you have 24 hours to confirm satisfaction before payment is released.',
           category: 'Payment',
           helpful_count: 203,
         },
@@ -114,7 +122,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
         {
           id: '7',
           question: 'How do I switch between Consumer and Provider mode?',
-          answer: 'BuzyBees allows you to be both a consumer and provider. Use the "Switch Mode" button in your profile to toggle between modes. As a consumer, you book services. As a provider, you offer services and manage bookings.',
+          answer: 'Qwiken allows you to be both a consumer and provider. Use the "Switch Mode" button in your profile to toggle between modes. As a consumer, you book services. As a provider, you offer services and manage bookings.',
           category: 'Account',
           helpful_count: 98,
         },
@@ -123,7 +131,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       const providerFAQs: FAQ[] = [
         {
           id: '1',
-          question: 'How do I set up my BuzyBees provider profile?',
+          question: 'How do I set up my Qwiken provider profile?',
           answer: 'Create your provider profile by adding your business name, service category, description, and service area. Upload your business logo, add your skills and certifications, set your business hours, and define your service offerings with pricing. Don\'t forget to enable "Women Owned Business" if applicable!',
           category: 'Getting Started',
           helpful_count: 189,
@@ -145,7 +153,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
         {
           id: '4',
           question: 'How do I handle payments and invoices?',
-          answer: 'BuzyBees handles payment processing securely. When a service is marked complete, payment is processed automatically. You can view earnings in the Earnings tab, generate invoices with your business details, and track payment history. Funds are transferred to your bank account within 2-3 business days.',
+          answer: 'Qwiken handles payment processing securely. When a service is marked complete, payment is processed automatically. You can view earnings in the Earnings tab, generate invoices with your business details, and track payment history. Funds are transferred to your bank account within 2-3 business days.',
           category: 'Payment',
           helpful_count: 167,
         },
@@ -182,7 +190,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           type: 'email',
           title: 'Email Support',
           description: 'Get help via email',
-          value: 'support@buzybees.com',
+          value: 'support@qwiken.com',
           icon: 'mail-outline',
           available: true,
           response_time: '24 hours',
@@ -281,7 +289,8 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
       setContactMethods(contactData);
       
       // Load real tickets from Supabase
-      const ticketResponse = await normalizedShopService.getSupportTickets();
+      const shopService = await getShopService();
+      const ticketResponse = await shopService.getSupportTickets();
       if (ticketResponse.success && ticketResponse.data) {
         // Map Supabase tickets to the expected format
         const mappedTickets = ticketResponse.data.map(ticket => ({
@@ -347,13 +356,13 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
     try {
       switch (method.type) {
         case 'email':
-          const emailSubject = `BuzyBees Support - ${accountType === 'provider' ? 'Provider' : 'Consumer'} Help`;
-          const emailBody = `Hello BuzyBees Support Team,\n\nI need assistance with:\n\n[Please describe your issue here]\n\nAccount Type: ${accountType}\nApp Version: 1.0.0`;
+          const emailSubject = `Qwiken Support - ${accountType === 'provider' ? 'Provider' : 'Consumer'} Help`;
+          const emailBody = `Hello Qwiken Support Team,\n\nI need assistance with:\n\n[Please describe your issue here]\n\nAccount Type: ${accountType}\nApp Version: 1.0.0`;
           await Linking.openURL(`mailto:${method.value}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`);
           break;
         case 'phone':
           Alert.alert(
-            'Call BuzyBees Support',
+            'Call Qwiken Support',
             `${method.response_time}\n\nCall ${method.value}?`,
             [
               { text: 'Cancel', style: 'cancel' },
@@ -363,7 +372,7 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
           break;
         case 'chat':
           if (method.available) {
-            const whatsappMessage = `Hello BuzyBees Support! I need help with my ${accountType} account.`;
+            const whatsappMessage = `Hello Qwiken Support! I need help with my ${accountType} account.`;
             const whatsappUrl = `whatsapp://send?phone=${method.value.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappMessage)}`;
             
             // Try to open WhatsApp, fallback to regular SMS
@@ -410,7 +419,8 @@ const HelpCenterScreen = ({ navigation }: { navigation: any }) => {
         priority: contactForm.priority,
       };
 
-      const response = await normalizedShopService.createSupportTicket(ticketData);
+      const shopService = await getShopService();
+      const response = await shopService.createSupportTicket(ticketData);
 
       if (response.success) {
         Alert.alert(

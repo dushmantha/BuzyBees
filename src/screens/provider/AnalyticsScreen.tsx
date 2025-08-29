@@ -350,7 +350,7 @@ const AnalyticsScreen: React.FC = () => {
     const csvData = [];
     
     // Header
-    csvData.push('BuzyBees Analytics Report');
+    csvData.push('Qwiken Analytics Report');
     csvData.push(`Generated on: ${new Date().toLocaleDateString()}`);
     csvData.push(`Period: ${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}`);
     csvData.push('');
@@ -405,7 +405,7 @@ const AnalyticsScreen: React.FC = () => {
     });
 
     return `
-📊 BuzyBees Analytics Report
+📊 Qwiken Analytics Report
 Generated: ${currentDate}
 Period: ${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}
 
@@ -431,7 +431,7 @@ ${servicePerformance.slice(0, 3).map((service, index) =>
 • ${revenueGrowth > 0 ? 'Positive revenue growth' : 'Focus on revenue optimization'}
 • ${customerEngagement.customerSatisfaction >= 4.5 ? 'Excellent customer satisfaction' : 'Room for service improvement'}
 
-Generated with BuzyBees Analytics
+Generated with Qwiken Analytics
     `.trim();
   };
 
@@ -443,7 +443,7 @@ Generated with BuzyBees Analytics
       
       await Share.share({
         message: reportSummary,
-        title: 'BuzyBees Analytics Report',
+        title: 'Qwiken Analytics Report',
       });
       
       setShowExportModal(false);
@@ -483,7 +483,7 @@ Generated with BuzyBees Analytics
       // For now, we'll create a formatted text version
       // In a real app, you'd use a PDF generation library like react-native-html-to-pdf
       const pdfContent = `
-📄 BuzyBees Analytics Report (PDF Format)
+📄 Qwiken Analytics Report (PDF Format)
 ${generateReportSummary()}
 
 Note: This is a text-based export. For full PDF features, 
@@ -492,7 +492,7 @@ please use the web dashboard or contact support.
       
       await Share.share({
         message: pdfContent,
-        title: 'BuzyBees Analytics Report (PDF)',
+        title: 'Qwiken Analytics Report (PDF)',
       });
       
       setShowExportModal(false);

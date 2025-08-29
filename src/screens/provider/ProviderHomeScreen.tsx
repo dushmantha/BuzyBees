@@ -20,7 +20,14 @@ import { usePremium } from '../../contexts/PremiumContext';
 import UpgradeModal from '../../components/UpgradeModal';
 import { CancellationBanner } from '../../components/CancellationBanner';
 import { authService } from '../../lib/supabase/index';
-import { normalizedShopService } from '../../lib/supabase/normalized';
+// Lazy import to improve startup performance
+let normalizedShopService: any;
+const getShopService = async () => {
+  if (!normalizedShopService) {
+    normalizedShopService = (await import('../../lib/supabase/normalized')).normalizedShopService;
+  }
+  return normalizedShopService;
+};
 import { reviewsAPI } from '../../services/api/reviews/reviewsAPI';
 import { responseTimeAPI, responseTimeUtils } from '../../services/api/responseTime/responseTimeAPI';
 import { shouldUseMockData, logMockUsage } from '../../config/devConfig';
@@ -276,18 +283,21 @@ const ProviderHomeScreen: React.FC = () => {
       try {
         console.log('📊 Fetching real dashboard data from Supabase...');
         
+        // Get shop service lazily
+        const shopService = await getShopService();
+        
         // Get real data in parallel
         const [shopsResponse, statsResponse, activityResponse, revenueResponse, shopStatsResponse, reviewStatsResponse] = await Promise.all([
           // Get shops
           authService.getProviderBusinesses(providerId),
           // Get dashboard stats
-          normalizedShopService.getDashboardStats(providerId),
+          shopService.getDashboardStats(providerId),
           // Get activity feed
-          normalizedShopService.getActivityFeed(providerId, 10),
+          shopService.getActivityFeed(providerId, 10),
           // Get monthly revenue for shops
-          normalizedShopService.getShopMonthlyRevenue(),
+          shopService.getShopMonthlyRevenue(),
           // Get shop statistics (rating, reviews, staff, services)
-          normalizedShopService.getShopStatistics(),
+          shopService.getShopStatistics(),
           // Get review statistics
           reviewsAPI.getAllProviderReviewStats(providerId)
         ]);
@@ -470,7 +480,7 @@ const ProviderHomeScreen: React.FC = () => {
           : [{
               id: '1',
               type: 'system' as const,
-              title: 'Welcome to BuzyBees',
+              title: 'Welcome to Qwiken',
               description: realShops.length > 0 ? `Your shop "${realShops[0].name}" is ready for bookings!` : 'Create your first shop to start accepting bookings',
               timestamp: new Date().toISOString(),
               priority: 'medium' as const,
@@ -529,7 +539,7 @@ const ProviderHomeScreen: React.FC = () => {
           activity: [{
             id: '1',
             type: 'system',
-            title: 'Welcome to BuzyBees',
+            title: 'Welcome to Qwiken',
             description: 'Start by creating your first shop to begin accepting bookings',
             timestamp: new Date().toISOString(),
             priority: 'medium',

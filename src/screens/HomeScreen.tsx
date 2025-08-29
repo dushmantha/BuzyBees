@@ -224,8 +224,8 @@ const HomeScreen = () => {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
-            title: 'BuzyBees Location Permission',
-            message: 'BuzyBees needs access to your location to show nearby services.',
+            title: 'Qwiken Location Permission',
+            message: 'Qwiken needs access to your location to show nearby services.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -317,15 +317,36 @@ const HomeScreen = () => {
       return;
     }
     
-    // Don't fetch if auth is still loading
-    if (authLoading || premiumLoading) {
-      console.log('🔄 Waiting for auth to complete...', { 
+    // Don't fetch if auth is still loading and we don't have a user yet
+    if ((authLoading || premiumLoading) && !user?.id) {
+      console.log('🔄 Waiting for auth to complete (no user yet)...', { 
         authLoading, 
-        premiumLoading
+        premiumLoading,
+        user: !!user,
+        userId: user?.id,
+        timestamp: new Date().toISOString()
       });
       // Don't set loading to false here, let auth complete first
       return;
     }
+    
+    // Allow data fetching if we have a user, even if loading states are still true
+    if ((authLoading || premiumLoading) && user?.id) {
+      console.log('⚡ Auth still loading but user available, proceeding with fetch...', { 
+        authLoading, 
+        premiumLoading,
+        user: !!user,
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    console.log('✅ Auth ready, proceeding with data fetch...', {
+      authLoading,
+      premiumLoading,
+      user: !!user,
+      userId: user?.id
+    });
     
     isFetchingRef.current = true;
 
@@ -663,9 +684,11 @@ const HomeScreen = () => {
       
       setHomeData(fallbackData);
     } finally {
+      console.log('🏁 fetchHomeData finally block - stopping loading');
       setIsLoading(false);
       setRefreshing(false);
       isFetchingRef.current = false; // Clear fetch lock
+      console.log('✅ Loading state cleared, isFetchingRef reset');
     }
   }, [authLoading, premiumLoading, user?.id, isPremium, subscription, currentLocation]);
 
@@ -680,6 +703,13 @@ const HomeScreen = () => {
 
   useEffect(() => {
     // Load fresh user data on mount, but only after auth is ready
+    console.log('🏠 HomeScreen useEffect - Auth states:', {
+      authLoading,
+      premiumLoading,
+      user: !!user,
+      userId: user?.id
+    });
+    
     if (authLoading || premiumLoading) {
       console.log('⏳ Waiting for auth/premium to complete...');
       setIsLoading(true); // Ensure loading state is shown while waiting
@@ -1247,7 +1277,9 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  if ((isLoading || authLoading || premiumLoading) && homeData.categories.length === 0) {
+  // Only show loading if auth is still loading or we have no data yet AND we're still loading
+  // Don't wait for premiumLoading to prevent blocking the UI
+  if ((isLoading || authLoading) && homeData.categories.length === 0) {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1A2533" />

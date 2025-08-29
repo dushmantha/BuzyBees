@@ -37,7 +37,7 @@ const StripeWebView: React.FC<StripeWebViewProps> = ({
     console.log('WebView navigation:', url);
     
     // Check for success URL pattern
-    if (url.includes('payment-success') || url.includes('buzybees-success.com/payment-success')) {
+    if (url.includes('payment-success') || url.includes('qwiken-success.com/payment-success')) {
       const sessionIdMatch = url.match(/session_id=([^&]+)/);
       if (sessionIdMatch) {
         const sessionId = sessionIdMatch[1];
@@ -51,7 +51,7 @@ const StripeWebView: React.FC<StripeWebViewProps> = ({
     }
     
     // Check for cancel URL pattern
-    if (url.includes('payment-cancelled') || url.includes('buzybees-success.com/payment-cancelled')) {
+    if (url.includes('payment-cancelled') || url.includes('qwiken-success.com/payment-cancelled')) {
       console.log('Payment cancelled');
       onCancel();
       return;
@@ -156,7 +156,7 @@ const StripeWebView: React.FC<StripeWebViewProps> = ({
             allowsInlineMediaPlayback={true}
             mediaPlaybackRequiresUserAction={false}
             mixedContentMode="compatibility"
-            userAgent="BuzyBees-iOS/1.0"
+            userAgent="Qwiken-iOS/1.0"
           />
         )}
 

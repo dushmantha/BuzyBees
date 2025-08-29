@@ -5,7 +5,6 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 // AuthProvider is now handled in AppNavigator
 import { PremiumProvider } from './src/contexts/PremiumContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import integratedShopService from './src/lib/supabase/integrated';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -53,46 +52,8 @@ function App(): React.JSX.Element {
   useEffect(() => {
     console.log('App mounted');
     
-    // Initialize integrated shop service schema
-    const initializeDatabase = async () => {
-      try {
-        console.log('🚀 Initializing integrated shop service...');
-        const result = await integratedShopService.initializeSchema();
-        
-        if (result.success) {
-          console.log('✅ Integrated shop service initialized successfully');
-        } else {
-          console.warn('⚠️ Integrated shop service initialization had issues:', result.error);
-        }
-      } catch (error) {
-        console.error('❌ Failed to initialize integrated shop service:', error);
-      }
-    };
-    
-    // Initialize push notifications with safe loading
-    const initializePushNotifications = async () => {
-      try {
-        console.log('🔔 Initializing safe push notifications...');
-        const SafePushNotificationService = await import('./src/services/safePushNotificationService');
-        const configured = await SafePushNotificationService.default.configure();
-        
-        if (configured) {
-          // Don't request permissions on startup - wait for user action
-          console.log('✅ Push notification service configured, ready for permission request');
-        } else {
-          console.warn('⚠️ Push notifications not available on this device');
-        }
-      } catch (error) {
-        console.error('❌ Failed to initialize push notifications:', error);
-      }
-    };
-    
-    // Initialize after a small delay to let the app load
-    setTimeout(() => {
-      initializeDatabase();
-      initializePushNotifications();
-    }, 2000);
-    
+    // Only initialize essential services after user is authenticated
+    // Heavy initialization is now deferred to when actually needed
     return () => console.log('App unmounted');
   }, []);
 

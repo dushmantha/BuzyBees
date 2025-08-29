@@ -132,7 +132,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   // Removed tab functionality - ProfileScreen now only shows profile content
   
   // Use the global account context and notifications
-  const { accountType, setAccountType, isLoading: accountSwitchLoading } = useAccount();
+  const { accountType, setAccountType, isLoading: accountSwitchLoading, userProfile } = useAccount();
   const { notificationCount } = useNotifications();
   const { isPremium, subscription, refreshSubscription } = usePremium();
   
@@ -178,7 +178,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   });
   
   
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAuthenticated } = useAuth();
   const { showImagePickerOptions, isLoading: isImageLoading } = useImagePicker();
 
   // Use real user ID from auth context
@@ -228,13 +228,20 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
   // Fetch real user profile from Supabase
   useEffect(() => {
+    console.log('👤 ProfileScreen useEffect - User states:', {
+      user: !!user,
+      userId: user?.id,
+      isAuthenticated,
+      userProfile: !!userProfile
+    });
+    
     const fetchUserProfile = async () => {
       try {
         setIsLoading(true);
         console.log('🔄 Fetching user profile...');
         
-        // Check if we should use mock data or if we have an authenticated user
-        const currentUser = await authService.getCurrentUser();
+        // Use user from auth context instead of calling getCurrentUser
+        const currentUser = user;
         
         // Use mock data if enabled, regardless of authentication status
         if (shouldUseMockData('MOCK_AUTH')) {

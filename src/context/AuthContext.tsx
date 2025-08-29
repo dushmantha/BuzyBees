@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api/auth';
 import { supabase } from '../lib/supabase';
 import { authService } from '../lib/supabase/index';
 import { premiumService } from '../lib/premium/premiumService';
+import pushNotificationService from '../services/pushNotificationService';
 
 export interface User {
   id: string;
@@ -258,8 +259,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔍 Storage user exists:', !!user);
       console.log('🔍 Raw storage user data:', user);
 
-      // Small delay to ensure smooth transition
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Remove artificial delay to improve app launch speed
+      // await new Promise(resolve => setTimeout(resolve, 1000));
 
       if (token && user) {
         try {
@@ -341,6 +342,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               });
               
               console.log('✅ Loaded real user profile:', transformedUser.email, transformedUser.full_name);
+              
+              // Initialize push notifications for authenticated user (non-blocking)
+              setTimeout(async () => {
+                try {
+                  pushNotificationService.configure();
+                  await pushNotificationService.handlePendingToken();
+                  console.log('✅ Push notification service initialized');
+                } catch (pushError) {
+                  console.warn('⚠️ Failed to initialize push notifications:', pushError);
+                }
+              }, 100);
+              
               return;
             }
           } else {
@@ -376,6 +389,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               });
               
               console.log('✅ Loaded basic user data:', transformedUser.email, transformedUser.full_name);
+              
+              // Initialize push notifications for authenticated user (non-blocking)
+              setTimeout(async () => {
+                try {
+                  pushNotificationService.configure();
+                  await pushNotificationService.handlePendingToken();
+                  console.log('✅ Push notification service initialized');
+                } catch (pushError) {
+                  console.warn('⚠️ Failed to initialize push notifications:', pushError);
+                }
+              }, 100);
+              
               return;
             }
           }
@@ -412,8 +437,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    loadAuthData();
+    const initializeAuth = async () => {
+      try {
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Auth initialization timeout')), 10000);
+        });
+
+        await Promise.race([loadAuthData(), timeoutPromise]);
+      } catch (error) {
+        console.error('❌ Auth initialization failed:', error);
+        // Force clear loading state on timeout/error
+        setData({
+          user: null,
+          token: null,
+          isLoading: false,
+          isAuthenticated: false,
+          isInitializing: false,
+        });
+      }
+    };
+
+    initializeAuth();
   }, [loadAuthData]);
+
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      console.log('🔄 App state changed:', nextAppState);
+      
+      if (nextAppState === 'active' && data.isAuthenticated) {
+        // App came to foreground - refresh auth if needed
+        console.log('📱 App became active, refreshing auth...');
+        setTimeout(() => {
+          refreshToken().catch(() => {
+            console.warn('⚠️ Token refresh failed on app resume');
+          });
+        }, 500);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [data.isAuthenticated, refreshToken]);
 
   // Save auth data to AsyncStorage
   const saveAuthData = async (token: string, user: User) => {
@@ -499,6 +565,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         accountType: user.account_type,
       });
 
+      // Initialize push notifications for the signed-in user
+      try {
+        pushNotificationService.configure();
+        await pushNotificationService.handlePendingToken();
+        console.log('✅ Push notification service initialized after sign in');
+      } catch (pushError) {
+        console.warn('⚠️ Failed to initialize push notifications after sign in:', pushError);
+      }
+
       // Return the user data to the caller
       return { user };
     } catch (error: any) {
@@ -575,8 +650,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setData(prev => ({ ...prev, isLoading: true }));
       console.log('🔄 Signing out user');
-      
-      // Sign out from Google if the user signed in with Google
+
+      // Add timeout to prevent infinite loading on signOut
+      const signOutWithTimeout = async () => {
+        // Sign out from Google if the user signed in with Google
       try {
         const { googleSignInService } = require('../services/auth/googleSignIn');
         await googleSignInService.signOut();
@@ -606,7 +683,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isInitializing: false,
       });
 
-      console.log('✅ Sign out successful');
+        console.log('✅ Sign out successful');
+      };
+
+      // Execute signOut with timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('SignOut timeout')), 5000);
+      });
+
+      await Promise.race([signOutWithTimeout(), timeoutPromise]);
     } catch (error) {
       console.error('❌ Sign out error:', error);
       // Even if signOut fails, clear local data

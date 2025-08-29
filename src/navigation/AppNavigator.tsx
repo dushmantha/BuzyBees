@@ -1,6 +1,6 @@
 // navigation/AppNavigator.tsx - FINAL FIXED VERSION
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, ActivityIndicator, View, Text, Platform } from 'react-native';
@@ -97,82 +97,180 @@ export const useAuth = () => {
   return context;
 };
 
-// Auth Provider Component with Supabase
+// Auth Provider Component with Supabase - FIXED VERSION
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
+    let mounted = true;
+    
+    // Get initial session with proper error handling
     const getInitialSession = async () => {
       try {
-        console.log('🔄 Getting initial session...');
+        console.log('🔄 Getting initial session at app startup...');
         
         // Check if supabase is properly imported
         if (!supabase) {
           throw new Error('Supabase client not initialized');
         }
         
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        console.log('📱 Initial session:', initialSession?.user?.email || 'No session');
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
+        // Get the current session from Supabase
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Error getting initial session:', error);
+          // Clear any invalid session
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+          }
+        } else {
+          console.log('📱 Initial session found:', initialSession?.user?.email || 'No session');
+          if (mounted) {
+            setSession(initialSession);
+            setUser(initialSession?.user ?? null);
+          }
+        }
       } catch (error) {
-        console.error('❌ Error getting initial session:', error);
+        console.error('❌ Critical error getting initial session:', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+          console.log('✅ Auth initialization complete');
+        }
       }
     };
 
     getInitialSession();
 
-    // Listen for auth changes
+    // Listen for auth changes with proper handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔐 Auth state changed:', event, session?.user?.email || 'No user');
-        console.log('🔐 Session exists:', !!session);
-        console.log('🔐 Will set isAuthenticated to:', !!session);
+      async (event, currentSession) => {
+        if (!mounted) return;
         
-        // Additional debugging
-        if (event === 'SIGNED_IN' && session) {
-          console.log('🔐 SIGNED_IN event detected with session');
-          console.log('🔐 Session user ID:', session.user?.id);
-          console.log('🔐 Session access token exists:', !!session.access_token);
+        console.log('🔐 Auth state changed:', event, currentSession?.user?.email || 'No user');
+        console.log('🔐 Session exists:', !!currentSession);
+        
+        // Handle different auth events
+        switch (event) {
+          case 'SIGNED_IN':
+            console.log('✅ SIGNED_IN event - User logged in');
+            if (currentSession) {
+              setSession(currentSession);
+              setUser(currentSession.user);
+              setIsLoading(false);
+            }
+            break;
+            
+          case 'SIGNED_OUT':
+            console.log('👋 SIGNED_OUT event - User logged out');
+            setSession(null);
+            setUser(null);
+            setIsLoading(false);
+            // Clear all AsyncStorage data related to auth
+            try {
+              const keys = await AsyncStorage.getAllKeys();
+              const authKeys = keys.filter(key => 
+                key.includes('supabase') || 
+                key.includes('profile') || 
+                key.includes('accountType')
+              );
+              if (authKeys.length > 0) {
+                await AsyncStorage.multiRemove(authKeys);
+                console.log('🗑️ Cleared auth-related AsyncStorage keys');
+              }
+            } catch (error) {
+              console.error('Error clearing AsyncStorage:', error);
+            }
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            console.log('🔄 TOKEN_REFRESHED event');
+            if (currentSession) {
+              setSession(currentSession);
+              setUser(currentSession.user);
+            }
+            break;
+            
+          case 'USER_UPDATED':
+            console.log('👤 USER_UPDATED event');
+            if (currentSession) {
+              setSession(currentSession);
+              setUser(currentSession.user);
+            }
+            break;
+            
+          default:
+            console.log('🔐 Other auth event:', event);
         }
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        // Always ensure loading is false after auth events
         setIsLoading(false);
-        console.log('🔐 Auth loading set to false, isAuthenticated will be:', !!session);
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
     try {
-      console.log('👋 Signing out...');
+      console.log('👋 Starting sign out process...');
       setIsLoading(true);
       
-      // Check if authService is properly imported
-      if (!authService) {
-        throw new Error('AuthService not initialized');
+      // Clear AsyncStorage FIRST before signing out from Supabase
+      console.log('🗑️ Step 1: Clearing all cached data...');
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const keysToRemove = keys.filter(key => 
+          key.includes('supabase') ||
+          key.includes('profile') || 
+          key.includes('accountType') ||
+          key.includes('user') ||
+          key.includes('cached')
+        );
+        
+        if (keysToRemove.length > 0) {
+          await AsyncStorage.multiRemove(keysToRemove);
+          console.log('✅ Cleared AsyncStorage keys:', keysToRemove.length, 'items');
+        }
+      } catch (cacheError) {
+        console.error('⚠️ Error clearing cache (non-critical):', cacheError);
       }
       
-      const result = await authService.signOut();
+      // Clear local state BEFORE calling Supabase signOut
+      console.log('🔄 Step 2: Clearing local state...');
+      setSession(null);
+      setUser(null);
       
-      if (!result.success) {
-        console.error('❌ Sign out failed:', result.error);
-      } else {
-        console.log('✅ Sign out successful');
+      // Now sign out from Supabase
+      console.log('🔐 Step 3: Signing out from Supabase...');
+      try {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.error('⚠️ Supabase signOut error (continuing anyway):', error);
+        } else {
+          console.log('✅ Successfully signed out from Supabase');
+        }
+      } catch (supabaseError) {
+        console.error('⚠️ Supabase signOut exception (continuing anyway):', supabaseError);
       }
+      
+      console.log('✅ Sign out process completed');
+      
     } catch (error) {
-      console.error('❌ Sign out error:', error);
+      console.error('❌ Unexpected sign out error:', error);
     } finally {
+      // Always ensure loading is false
       setIsLoading(false);
     }
   };
@@ -189,20 +287,42 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const forceCheckSession = async () => {
     try {
-      console.log('🔄 Force checking session...');
-      setIsLoading(true);
+      console.log('🔄 Force checking session from Supabase...');
       
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      console.log('🔍 Force session check result:', currentSession?.user?.email || 'No session');
+      // Don't set loading to true as this is a background check
       
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('❌ Error getting session:', error);
+        setSession(null);
+        setUser(null);
+        return;
+      }
+      
+      console.log('🔍 Force check result:', {
+        hasSession: !!currentSession,
+        userEmail: currentSession?.user?.email || 'None'
+      });
+      
+      // Update auth state based on current session
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      setIsLoading(false);
       
-      console.log('🔍 After force check - isAuthenticated:', !!currentSession);
+      // If we have a session but were not authenticated, this is a fresh login
+      if (currentSession && !session) {
+        console.log('✅ Fresh login detected via force check');
+      }
+      
+      // If we don't have a session but were authenticated, this is a logout
+      if (!currentSession && session) {
+        console.log('👋 Logout detected via force check');
+      }
+      
     } catch (error) {
-      console.error('❌ Error in force session check:', error);
-      setIsLoading(false);
+      console.error('❌ Critical error in force session check:', error);
+      setSession(null);
+      setUser(null);
     }
   };
 
@@ -267,9 +387,26 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [accountType, setAccountTypeState] = useState<'provider' | 'consumer'>('consumer');
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const isInitializingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
+  const profileLoadedRef = useRef(false); // Track if profile has been loaded for this session
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    // Reset initialization if user changes (logout/login with different account)
+    if (user?.id !== lastUserIdRef.current) {
+      console.log('👤 User changed, resetting initialization flags:', {
+        oldUser: lastUserIdRef.current,
+        newUser: user?.id
+      });
+      hasInitializedRef.current = false;
+      isInitializingRef.current = false;
+      profileLoadedRef.current = false; // Reset profile loaded flag
+      lastUserIdRef.current = user?.id || null;
+    }
+    
+    if (isAuthenticated && user && !isInitializingRef.current && !hasInitializedRef.current) {
       // Load user-specific account type immediately when user authenticates
       const initializeAccountType = async () => {
         const userAccountTypeKey = `accountType_${user.id}`;
@@ -281,53 +418,126 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         }
       };
       
-      // Handle pending push notification token with safe loading
-      const handlePushNotifications = async () => {
-        try {
-          console.log('🔔 Handling push notifications for authenticated user...');
-          const SafePushNotificationService = await import('../services/safePushNotificationService');
-          const configured = await SafePushNotificationService.default.configure();
-          
-          if (configured) {
-            // Handle any pending tokens first
-            await SafePushNotificationService.default.handlePendingToken();
+      // Handle pending push notification token with safe loading (non-blocking)
+      const handlePushNotifications = () => {
+        // Run this completely in the background without await
+        (async () => {
+          try {
+            console.log('🔔 Handling push notifications for authenticated user (background)...');
+            const SafePushNotificationService = await import('../services/safePushNotificationService');
+            const configured = await SafePushNotificationService.default.configure();
             
-            // Check current permission status
-            const permissions = await SafePushNotificationService.default.checkPermissions();
-            console.log('📱 Current push permissions:', permissions);
-            
-            if (!permissions.granted) {
-              console.log('📱 Push permissions not granted, requesting permissions...');
-              // Request permissions for authenticated user
-              const granted = await SafePushNotificationService.default.requestPermissions();
-              if (granted) {
-                console.log('✅ Push permissions granted and token should be registered');
+            if (configured) {
+              // Handle any pending tokens first
+              await SafePushNotificationService.default.handlePendingToken();
+              
+              // Check current permission status
+              const permissions = await SafePushNotificationService.default.checkPermissions();
+              console.log('📱 Current push permissions:', permissions);
+              
+              if (!permissions.granted) {
+                console.log('📱 Push permissions not granted, requesting permissions...');
+                // Request permissions for authenticated user
+                const granted = await SafePushNotificationService.default.requestPermissions();
+                if (granted) {
+                  console.log('✅ Push permissions granted and token should be registered');
+                } else {
+                  console.log('❌ Push permissions denied by user');
+                }
               } else {
-                console.log('❌ Push permissions denied by user');
+                console.log('✅ Push permissions already granted');
+                // Permissions are granted but maybe we don't have a token registered
+                // Let's trigger a token registration just to be sure
+                const tokenExists = SafePushNotificationService.default.getDeviceToken();
+                if (!tokenExists) {
+                  console.log('📱 No device token found, requesting permissions to trigger registration...');
+                  await SafePushNotificationService.default.requestPermissions();
+                }
               }
             } else {
-              console.log('✅ Push permissions already granted');
-              // Permissions are granted but maybe we don't have a token registered
-              // Let's trigger a token registration just to be sure
-              const tokenExists = SafePushNotificationService.default.getDeviceToken();
-              if (!tokenExists) {
-                console.log('📱 No device token found, requesting permissions to trigger registration...');
-                await SafePushNotificationService.default.requestPermissions();
-              }
+              console.log('⚠️ Push notification service could not be configured');
             }
+          } catch (error) {
+            console.error('❌ Error handling push notifications on login:', error);
+          }
+        })();
+      };
+      
+      // Initialize only account type on login - profile loads on demand
+      const initializeOnLogin = async () => {
+        if (isInitializingRef.current) {
+          console.log('⏭️ Initialization already in progress, skipping');
+          return;
+        }
+        
+        console.log('🔄 Starting login initialization (account type only)...');
+        isInitializingRef.current = true;
+        setIsLoading(true);
+        
+        try {
+          console.log('🔄 Running account type initialization only...');
+          
+          // Shorter timeout for account type only initialization (no profile loading)
+          const initializationTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Initialization timeout after 5 seconds')), 5000) // 5s is enough for account type only
+          );
+          
+          // Only initialize account type on login - profile loads on demand when user navigates to profile tab
+          console.log('📝 Initializing account type only - profile will load on demand');
+          const initPromise = Promise.all([
+            initializeAccountType().catch(e => { console.error('❌ Account type init failed:', e); return null; })
+            // REMOVED loadUserProfile - it should only load when profile tab is accessed
+          ]);
+          
+          try {
+            const [accountTypeResult] = await Promise.race([
+              initPromise,
+              initializationTimeout
+            ]);
+            
+            console.log('📊 Initialization results:', {
+              accountType: accountTypeResult !== null ? 'Success' : 'Failed'
+            });
+            
+            hasInitializedRef.current = true;
+            console.log('✅ Coordinated initialization completed successfully');
+          } catch (timeoutError) {
+            console.warn('⚠️ Initialization timed out, proceeding anyway:', timeoutError.message);
+            hasInitializedRef.current = true; // Mark as initialized to prevent retry loops
           }
         } catch (error) {
-          console.error('❌ Error handling push notifications on login:', error);
+          console.error('❌ Critical error during initialization:', error);
+          hasInitializedRef.current = true; // Mark as initialized to prevent retry loops
+        } finally {
+          console.log('🔄 LOGIN INIT CLEANUP: Setting isLoading to false...');
+          setIsLoading(false);
+          isInitializingRef.current = false;
+          console.log('✅ Account type initialization completed - isLoading set to false');
+          console.log('📊 Final loading state:', {
+            isLoading: false,
+            isInitializing: isInitializingRef.current,
+            hasInitialized: hasInitializedRef.current,
+            note: 'Profile will load on-demand when user navigates to profile tab'
+          });
         }
       };
       
-      initializeAccountType();
-      loadUserProfile();
+      initializeOnLogin();
       handlePushNotifications();
     } else {
       // Reset profile when user logs out
+      console.log('👋 User logged out, resetting Account context state');
       setUserProfile(null);
       setAccountTypeState('consumer');
+      setIsLoading(false); // Ensure loading is cleared on logout
+      setIsProfileLoading(false);
+      
+      // Reset initialization flags for next login
+      isInitializingRef.current = false;
+      hasInitializedRef.current = false;
+      profileLoadedRef.current = false;
+      
+      console.log('✅ Account context reset completed');
     }
   }, [isAuthenticated, user]);
 
@@ -355,52 +565,58 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, [isAuthenticated]);
 
-  const loadUserProfile = async () => {
-    if (!user || !authService) return;
+  const loadUserProfile = async (forceLoad = false) => {
+    // Only load profile when explicitly requested or forced
+    if (!forceLoad && profileLoadedRef.current) {
+      console.log('📝 Profile already loaded for this session, skipping');
+      return;
+    }
+    
+    if (!user || !authService || isProfileLoading) {
+      console.log('📝 Skipping profile load:', { 
+        hasUser: !!user, 
+        hasAuthService: !!authService, 
+        isProfileLoading 
+      });
+      return;
+    }
     
     try {
+      setIsProfileLoading(true);
       console.log('📝 Loading user profile for:', user.id);
-      setIsLoading(true);
+      // Note: setIsLoading is now handled by the coordination function
       
       // FIRST: Load saved account type for this specific user
       const userAccountTypeKey = `accountType_${user.id}`;
       const savedUserType = await AsyncStorage.getItem(userAccountTypeKey);
       console.log('📱 Saved account type for user:', savedUserType);
       
-      // Check cache first to avoid network calls
-      const cachedProfile = await AsyncStorage.getItem(`profile_${user.id}`);
-      if (cachedProfile) {
-        try {
-          const parsed = JSON.parse(cachedProfile);
-          setUserProfile(parsed);
-          console.log('📝 Loaded cached profile');
-        } catch (e) {
-          console.warn('📝 Failed to parse cached profile');
-        }
-      }
+      // On fresh login, DO NOT read cache - only create fallback if API fails
+      console.log('📡 Fresh login detected - skipping cache, using API only...');
+      // DO NOT READ CACHE ON FRESH LOGIN
+      let cachedProfile = null; // Keep null - no cache reading
       
-      // Set reasonable timeout for profile loading
+      // Set longer timeout for profile loading to give API better chance
+      console.log('⏱️ Setting 15-second timeout for fresh API data fetch...');
       const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile loading timeout')), 10000) // Increased to 10 seconds
+        setTimeout(() => reject(new Error('Profile loading timeout')), 15000) // 15 seconds timeout - give API more time
       );
       
       try {
+        console.log('🔄 Calling authService.getUserProfile() with user ID:', user.id);
         const response = await Promise.race([
           authService.getUserProfile(user.id),
           timeout
         ]);
-        console.log('📝 Profile response:', response.success ? 'Success' : response.error);
+        console.log('📝 Profile API response received:', response.success ? 'Success' : `Failed - ${response.error}`);
       
       if (response.success && response.data) {
         setUserProfile(response.data);
+        profileLoadedRef.current = true; // Mark profile as loaded
         
-        // Cache the profile for next time
-        try {
-          await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(response.data));
-          console.log('📝 Cached user profile');
-        } catch (e) {
-          console.warn('📝 Failed to cache profile');
-        }
+        // DO NOT CACHE PROFILE - We want fresh data on every login
+        console.log('🚫 Skipping profile caching - fresh data policy');
+        console.log('✅ Profile loaded successfully for session');
         
         // Priority: User-specific saved type > Database account_type > default 'consumer'
         const userAccountTypeKey = `accountType_${user.id}`;
@@ -469,13 +685,10 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       }
       
       } catch (profileError) {
-        console.warn('⚠️ Profile loading timed out or failed, using cached/fallback data:', profileError.message);
+        console.warn('⚠️ Profile loading timed out or failed, creating fresh fallback profile:', profileError.message);
         
-        // If we have cached profile, use it
-        if (cachedProfile) {
-          console.log('📝 Using cached profile due to timeout');
-          return; // We already set the cached profile above
-        }
+        // NO CACHE - Create fresh fallback profile from auth data
+        console.log('🆕 Creating fresh fallback profile from authentication data...');
         
         // Otherwise create a basic fallback profile
         const userAccountTypeKey = `accountType_${user.id}`;
@@ -551,13 +764,20 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         });
       }
     } finally {
-      // Ensure loading state is ALWAYS cleared
-      setIsLoading(false);
-      console.log('✅ Profile loading completed - isLoading set to false');
+      // Clear profile loading state (main loading state handled by coordination function)
+      setIsProfileLoading(false);
+      console.log('✅ Profile loading completed - setIsProfileLoading(false)');
+      console.log('📊 Profile loading summary:', {
+        hasProfile: !!userProfile,
+        profileLoadingState: false,
+        accountType: accountType
+      });
     }
   };
 
   const setAccountType = async (type: 'provider' | 'consumer') => {
+    let safetyTimeout: NodeJS.Timeout | null = null;
+    
     try {
       // Validate the type parameter
       if (!type || (type !== 'provider' && type !== 'consumer')) {
@@ -566,7 +786,26 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       }
 
       console.log('🔄 Updating account type to:', type);
+      
+      // If initialization is in progress, wait for it to complete first
+      if (isInitializingRef.current) {
+        console.log('⏳ Initialization in progress, waiting before account switch...');
+        // Wait up to 5 seconds for initialization to complete
+        let waitTime = 0;
+        while (isInitializingRef.current && waitTime < 5000) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          waitTime += 100;
+        }
+        console.log('✅ Initialization wait completed, proceeding with account switch');
+      }
+      
       setIsLoading(true);
+      
+      // Add a safety timeout to ensure loading doesn't get stuck
+      safetyTimeout = setTimeout(() => {
+        console.warn('⚠️ Account type switch taking too long, forcing loading to false');
+        setIsLoading(false);
+      }, 10000); // 10 second timeout
       
       // For authenticated users, update database
       if (user && authService) {
@@ -621,12 +860,18 @@ const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         setAccountTypeState('consumer');
       }
     } finally {
+      // Clear the safety timeout and ensure loading is set to false
+      if (safetyTimeout) {
+        clearTimeout(safetyTimeout);
+      }
       setIsLoading(false);
+      console.log('✅ Account type switch completed - isLoading set to false');
     }
   };
 
   const refreshProfile = async () => {
-    await loadUserProfile();
+    console.log('🔄 Manual profile refresh requested');
+    await loadUserProfile(true); // Force load when explicitly requested
   };
 
   return (
@@ -915,6 +1160,7 @@ const ConsumerTabs = () => {
   
   return (
     <ConsumerTab.Navigator
+      initialRouteName="HomeTab"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string;
@@ -996,6 +1242,7 @@ const ProviderTabs = () => {
   
   return (
     <ProviderTab.Navigator
+      initialRouteName="ProviderHomeTab"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string;

@@ -428,7 +428,7 @@ const CustomersScreen: React.FC = () => {
       // Prepare provider info
       const providerInfo = {
         id: userProfile?.id,
-        name: userProfile?.full_name || userProfile?.first_name || 'BuzyBees',
+        name: userProfile?.full_name || userProfile?.first_name || 'Qwiken',
         email: userProfile?.email,
         phone: userProfile?.phone
       };
